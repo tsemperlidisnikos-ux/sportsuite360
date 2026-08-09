@@ -1,10 +1,10 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getSession, getUsers, logout } from '../auth/auth';
-import { getClubs, type Club } from '../auth/clubs';
+import { getSession, getUsers, logout, saveUsers, type AppUser } from '../auth/auth';
+import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
-import { createId, getData, mutateData, resetData } from '../data/repository';
-import { loadStore, saveStore } from '../data/store';
+import { createId, getData, mutateData, replaceData, resetData } from '../data/repository';
+import { loadStore } from '../data/store';
 import {
   ACADEMY_MODULES,
   ACADEMY_PERMISSIONS,
@@ -205,29 +205,61 @@ export function PlatformAdminPage() {
     flash('Το backup κατέβηκε.');
   }
 
-  function handleBackupImport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const input = event.currentTarget.elements.namedItem('backupFile') as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+  function applyBackupFile(file: File) {
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      flash('Επιλέξτε αρχείο .json από «Λήψη backup» (όχι .zip).');
+      return;
+    }
+
     const reader = new FileReader();
+    reader.onerror = () => flash('Αποτυχία ανάγνωσης αρχείου.');
     reader.onload = () => {
       try {
         const parsed = JSON.parse(String(reader.result)) as {
           appData?: ReturnType<typeof getData>;
           platformConfig?: PlatformConfig;
+          users?: AppUser[];
+          clubs?: Club[];
         };
-        if (parsed.appData) saveStore(parsed.appData);
+
+        if (!parsed.appData && !parsed.platformConfig && !parsed.users && !parsed.clubs) {
+          flash('Το αρχείο δεν είναι έγκυρο backup της εφαρμογής.');
+          return;
+        }
+
+        if (parsed.appData) replaceData(parsed.appData);
         if (parsed.platformConfig) {
           persist(parsed.platformConfig);
         }
-        flash('Η επαναφορά ολοκληρώθηκε. Ανανεώστε τη σελίδα.');
-        setTick((n) => n + 1);
+        if (parsed.users?.length) saveUsers(parsed.users);
+        if (parsed.clubs?.length) saveClubs(parsed.clubs);
+
+        flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
+        window.setTimeout(() => {
+          window.location.reload();
+        }, 600);
       } catch {
-        flash('Μη έγκυρο αρχείο backup.');
+        flash('Μη έγκυρο αρχείο backup. Χρησιμοποιήστε .json από «Λήψη backup».');
       }
     };
     reader.readAsText(file);
+  }
+
+  function handleBackupImport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const input = event.currentTarget.elements.namedItem('backupFile') as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      flash('Επιλέξτε πρώτα αρχείο backup (.json).');
+      return;
+    }
+    applyBackupFile(file);
+  }
+
+  function handleBackupFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    applyBackupFile(file);
   }
 
   function handleResetAppData() {
@@ -577,7 +609,16 @@ export function PlatformAdminPage() {
                   </Button>
                 </div>
                 <form onSubmit={handleBackupImport} className="admin-import-form">
-                  <input name="backupFile" type="file" accept="application/json,.json" />
+                  <p className="admin-entry-note">
+                    Επιλέξτε αρχείο <strong>.json</strong> που κατεβάσατε από «Λήψη backup»
+                    (όχι το .zip του κώδικα). Η επαναφορά ξεκινά μόλις επιλέξετε το αρχείο.
+                  </p>
+                  <input
+                    name="backupFile"
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleBackupFileChange}
+                  />
                   <Button type="submit" variant="secondary">
                     Επαναφορά από αρχείο
                   </Button>

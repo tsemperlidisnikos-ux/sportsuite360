@@ -56,4 +56,12 @@ export function resetData(): AppData {
   return cache;
 }
 
+/** Replace in-memory cache + localStorage (used by backup restore). */
+export function replaceData(next: AppData): AppData {
+  cache = structuredClone(next);
+  ensureCollections(cache);
+  saveStore(cache);
+  return cache;
+}
+
 export { createId };

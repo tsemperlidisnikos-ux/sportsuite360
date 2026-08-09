@@ -56,6 +56,8 @@ function saveClubs(clubs: Club[]): void {
   localStorage.setItem(CLUBS_KEY, JSON.stringify(clubs));
 }
 
+export { saveClubs };
+
 export function getClubById(clubId: string | null | undefined): Club | null {
   if (!clubId) return null;
   return getClubs().find((c) => c.id === clubId) ?? null;
