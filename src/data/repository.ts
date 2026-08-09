@@ -27,18 +27,30 @@ function purgeRemovedAthletePayment(data: AppData): boolean {
   return data.transactions.length !== beforeTxn || data.revenues.length !== beforeRev;
 }
 
+/** Remove legacy auto-copied athlete payments from finance revenues. */
+function purgeMirroredAthletePaymentRevenues(data: AppData): boolean {
+  const before = data.revenues.length;
+  data.revenues = data.revenues.filter(
+    (r) => !/^Πληρωμή αθλητή \(/.test(r.description),
+  );
+  return data.revenues.length !== before;
+}
+
 export function getData(): AppData {
   if (!cache) {
     const stored = loadStore();
     cache = stored ?? structuredClone(seedData);
     ensureCollections(cache);
-    const cleaned = purgeRemovedAthletePayment(cache);
+    const cleaned =
+      purgeRemovedAthletePayment(cache) || purgeMirroredAthletePaymentRevenues(cache);
     if (!stored || cleaned) saveStore(cache);
     return cache;
   }
 
   ensureCollections(cache);
-  if (purgeRemovedAthletePayment(cache)) saveStore(cache);
+  const cleaned =
+    purgeRemovedAthletePayment(cache) || purgeMirroredAthletePaymentRevenues(cache);
+  if (cleaned) saveStore(cache);
   return cache;
 }
 

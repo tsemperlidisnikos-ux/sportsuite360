@@ -18,19 +18,8 @@ export async function createTransaction(input: TransactionInput) {
     mutateData((data) => {
       if (!data.transactions) data.transactions = [];
       data.transactions.push(transaction);
-
-      if (parsed.type === 'payment') {
-        data.revenues.push({
-          id: createId('rev'),
-          date: `${parsed.year}-${String(parsed.month).padStart(2, '0')}-01`,
-          amount: parsed.amount,
-          category: 'tuition',
-          subcategory: 'ΣΥΝΔΡΟΜΕΣ ΑΘΛΗΤΩΝ',
-          description: `Πληρωμή αθλητή (${parsed.receiptNumber || transaction.id})`,
-          studentId: parsed.athleteId,
-          paymentStatus: 'paid',
-        });
-      }
+      // Πληρωμές αθλητών μένουν μόνο στις Συναλλαγές / προϋπολογισμό —
+      // δεν δημιουργούν ξεχωριστή εγγραφή στα Έσοδα (Reports).
     });
     return transaction;
   });

@@ -249,7 +249,7 @@ export function BudgetPanel({ onSaved }: { onSaved: () => void }) {
         </button>
       </div>
 
-      <div className="summary-row">
+      <div className="summary-row budget-summary-row">
         <div className="summary-card">
           <span>Προϋπ. εσόδων</span>
           <strong>{formatCurrency(totals.incomeBudget)}</strong>
