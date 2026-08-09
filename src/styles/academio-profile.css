@@ -1,0 +1,1017 @@
+/* Ported from Academio page.css — athlete personal profile */
+.athlete-profile-page {
+  --color-brand: #0f766e;
+  --color-brand-dark: #0d5c56;
+  --color-bg-subtle: #e6f4f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fbfa;
+  --color-border: #cfe0db;
+  --color-field-border: #000;
+  --color-text: #1a2e2a;
+  --color-text-muted: #5c726c;
+  --color-title: #000000;
+  --color-text-inverse: #f0fdfa;
+  --color-danger: #dc2626;
+  --club-header: #0f766e;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --ui-control-pad-y: 8px;
+  --ui-control-pad-x: 10px;
+}
+
+.athlete-profile-page .page-panel {
+  background: #fff;
+  border: 1px solid rgba(21, 35, 31, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(21, 35, 31, 0.06);
+}
+
+.athlete-profile-page .btn-secondary {
+  padding: 7px 12px;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  display: block;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.athlete-profile-page .btn-red {
+  padding: 7px 12px;
+  background: var(--color-danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+}
+
+.athlete-profile-page .btn-sm {
+  font-size: 0.85rem;
+}
+
+.athlete-profile-page .profile-triple-row {
+  display: grid;
+  gap: 12px 16px;
+  align-items: center;
+  min-width: 0;
+  grid-template-columns: auto auto auto auto auto;
+  justify-content: start;
+}
+
+.page-panel--profile-personal {
+  padding: 0;
+  overflow: hidden;
+  justify-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-personal-header {
+  border-radius: 8px 8px 0 0;
+}
+
+.profile-personal-header-spacer {
+  width: 32px;
+  height: 32px;
+}
+
+.profile-personal-body {
+  padding: 22px;
+}
+
+.athlete-announcements-panel .athlete-finance-header {
+  border-radius: 8px 8px 0 0;
+}
+
+.athlete-profile-right-stack .athlete-finance-title {
+  font-size: 17px;
+}
+
+.athlete-profile-right-stack .athlete-announcements-table {
+  font-size: 12.5px;
+}
+
+.athlete-profile-right-stack .athlete-transactions-panel .athlete-finance-title {
+  font-size: 17px;
+}
+
+.athlete-profile-right-stack .athlete-finance-transactions-table {
+  font-size: 12.5px;
+}
+
+.athlete-profile-right-stack .athlete-finance-transactions-table th,
+.athlete-profile-right-stack .athlete-finance-transactions-table td {
+  padding: 6px 8px;
+}
+
+.athlete-profile-right-stack .athlete-announcements-table th,
+.athlete-profile-right-stack .athlete-announcements-table td {
+  padding: 4px 6px;
+  line-height: 1.3;
+}
+
+.athlete-profile-right-stack .athlete-announcements-footer {
+  font-size: 11px;
+  gap: 7px 9px;
+  padding: 6px 8px;
+}
+
+.athlete-profile-right-stack .athlete-announcements-footer-center {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.profile-personal-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 237px;
+  gap: 20px 24px;
+  align-items: start;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.profile-personal-split > .profile-fields:first-child {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  grid-column: 1;
+}
+
+.profile-personal-split .profile-row--compact .profile-row-value,
+.profile-personal-split .profile-row--compact .profile-row-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.profile-personal-split .profile-row--name .profile-row-value,
+.profile-personal-split .profile-row--name .profile-row-input {
+  width: 50%;
+  max-width: 50%;
+}
+
+.profile-photo-aside {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  align-self: start;
+  justify-self: end;
+  grid-column: 2;
+  grid-row: 1;
+  width: 237px;
+  padding: 0;
+  margin: 0;
+  min-width: 237px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  transform: none;
+}
+
+@media (max-width: 1100px) {
+  .page-panel--profile-personal {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-personal-split {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-photo-aside {
+    order: -1;
+    justify-content: flex-start;
+    justify-self: start;
+    padding: 0 0 16px;
+    width: auto;
+    min-width: 0;
+    transform: none;
+  }
+}
+
+.profile-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-parent-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 32px;
+}
+
+.profile-parent-column-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 720px) {
+  .profile-parent-columns {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.page-panel > h2 {
+  margin: 0 0 16px;
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px 20px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.profile-row-label {
+  font-weight: 600;
+  color: var(--color-title);
+}
+
+.profile-row-value {
+  color: var(--color-text);
+  word-break: break-word;
+  min-width: 0;
+}
+
+.profile-row--compact .profile-row-value {
+  width: 50%;
+  max-width: 50%;
+}
+
+.profile-row--compact .profile-row-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.profile-personal-split .profile-row--compact .profile-row-input.profile-row-input--date {
+  width: 160px;
+  max-width: 160px;
+}
+
+@media (max-width: 720px) {
+  .profile-row--compact .profile-row-value {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .profile-personal-split .profile-row--compact .profile-row-input.profile-row-input--date {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.profile-assoc-team-row,
+.profile-triple-row {
+  display: grid;
+  gap: 12px 16px;
+  align-items: center;
+  min-width: 0;
+}
+
+.profile-assoc-team-row {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.profile-assoc-team-row--email-phone {
+  grid-template-columns: minmax(0, 1fr) auto max-content;
+}
+
+.profile-assoc-team-row--registration {
+  grid-template-columns: minmax(120px, 200px) auto minmax(0, 1fr);
+}
+
+.profile-assoc-team-row--registration-health {
+  grid-template-columns: minmax(0, 140px) auto minmax(0, 1fr);
+}
+
+.profile-assoc-team-row--registration-sport-health {
+  grid-template-columns: minmax(0, 140px) auto minmax(0, 140px) auto minmax(0, 1fr);
+}
+
+.profile-assoc-team-row--address {
+  grid-template-columns: minmax(0, 52.5%);
+  justify-content: start;
+  column-gap: 12px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--address .profile-row-input,
+.profile-assoc-team-cell--address .profile-row-value {
+  width: 100%;
+  max-width: 100%;
+}
+
+.profile-assoc-team-row--postal-city {
+  grid-template-columns: 110px 180px;
+  justify-content: start;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--postal .profile-row-input--postal,
+.profile-assoc-team-cell--postal .profile-row-value {
+  max-width: 110px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--city .profile-row-input,
+.profile-assoc-team-cell--city .profile-row-value {
+  max-width: 180px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--team .profile-row-input,
+.profile-assoc-team-cell--team .profile-row-value,
+.profile-assoc-team-cell--team .profile-team-inline-field {
+  width: 50%;
+  max-width: 50%;
+}
+
+.profile-sport-input,
+.profile-assoc-team-cell--sport .profile-row-input,
+.profile-assoc-team-cell--sport .profile-row-value {
+  max-width: 140px;
+  width: 100%;
+}
+
+.profile-assoc-team-row--uniform {
+  grid-template-columns: minmax(0, 120px) auto;
+  justify-content: start;
+  column-gap: 20px;
+}
+
+.profile-uniform-size-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-uniform-size-input,
+.profile-assoc-team-cell--uniform-size .profile-row-input,
+.profile-assoc-team-cell--uniform-size .profile-row-value {
+  max-width: 100px;
+  width: 100px;
+}
+
+.profile-registration-card-input,
+.profile-assoc-team-cell--registration-no .profile-row-input,
+.profile-assoc-team-cell--registration-no .profile-row-value {
+  max-width: 140px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--phone,
+.profile-row-input--phone,
+.profile-row-value--phone {
+  max-width: 140px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--email-contact {
+  width: 230px;
+  max-width: 230px;
+  flex-shrink: 0;
+}
+
+.profile-assoc-team-cell--email-contact .profile-row-input,
+.profile-assoc-team-cell--email-contact .profile-row-value,
+.profile-row-input--email-contact,
+.profile-row-value--email-contact {
+  width: 100%;
+  max-width: 230px;
+  box-sizing: border-box;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row,
+.profile-personal-split .profile-fields .profile-assoc-team-row--email-phone {
+  grid-template-columns: minmax(0, 230px) minmax(0, max-content) max-content;
+  justify-content: start;
+  column-gap: 12px;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-gap-label {
+  width: auto;
+  min-width: 0;
+  max-width: 9.5rem;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-gap-label--gender {
+  text-align: right;
+  padding-right: 0.5rem;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row > .profile-assoc-team-cell:first-child {
+  width: 100%;
+  max-width: 230px;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--athlete-name {
+  grid-template-columns: minmax(0, 1.35fr) auto minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: center;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--athlete-name > .profile-assoc-team-cell:first-child,
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--athlete-name > .profile-assoc-team-cell:last-child {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--athlete-name .profile-assoc-team-gap-label {
+  max-width: none;
+  min-width: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-inline: 4px 8px;
+  text-align: left;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--athlete-name .profile-row-input,
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--athlete-name .profile-row-value {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--patronymic > .profile-assoc-team-cell:last-child {
+  width: 160px;
+  max-width: 160px;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-row.profile-assoc-team-row--parents-email > .profile-assoc-team-cell:last-child {
+  width: 230px;
+  max-width: 230px;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-cell--phone {
+  width: 140px;
+  max-width: 140px;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-cell--email-contact {
+  width: 230px;
+  max-width: 230px;
+}
+
+.profile-personal-split .profile-fields .profile-assoc-team-cell--email-contact .profile-row-input,
+.profile-personal-split .profile-fields .profile-assoc-team-cell--email-contact .profile-row-value {
+  width: 100%;
+  max-width: 230px;
+}
+
+.profile-personal-split .profile-fields .profile-row-input--phone,
+.profile-personal-split .profile-fields .profile-row-value--phone {
+  max-width: 140px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--health .profile-health-card-row {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.profile-assoc-team-cell--health .profile-health-card-preview-btn {
+  margin-left: 0;
+}
+
+.profile-assoc-team-row--discount {
+  grid-template-columns: auto auto minmax(0, 96px) auto minmax(0, 220px);
+  justify-content: start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.profile-assoc-team-gap-label--tight {
+  min-width: auto;
+  text-align: left;
+  padding-left: 4px;
+}
+
+.profile-discount-reason-input,
+.profile-assoc-team-cell--discount-reason .profile-row-input,
+.profile-assoc-team-cell--discount-reason .profile-row-value {
+  max-width: 220px;
+  width: 100%;
+}
+
+.profile-yes-no-select {
+  max-width: 96px;
+  width: 100%;
+}
+
+.profile-assoc-team-cell--yes-no .profile-yes-no-select,
+.profile-assoc-team-cell--health .profile-yes-no-select {
+  max-width: 96px;
+}
+
+.profile-discount-amount-input {
+  max-width: 96px;
+  width: 100%;
+}
+
+.profile-currency-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 120px;
+  width: 100%;
+}
+
+.profile-currency-input .profile-discount-amount-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-currency-suffix {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.profile-row--discount-period {
+  align-items: start;
+}
+
+.profile-row--comments {
+  align-items: start;
+}
+
+.profile-row--comments .profile-row-value {
+  width: 100%;
+}
+
+.profile-row--comments textarea.profile-row-input,
+.profile-row-input--comments {
+  width: 65%;
+  max-width: 65%;
+  height: 47px;
+  min-height: 47px;
+  max-height: 47px;
+  resize: none;
+}
+
+.profile-discount-period {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.profile-discount-season {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-discount-season label {
+  font-size: 0.85rem;
+  color: var(--color-title);
+  font-weight: 600;
+}
+
+.profile-discount-season .profile-row-input {
+  max-width: 160px;
+}
+
+.profile-discount-months .modal-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--color-title);
+  font-weight: 600;
+}
+
+.profile-discount-months .season-ticket-months-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  max-width: 520px;
+}
+
+.profile-assoc-team-cell--discount .profile-row-value {
+  max-width: 96px;
+}
+
+.profile-assoc-team-cell--association .profile-row-input,
+.profile-assoc-team-cell--association .profile-row-value {
+  max-width: 200px;
+}
+
+.profile-triple-row {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.profile-triple-row--fees {
+  grid-template-columns: 96px auto 96px auto 96px;
+  justify-content: start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.profile-triple-row--fees .profile-assoc-team-gap-label {
+  min-width: auto;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.profile-assoc-team-gap-label {
+  font-weight: 600;
+  color: var(--color-title);
+  font-size: 14px;
+  white-space: nowrap;
+  min-width: 4.5rem;
+  text-align: center;
+}
+
+.profile-assoc-team-cell {
+  min-width: 0;
+}
+
+.profile-assoc-team-cell .profile-row-input,
+.profile-assoc-team-cell .profile-row-value,
+.profile-assoc-team-cell .profile-team-inline-field {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-team-inline-field {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-field-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.profile-team-inline-values {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-team-inline-empty {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 640px) {
+  .profile-assoc-team-row,
+  .profile-triple-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .profile-row--assoc-team .profile-row-label {
+    margin-bottom: 4px;
+  }
+
+  .profile-row--assoc-team {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.profile-row-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-field-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.profile-row-input--uppercase,
+.profile-row-value--uppercase {
+  text-transform: uppercase;
+}
+
+.profile-row-input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand) 20%, transparent);
+}
+
+.profile-photo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 225px;
+}
+
+.profile-photo-frame {
+  position: relative;
+  width: 225px;
+  height: 276px;
+  max-width: 100%;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--color-field-border);
+  background: #f9fafb;
+  box-sizing: border-box;
+}
+
+.profile-photo-frame:has(.profile-photo-preview--empty) {
+  border-style: dashed;
+}
+
+.profile-photo-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.profile-photo-frame:has(.profile-photo-preview--empty) .profile-photo-actions {
+  inset: 0;
+  justify-content: center;
+  background: transparent;
+}
+
+.profile-photo-frame:has(img.profile-photo-preview) .profile-photo-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.72) 70%,
+    transparent 100%
+  );
+}
+
+.profile-photo-frame:has(img.profile-photo-preview):hover .profile-photo-actions,
+.profile-photo-frame:has(img.profile-photo-preview):focus-within .profile-photo-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .profile-photo-frame:has(img.profile-photo-preview) .profile-photo-actions {
+    opacity: 1;
+  }
+}
+
+.profile-photo-actions > * {
+  pointer-events: auto;
+}
+
+.profile-photo-upload,
+.profile-photo-actions .btn-red {
+  width: 100%;
+}
+
+.profile-photo-upload .btn-secondary {
+  display: block;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.profile-photo-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: cover;
+  object-position: center center;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.profile-photo-preview--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-size: 13px;
+  color: #6b7280;
+  z-index: 0;
+}
+
+.profile-photo-upload {
+  cursor: pointer;
+}
+
+.profile-photo-upload input[type="file"] {
+  display: none;
+}
+
+.athlete-finance-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--club-header) 84%, #000) 0%,
+    var(--club-header) 55%,
+    color-mix(in srgb, var(--club-header) 72%, #fff) 100%
+  );
+  border-radius: 8px 8px 0 0;
+  color: var(--color-text-inverse);
+}
+
+.athlete-finance-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-inverse);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.athlete-finance-title-season {
+  margin-left: 1.5em;
+}
+
+.athlete-finance-nav {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.athlete-finance-header .athlete-finance-nav {
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--color-text-inverse);
+}
+
+.athlete-finance-nav:hover {
+  background: #e5e7eb;
+}
+
+.athlete-finance-header .athlete-finance-nav:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.athlete-profile-page .profile-row-input:disabled,
+.athlete-profile-page select.profile-row-input:disabled,
+.athlete-profile-page textarea.profile-row-input:disabled {
+  opacity: 1;
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  cursor: default;
+}
+
+.athlete-profile-page .profile-row-input--uppercase {
+  text-transform: uppercase;
+}
+
+.athlete-profile-page .ap-panel {
+  background: #fff;
+  border: 1px solid rgba(21, 35, 31, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.athlete-profile-page .ap-panel-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--club-header) 84%, #000) 0%, var(--club-header) 55%, color-mix(in srgb, var(--club-header) 72%, #fff) 100%);
+  color: var(--color-text-inverse);
+}
+
+.athlete-profile-page .ap-panel-header h2 {
+  margin: 0;
+  grid-column: 2;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-inverse);
+}
+
+
+.athlete-profile-page .profile-health-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.athlete-profile-page .profile-health-card-preview-btn {
+  margin-left: 0;
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0d5c56 0%, #0f766e 55%, #149285 100%);
+  color: #f0fdfa;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.athlete-profile-page .profile-health-card-preview-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.athlete-profile-page .profile-health-card-preview-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.preview-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.preview-fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid #cfe0db;
+  background: #fff;
+}
+
+.preview-fullscreen-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.preview-fullscreen-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-fullscreen-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  background: #525659;
+}
