@@ -256,6 +256,14 @@ export interface WarehouseProduct {
   createdAt: string;
 }
 
+export type SizeChartCategory = 'kids' | 'men' | 'women';
+
+export interface SizeChart {
+  kids: string[];
+  men: string[];
+  women: string[];
+}
+
 export interface AppData {
   students: Student[];
   coaches: Coach[];
@@ -272,4 +280,7 @@ export interface AppData {
   announcements: Announcement[];
   budgets: BudgetLine[];
   products: WarehouseProduct[];
+  sizeChart: SizeChart;
+  /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
+  termsOfUseHtml?: string;
 }

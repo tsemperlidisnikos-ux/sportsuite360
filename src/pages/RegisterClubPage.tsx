@@ -44,9 +44,9 @@ export function RegisterClubPage() {
     <div className="login-page">
       <form className="login-card login-card-wide" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <span className="brand-mark">AH</span>
+          <span className="brand-mark">SS</span>
           <div>
-            <strong>AcademyHub</strong>
+            <strong>SPORTSUITE 360</strong>
             <span>Νέα εγγραφή συλλόγου</span>
           </div>
         </div>

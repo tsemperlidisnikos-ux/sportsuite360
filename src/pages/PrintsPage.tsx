@@ -11,8 +11,8 @@ import {
   type RegistryFilters,
   type TriState,
 } from '../utils/athleteRegistryFilter';
+import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 
-const UNIFORM_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 const COMPARE_OPS = ['=', '<', '>', '<=', '>='] as const;
 
 type MenuId =
@@ -356,6 +356,11 @@ function AthleteRegistrySection() {
     [data.sports],
   );
 
+  const uniformSizeGroups = useMemo(
+    () => sizeChartOptGroups(data.sizeChart),
+    [data.sizeChart],
+  );
+
   function setFilter<K extends keyof RegistryFilters>(key: K, value: RegistryFilters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
@@ -528,10 +533,14 @@ function AthleteRegistrySection() {
           onChange={(e) => setFilter('uniformSize', e.target.value)}
         >
           <option value="">Όλα</option>
-          {UNIFORM_SIZES.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
+          {uniformSizeGroups.map((group) => (
+            <optgroup key={group.category} label={group.label}>
+              {group.sizes.map((size) => (
+                <option key={`${group.category}-${size}`} value={size}>
+                  {size}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </FilterRow>

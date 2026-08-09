@@ -207,6 +207,13 @@
   color: var(--muted);
 }
 
+.ann-editor-body.settings-terms-editor {
+  min-height: 420px;
+  max-height: none;
+  height: auto;
+  overflow: visible;
+}
+
 .ann-ai-btn {
   display: inline-flex;
   align-items: center;
@@ -319,5 +326,12 @@
   .ann-editor-body {
     max-height: 56px;
     min-height: 56px;
+  }
+
+  .ann-editor-body.settings-terms-editor {
+    min-height: 420px;
+    max-height: none;
+    height: auto;
+    overflow: visible;
   }
 }

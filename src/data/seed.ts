@@ -16,4 +16,10 @@ export const seedData: AppData = {
   announcements: [],
   budgets: [],
   products: [],
+  sizeChart: {
+    kids: ['XS', 'S', 'M', 'L', 'XL'],
+    men: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+    women: ['XS', 'S', 'M', 'L', 'XL'],
+  },
+  termsOfUseHtml: '',
 };

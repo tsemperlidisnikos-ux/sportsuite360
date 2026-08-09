@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { UserCog, Layers, TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react';
+import { UserCog, TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -232,28 +232,6 @@ export function DashboardPage() {
             <Link to="/finance">Οικονομική ανάλυση</Link>
           </div>
         </article>
-      </section>
-
-      <section className="panel accent-panel">
-        <div className="accent-grid">
-          <div>
-            <Layers size={22} />
-            <h2>Δύο εφαρμογές, μία πλατφόρμα</h2>
-            <p>
-              Η διαχείριση ακαδημίας (αθλητές, τμήματα, πρόγραμμα, παρουσίες) και η
-              ανάλυση εσόδων–εξόδων δουλεύουν πάνω στα ίδια δεδομένα — χωρίς διπλή
-              καταχώριση.
-            </p>
-          </div>
-          <div className="accent-actions">
-            <Link className="btn btn-primary" to="/athletes">
-              Διαχείριση ακαδημίας
-            </Link>
-            <Link className="btn btn-secondary" to="/finance">
-              Ανάλυση οικονομικών
-            </Link>
-          </div>
-        </div>
       </section>
     </div>
   );

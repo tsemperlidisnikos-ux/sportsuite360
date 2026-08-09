@@ -34,8 +34,8 @@ export function LicensePackagesPage() {
     <div className="platform-page">
       <header className="platform-topbar">
         <div className="platform-brand">
-          <span className="brand-mark">AH</span>
-          <strong>AcademyHub</strong>
+          <span className="brand-mark">SS</span>
+          <strong>SPORTSUITE 360</strong>
         </div>
         <button type="button" className="platform-logout" onClick={handleLogout}>
           Έξοδος

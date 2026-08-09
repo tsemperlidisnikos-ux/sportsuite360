@@ -7,6 +7,7 @@ import { useAppData } from '../hooks/useAppData';
 import type { StudentInput } from '../schemas';
 import type { Gender, Student } from '../types';
 import { buildHealthCardPdf } from '../utils/healthCardPdf';
+import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 
 const MONTH_LABELS = [
   'Αύγουστος',
@@ -94,8 +95,6 @@ const YES_NO = [
   { value: 'no', label: 'Όχι' },
 ];
 
-const UNIFORM_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
-
 export function AthleteProfilePage() {
   const { athleteId } = useParams();
   const navigate = useNavigate();
@@ -114,6 +113,16 @@ export function AthleteProfilePage() {
   const [progressOpen, setProgressOpen] = useState(false);
   const [loadingHealthCardPreview, setLoadingHealthCardPreview] = useState(false);
   const healthCardPreviewUrlRef = useRef<string | null>(null);
+
+  const uniformSizeOptions = useMemo(() => {
+    const groups = sizeChartOptGroups(data.sizeChart);
+    const all = new Set(groups.flatMap((g) => g.sizes.map((s) => s.toUpperCase())));
+    const current = (form?.uniformSize ?? student?.uniformSize ?? '').trim();
+    if (current && !all.has(current.toUpperCase())) {
+      return [...groups, { category: 'custom' as const, label: 'Τρέχον', sizes: [current] }];
+    }
+    return groups;
+  }, [data.sizeChart, form?.uniformSize, student?.uniformSize]);
 
   useEffect(() => {
     if (student) setForm(toForm(student));
@@ -764,10 +773,14 @@ export function AthleteProfilePage() {
                         onChange={(e) => setField('uniformSize', e.target.value)}
                       >
                         <option value="">—</option>
-                        {UNIFORM_SIZES.map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
+                        {uniformSizeOptions.map((group) => (
+                          <optgroup key={group.category} label={group.label}>
+                            {group.sizes.map((size) => (
+                              <option key={`${group.category}-${size}`} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </div>

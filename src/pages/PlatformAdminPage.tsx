@@ -18,6 +18,7 @@ import {
   loadPlatformConfig,
   resetFinanceCatalogDefaults,
   savePlatformConfig,
+  updateAppLogo,
   SCF_CLUB_ROLE_LABELS,
   SCF_CLUB_ROLES,
   SCF_MODULES,
@@ -310,6 +311,70 @@ export function PlatformAdminPage() {
             <div>Εισαγωγή δεδομένων</div>
             <div>Καταχωρημένα δεδομένα</div>
           </div>
+
+          <AdminRow
+            title="Logo εφαρμογής"
+            description="Εμφανίζεται αριστερά από το όνομα SPORTSUITE 360. Μόνο Platform Admin."
+            entry={
+              <div className="entry-form admin-entry">
+                <div className="settings-logo-row">
+                  <div className="settings-logo-preview">
+                    {config.appLogoUrl ? (
+                      <img src={config.appLogoUrl} alt="Logo εφαρμογής" />
+                    ) : (
+                      <span>SS</span>
+                    )}
+                  </div>
+                  <div className="settings-logo-actions">
+                    <input
+                      id="platform-app-logo"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!file) return;
+                        if (!file.type.startsWith('image/')) {
+                          flash('Επιλέξτε εικόνα.');
+                          return;
+                        }
+                        if (file.size > 500_000) {
+                          flash('Η εικόνα πρέπει να είναι έως ~500KB.');
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const next = updateAppLogo(String(reader.result ?? ''));
+                          setConfig(next);
+                          flash('Το logo εφαρμογής αποθηκεύτηκε.');
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        const next = updateAppLogo(null);
+                        setConfig(next);
+                        flash('Το logo εφαρμογής αφαιρέθηκε.');
+                      }}
+                    >
+                      Αφαίρεση logo
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            }
+            records={
+              <RecordsTable>
+                <RecordsRow title="Όνομα">{config.appName || 'SPORTSUITE 360'}</RecordsRow>
+                <RecordsRow title="Logo">
+                  {config.appLogoUrl ? 'Ορισμένο' : 'Προεπιλογή (SS)'}
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
 
           <AdminRow
             title="Preview συλλόγου"

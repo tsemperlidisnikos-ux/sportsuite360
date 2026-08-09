@@ -151,6 +151,8 @@ export type PlatformConfig = {
   expenseDescriptions: Record<string, string[]>;
   registryKinds: string[];
   seasons: string[];
+  appLogoUrl?: string | null;
+  appName?: string;
 };
 
 const CONFIG_KEY = 'academyhub-platform-config-v3';
@@ -180,6 +182,8 @@ export function defaultPlatformConfig(): PlatformConfig {
     expenseDescriptions: defaultDescriptions(DEFAULT_EXPENSE_DESCRIPTIONS),
     registryKinds: ['ΑΘΛΗΤΕΣ', 'ΜΕΛΗ'],
     seasons: ['2025–2026', '2026–2027'],
+    appLogoUrl: null,
+    appName: 'SPORTSUITE 360',
   };
 }
 
@@ -354,6 +358,21 @@ function mergeDescriptions(
 
 export function savePlatformConfig(config: PlatformConfig): void {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  window.dispatchEvent(new CustomEvent('academyhub-platform-updated'));
+}
+
+export function getAppName(): string {
+  return loadPlatformConfig().appName?.trim() || 'SPORTSUITE 360';
+}
+
+export function getAppLogoUrl(): string | null {
+  return loadPlatformConfig().appLogoUrl ?? null;
+}
+
+export function updateAppLogo(logoUrl: string | null): PlatformConfig {
+  const next = { ...loadPlatformConfig(), appLogoUrl: logoUrl };
+  savePlatformConfig(next);
+  return next;
 }
 
 export function getScfModulesForClub(clubId: string): ScfModuleId[] {

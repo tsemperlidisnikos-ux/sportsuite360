@@ -29,7 +29,25 @@ export const PLATFORM_ADMIN: AppUser = {
   active: true,
 };
 
+const APOLLON_ADMIN_EMAIL = 'apollon@patras.gr';
+const APOLLON_ADMIN_PASSWORD = '1234567890';
+
 const defaultUsers: AppUser[] = [PLATFORM_ADMIN];
+
+function findApollonClubId(): string | null {
+  try {
+    const raw = localStorage.getItem('academyhub-clubs-v1');
+    if (!raw) return null;
+    const clubs = JSON.parse(raw) as Array<{ id: string; name: string }>;
+    const club = clubs.find((c) => {
+      const name = (c.name ?? '').toLowerCase();
+      return name.includes('απολλων') || name.includes('απόλλων') || name.includes('apollon');
+    });
+    return club?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** Always keep a working platform admin account in localStorage. */
 export function ensurePlatformAdmin(): AppUser {
@@ -49,6 +67,31 @@ export function ensurePlatformAdmin(): AppUser {
   const others = users.filter(
     (u) => u.id !== PLATFORM_ADMIN.id && u.role !== 'platform_admin',
   );
+
+  const apollonIndex = others.findIndex(
+    (u) => u.email.toLowerCase() === APOLLON_ADMIN_EMAIL,
+  );
+  const clubId = findApollonClubId();
+  if (apollonIndex >= 0) {
+    others[apollonIndex] = {
+      ...others[apollonIndex],
+      email: APOLLON_ADMIN_EMAIL,
+      password: APOLLON_ADMIN_PASSWORD,
+      active: true,
+      clubId: others[apollonIndex].clubId ?? clubId,
+    };
+  } else {
+    others.push({
+      id: 'user_apollon_patras',
+      email: APOLLON_ADMIN_EMAIL,
+      password: APOLLON_ADMIN_PASSWORD,
+      fullName: 'Α.Σ. Απόλλων Πατρών',
+      role: 'admin',
+      active: true,
+      clubId,
+    });
+  }
+
   const next = [{ ...PLATFORM_ADMIN }, ...others];
   localStorage.setItem(USERS_KEY, JSON.stringify(next));
   return next[0];

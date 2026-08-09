@@ -367,8 +367,9 @@
 .profile-uniform-size-input,
 .profile-assoc-team-cell--uniform-size .profile-row-input,
 .profile-assoc-team-cell--uniform-size .profile-row-value {
-  max-width: 100px;
-  width: 100px;
+  max-width: 200px;
+  width: 200px;
+  min-width: 160px;
 }
 
 .profile-registration-card-input,

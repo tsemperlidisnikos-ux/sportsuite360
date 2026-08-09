@@ -63,9 +63,9 @@ export function LoginPage() {
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <span className="brand-mark">AH</span>
+          <span className="brand-mark">SS</span>
           <div>
-            <strong>AcademyHub</strong>
+            <strong>SPORTSUITE 360</strong>
             <span>Σύνδεση διαχειριστή</span>
           </div>
         </div>
