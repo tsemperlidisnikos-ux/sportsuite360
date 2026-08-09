@@ -931,8 +931,8 @@ export function PlatformAdminPage() {
               <RecordsTable>
                 <RecordsRow title="Ενεργοί">{loginAccounts.length} λογαριασμοί συλλόγου</RecordsRow>
                 {loginAccounts.slice(0, 8).map((user) => (
-                  <RecordsRow key={u.id} title={u.role}>
-                    {u.fullName} · {u.email}
+                  <RecordsRow key={user.id} title={user.role}>
+                    {user.fullName} · {user.email}
                   </RecordsRow>
                 ))}
               </RecordsTable>

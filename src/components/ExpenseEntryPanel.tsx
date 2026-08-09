@@ -263,6 +263,8 @@ export function ExpenseEntryPanel({ onSaved }: { onSaved: () => void }) {
       subcategory: 'ΑΓΩΝΕΣ',
       clubName,
       sport: matchDetails.sport,
+      surname: '',
+      firstName: '',
       notes,
       matchDetails,
     });

@@ -26,6 +26,7 @@ import {
   getPreviewClubId,
   getScfModulesForClub,
   SCF_MODULES,
+  type ScfModuleId,
 } from '../platform/platformConfig';
 import {
   expenseCategoryLabels,
@@ -38,7 +39,7 @@ type Tab = 'analysis' | 'revenues' | 'expenses' | 'budget' | 'reports';
 
 const pieColors = ['#0d7377', '#14919b', '#c45c26', '#e8a838', '#2f4858', '#6b8f71'];
 
-const TAB_TO_SCF: Record<Tab, string> = {
+const TAB_TO_SCF: Record<Tab, ScfModuleId> = {
   analysis: 'dashboard',
   revenues: 'income',
   expenses: 'expense',

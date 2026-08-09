@@ -109,7 +109,9 @@ export function filterAthleteRegistry(
   attendance: AttendanceRecord[],
 ): Student[] {
   const refDate = parseDate(filters.untilDate) || new Date();
-  const refKey = dateKey(refDate);
+  const refKey = dateKey(filters.untilDate) ?? dateKey(
+    `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}-${String(refDate.getDate()).padStart(2, '0')}`,
+  );
   const fromKey = dateKey(filters.fromDate);
 
   return athletes.filter((athlete) => {
