@@ -19,6 +19,7 @@ import { PlatformUsersPage } from './pages/PlatformUsersPage';
 import { PrintsPage } from './pages/PrintsPage';
 import { RegisterClubPage } from './pages/RegisterClubPage';
 import { SchedulePage } from './pages/SchedulePage';
+import { SettingsPage } from './pages/SettingsPage';
 import { SportsPage } from './pages/SportsPage';
 import { StaffPage } from './pages/StaffPage';
 import { StudentsPage } from './pages/StudentsPage';
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="warehouse" element={<WarehousePage />} />
             <Route path="fees" element={<FeesPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

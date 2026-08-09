@@ -16,6 +16,7 @@ export interface Club {
   createdAt: string;
   athleteLicenseLimit: number;
   athleteLicenseUsed: number;
+  logoUrl?: string | null;
 }
 
 const CLUBS_KEY = 'academyhub-clubs-v1';
@@ -134,6 +135,22 @@ export function updateClubLicenses(
     athleteLicenseUsed: used,
   };
   saveClubs(clubs);
+  return ok(clubs[index]);
+}
+
+export function updateClubLogo(
+  clubId: string,
+  logoUrl: string | null,
+): ApiResult<Club> {
+  const clubs = getClubs();
+  const index = clubs.findIndex((c) => c.id === clubId);
+  if (index < 0) return fail('Ο σύλλογος δεν βρέθηκε');
+  clubs[index] = {
+    ...clubs[index],
+    logoUrl,
+  };
+  saveClubs(clubs);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
   return ok(clubs[index]);
 }
 

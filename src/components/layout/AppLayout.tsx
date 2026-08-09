@@ -17,9 +17,10 @@ import {
   Printer,
   Megaphone,
   Package,
+  Settings,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useMemo, useState, type ComponentType, type SVGProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from 'react';
 import { getSession, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
 import { getClubById } from '../../auth/clubs';
 import { AthletesIcon } from '../icons/AthletesIcon';
@@ -56,6 +57,7 @@ const academyItems: Array<{
   { id: 'warehouse', to: '/warehouse', label: 'Αποθήκη', icon: Package },
   { id: 'fees', to: '/fees', label: 'Συνδρομές / Πληρωμές', icon: CreditCard },
   { id: 'transactions', to: '/transactions', label: 'Συναλλαγές', icon: ArrowLeftRight },
+  { id: 'settings', to: '/settings', label: 'Ρυθμίσεις', icon: Settings },
 ];
 
 const analysisItems: Array<{
@@ -69,11 +71,18 @@ const analysisItems: Array<{
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
+  const [clubTick, setClubTick] = useState(0);
   const navigate = useNavigate();
   const session = getSession();
   const previewClubId = getPreviewClubId();
   const clubId = previewClubId ?? session?.clubId ?? null;
-  const club = getClubById(clubId);
+  const club = useMemo(() => getClubById(clubId), [clubId, clubTick]);
+
+  useEffect(() => {
+    const onClubsUpdated = () => setClubTick((n) => n + 1);
+    window.addEventListener('academyhub-clubs-updated', onClubsUpdated);
+    return () => window.removeEventListener('academyhub-clubs-updated', onClubsUpdated);
+  }, []);
 
   const enabledModules = useMemo(() => {
     if (!clubId) return new Set(ACADEMY_MODULES.map((m) => m.id));
@@ -109,6 +118,11 @@ export function AppLayout() {
         </div>
 
         <nav className="side-nav">
+          {club?.logoUrl ? (
+            <div className="sidebar-club-logo">
+              <img src={club.logoUrl} alt={club.name} />
+            </div>
+          ) : null}
           <p className="nav-section">Ακαδημία</p>
           {visibleAcademy.map((item) => (
             <NavLink

@@ -31,6 +31,7 @@ export const ACADEMY_MODULES = [
   { id: 'warehouse', label: 'Αποθήκη', path: '/warehouse' },
   { id: 'fees', label: 'Συνδρομές / Πληρωμές', path: '/fees' },
   { id: 'transactions', label: 'Συναλλαγές', path: '/transactions' },
+  { id: 'settings', label: 'Ρυθμίσεις', path: '/settings' },
   { id: 'finance', label: 'Οικονομικά', path: '/finance' },
 ] as const;
 
@@ -371,7 +372,7 @@ export function getAcademyModulesForClub(clubId: string): AcademyModuleId[] {
   const allowed = new Set(allIds);
   const filtered = stored.filter((id): id is AcademyModuleId => allowed.has(id as AcademyModuleId));
   // Newer modules (e.g. warehouse) appear even if older club configs omit them
-  for (const id of ['warehouse'] as const) {
+  for (const id of ['warehouse', 'settings'] as const) {
     if (!filtered.includes(id)) filtered.push(id);
   }
   return filtered.length > 0 ? filtered : allIds;
