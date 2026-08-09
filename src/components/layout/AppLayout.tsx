@@ -16,6 +16,7 @@ import {
   Trophy,
   Printer,
   Megaphone,
+  Package,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useMemo, useState, type ComponentType, type SVGProps } from 'react';
@@ -52,6 +53,9 @@ const academyItems: Array<{
   { id: 'sports', to: '/sports', label: 'Άθλημα', icon: Trophy },
   { id: 'announcements', to: '/announcements', label: 'Ανακοινώσεις', icon: Megaphone },
   { id: 'prints', to: '/prints', label: 'Εκτυπώσεις', icon: Printer },
+  { id: 'warehouse', to: '/warehouse', label: 'Αποθήκη', icon: Package },
+  { id: 'fees', to: '/fees', label: 'Συνδρομές / Πληρωμές', icon: CreditCard },
+  { id: 'transactions', to: '/transactions', label: 'Συναλλαγές', icon: ArrowLeftRight },
 ];
 
 const analysisItems: Array<{
@@ -60,8 +64,6 @@ const analysisItems: Array<{
   label: string;
   icon: NavIcon;
 }> = [
-  { id: 'fees', to: '/fees', label: 'Συνδρομές / Πληρωμές', icon: CreditCard },
-  { id: 'transactions', to: '/transactions', label: 'Συναλλαγές', icon: ArrowLeftRight },
   { id: 'finance', to: '/finance', label: 'Οικονομικά', icon: Wallet },
 ];
 

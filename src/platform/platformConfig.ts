@@ -28,6 +28,7 @@ export const ACADEMY_MODULES = [
   { id: 'sports', label: 'Άθλημα', path: '/sports' },
   { id: 'announcements', label: 'Ανακοινώσεις', path: '/announcements' },
   { id: 'prints', label: 'Εκτυπώσεις', path: '/prints' },
+  { id: 'warehouse', label: 'Αποθήκη', path: '/warehouse' },
   { id: 'fees', label: 'Συνδρομές / Πληρωμές', path: '/fees' },
   { id: 'transactions', label: 'Συναλλαγές', path: '/transactions' },
   { id: 'finance', label: 'Οικονομικά', path: '/finance' },
@@ -364,7 +365,16 @@ export function getScfModulesForClub(clubId: string): ScfModuleId[] {
 
 export function getAcademyModulesForClub(clubId: string): AcademyModuleId[] {
   const config = loadPlatformConfig();
-  return config.academyModulesByClub[clubId] ?? ACADEMY_MODULES.map((m) => m.id);
+  const allIds = ACADEMY_MODULES.map((m) => m.id);
+  const stored = config.academyModulesByClub[clubId];
+  if (!stored) return allIds;
+  const allowed = new Set(allIds);
+  const filtered = stored.filter((id): id is AcademyModuleId => allowed.has(id as AcademyModuleId));
+  // Newer modules (e.g. warehouse) appear even if older club configs omit them
+  for (const id of ['warehouse'] as const) {
+    if (!filtered.includes(id)) filtered.push(id);
+  }
+  return filtered.length > 0 ? filtered : allIds;
 }
 
 export function startPreview(clubId: string): void {

@@ -15,4 +15,5 @@ export const seedData: AppData = {
   sports: [],
   announcements: [],
   budgets: [],
+  products: [],
 };

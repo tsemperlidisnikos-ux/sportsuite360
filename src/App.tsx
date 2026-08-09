@@ -24,6 +24,7 @@ import { StaffPage } from './pages/StaffPage';
 import { StudentsPage } from './pages/StudentsPage';
 import { TrainingsPage } from './pages/TrainingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { WarehousePage } from './pages/WarehousePage';
 import { getPreviewClubId } from './platform/platformConfig';
 
 function HomeRoute() {
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="sports" element={<SportsPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="prints" element={<PrintsPage />} />
+            <Route path="warehouse" element={<WarehousePage />} />
             <Route path="fees" element={<FeesPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="finance" element={<FinancePage />} />

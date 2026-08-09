@@ -14,6 +14,7 @@ function ensureCollections(data: AppData): void {
   if (!data.sports) data.sports = structuredClone(seedData.sports);
   if (!data.announcements) data.announcements = structuredClone(seedData.announcements);
   if (!data.budgets) data.budgets = structuredClone(seedData.budgets);
+  if (!data.products) data.products = structuredClone(seedData.products);
 }
 
 /** One-shot cleanup for a payment that should no longer appear in finance. */

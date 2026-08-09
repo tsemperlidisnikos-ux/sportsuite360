@@ -245,6 +245,17 @@ export interface BudgetLine {
   notes?: string;
 }
 
+export interface WarehouseProduct {
+  id: string;
+  name: string;
+  category: string;
+  sku: string;
+  salePrice: number;
+  size: string;
+  notes: string;
+  createdAt: string;
+}
+
 export interface AppData {
   students: Student[];
   coaches: Coach[];
@@ -260,4 +271,5 @@ export interface AppData {
   sports: SportItem[];
   announcements: Announcement[];
   budgets: BudgetLine[];
+  products: WarehouseProduct[];
 }

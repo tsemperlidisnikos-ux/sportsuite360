@@ -215,3 +215,22 @@ export const budgetSchema = z.object({
 });
 
 export type BudgetInput = z.infer<typeof budgetSchema>;
+
+export const PRODUCT_CATEGORIES = [
+  'ΡΟΥΧΙΣΜΟΣ',
+  'ΥΠΟΔΗΜΑΤΑ',
+  'ΕΞΟΠΛΙΣΜΟΣ',
+  'ΑΞΕΣΟΥΑΡ',
+  'ΑΛΛΟ',
+] as const;
+
+export const warehouseProductSchema = z.object({
+  name: z.string().min(1, 'Το όνομα είναι υποχρεωτικό'),
+  category: z.string().min(1, 'Επιλέξτε κατηγορία'),
+  sku: z.string().optional().default(''),
+  salePrice: z.coerce.number().min(0, 'Η τιμή πρέπει να είναι ≥ 0'),
+  size: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
+});
+
+export type WarehouseProductInput = z.infer<typeof warehouseProductSchema>;

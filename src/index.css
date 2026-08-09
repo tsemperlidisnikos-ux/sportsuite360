@@ -710,6 +710,41 @@ th {
   grid-column: 1 / -1;
 }
 
+.product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.product-form-row {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.product-form-row--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-form-row--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-form .req {
+  color: var(--danger, #c45c26);
+}
+
+.product-form textarea.field-input {
+  resize: vertical;
+  min-height: 5.5rem;
+}
+
+@media (max-width: 720px) {
+  .product-form-row--2,
+  .product-form-row--3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .announcement-message-cell {
   max-width: 28rem;
   white-space: nowrap;
