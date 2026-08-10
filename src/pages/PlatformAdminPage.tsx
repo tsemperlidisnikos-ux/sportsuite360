@@ -1,10 +1,9 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getSession, getUsers, logout, saveUsers, type AppUser } from '../auth/auth';
+import { getSession, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
 import { createId, getData, mutateData, replaceData, resetData } from '../data/repository';
-import { loadStore } from '../data/store';
 import {
   ACADEMY_MODULES,
   CLUB_PERMISSION_LABELS,
@@ -25,7 +24,7 @@ import {
   type ClubRole,
   type PlatformConfig,
 } from '../platform/platformConfig';
-import { localDateIso, localDateTimeIso } from '../utils/dates';
+import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
 
 function AdminRow({
   title,
@@ -294,61 +293,27 @@ export function PlatformAdminPage() {
   }
 
   function handleBackupExport() {
-    const payload = {
-      exportedAt: localDateTimeIso(),
-      appData: loadStore() ?? getData(),
-      platformConfig: loadPlatformConfig(),
-      users: getUsers(),
-      clubs: getClubs(),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `academyhub-backup-${localDateIso()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    flash('Το backup κατέβηκε.');
+    downloadBackupZip();
+    flash('Το backup ZIP κατέβηκε.');
   }
 
-  function applyBackupFile(file: File) {
-    if (!file.name.toLowerCase().endsWith('.json')) {
-      flash('Επιλέξτε αρχείο .json από «Λήψη backup» (όχι .zip).');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onerror = () => flash('Αποτυχία ανάγνωσης αρχείου.');
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result)) as {
-          appData?: ReturnType<typeof getData>;
-          platformConfig?: PlatformConfig;
-          users?: AppUser[];
-          clubs?: Club[];
-        };
-
-        if (!parsed.appData && !parsed.platformConfig && !parsed.users && !parsed.clubs) {
-          flash('Το αρχείο δεν είναι έγκυρο backup της εφαρμογής.');
-          return;
-        }
-
-        if (parsed.appData) replaceData(parsed.appData);
-        if (parsed.platformConfig) {
-          persist(parsed.platformConfig);
-        }
-        if (parsed.users?.length) saveUsers(parsed.users);
-        if (parsed.clubs?.length) saveClubs(parsed.clubs);
-
-        flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
-        window.setTimeout(() => {
-          window.location.reload();
-        }, 600);
-      } catch {
-        flash('Μη έγκυρο αρχείο backup. Χρησιμοποιήστε .json από «Λήψη backup».');
+  async function applyBackupFile(file: File) {
+    try {
+      const parsed = await readBackupFile(file);
+      if (parsed.appData) replaceData(parsed.appData);
+      if (parsed.platformConfig) {
+        persist(parsed.platformConfig);
       }
-    };
-    reader.readAsText(file);
+      if (parsed.users?.length) saveUsers(parsed.users);
+      if (parsed.clubs?.length) saveClubs(parsed.clubs);
+
+      flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 600);
+    } catch (err) {
+      flash(err instanceof Error ? err.message : 'Μη έγκυρο αρχείο backup.');
+    }
   }
 
   function handleBackupImport(event: FormEvent<HTMLFormElement>) {
@@ -356,16 +321,16 @@ export function PlatformAdminPage() {
     const input = event.currentTarget.elements.namedItem('backupFile') as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) {
-      flash('Επιλέξτε πρώτα αρχείο backup (.json).');
+      flash('Επιλέξτε πρώτα αρχείο backup (.zip).');
       return;
     }
-    applyBackupFile(file);
+    void applyBackupFile(file);
   }
 
   function handleBackupFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    applyBackupFile(file);
+    void applyBackupFile(file);
   }
 
   function handleResetAppData() {
@@ -855,13 +820,13 @@ export function PlatformAdminPage() {
                 </div>
                 <form onSubmit={handleBackupImport} className="admin-import-form">
                   <p className="admin-entry-note">
-                    Επιλέξτε αρχείο <strong>.json</strong> που κατεβάσατε από «Λήψη backup»
-                    (όχι το .zip του κώδικα). Η επαναφορά ξεκινά μόλις επιλέξετε το αρχείο.
+                    Επιλέξτε αρχείο <strong>.zip</strong> που κατεβάσατε από «Λήψη backup»
+                    (υποστηρίζεται και παλιό .json). Η επαναφορά ξεκινά μόλις επιλέξετε το αρχείο.
                   </p>
                   <input
                     name="backupFile"
                     type="file"
-                    accept="application/json,.json"
+                    accept="application/zip,.zip,application/json,.json"
                     onChange={handleBackupFileChange}
                   />
                   <Button type="submit" variant="secondary">

@@ -1,12 +1,7 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import {
-  isAuthenticated,
-  isPlatformAdmin,
-  login,
-  PLATFORM_ADMIN,
-} from '../auth/auth';
-import { endPreview } from '../platform/platformConfig';
+import { isAuthenticated, isPlatformAdmin, login } from '../auth/auth';
+import { endPreview, getAppLogoUrl, getAppName } from '../platform/platformConfig';
 
 function homeForRole(role?: string) {
   return role === 'platform_admin' ? '/platform' : '/';
@@ -21,6 +16,9 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const appName = useMemo(() => getAppName(), []);
+  const appLogoUrl = useMemo(() => getAppLogoUrl(), []);
 
   if (isAuthenticated()) {
     return <Navigate to={homeForRole(isPlatformAdmin() ? 'platform_admin' : 'admin')} replace />;
@@ -49,23 +47,17 @@ export function LoginPage() {
     completeLogin(result);
   }
 
-  function handlePlatformAdminLogin() {
-    setSaving(true);
-    setError('');
-    setEmail(PLATFORM_ADMIN.email);
-    setPassword(PLATFORM_ADMIN.password);
-    const result = login(PLATFORM_ADMIN.email, PLATFORM_ADMIN.password);
-    setSaving(false);
-    completeLogin(result);
-  }
-
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <span className="brand-mark">SS</span>
+          {appLogoUrl ? (
+            <img className="login-brand-logo" src={appLogoUrl} alt={appName} />
+          ) : (
+            <span className="brand-mark">SS</span>
+          )}
           <div>
-            <strong>SPORTSUITE 360</strong>
+            <strong>{appName}</strong>
             <span>Σύνδεση διαχειριστή</span>
           </div>
         </div>
@@ -96,20 +88,6 @@ export function LoginPage() {
         <button type="submit" className="login-submit" disabled={saving}>
           {saving ? 'Σύνδεση...' : 'Σύνδεση'}
         </button>
-
-        <button
-          type="button"
-          className="login-submit login-submit-secondary"
-          onClick={handlePlatformAdminLogin}
-          disabled={saving}
-        >
-          Είσοδος ως Platform Admin
-        </button>
-
-        <p className="login-hint">
-          Platform Admin: <code>{PLATFORM_ADMIN.email}</code> /{' '}
-          <code>{PLATFORM_ADMIN.password}</code>
-        </p>
 
         <p className="login-footer-link">
           Δεν έχετε λογαριασμό; <Link to="/register">Εγγραφή συλλόγου</Link>

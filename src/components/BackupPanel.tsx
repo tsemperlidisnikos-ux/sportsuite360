@@ -1,11 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { getUsers, saveUsers } from '../auth/auth';
-import { getClubs, saveClubs } from '../auth/clubs';
+import { saveUsers } from '../auth/auth';
+import { saveClubs } from '../auth/clubs';
 import { Button } from './ui/Button';
-import { getData, replaceData } from '../data/repository';
-import { loadStore } from '../data/store';
-import { loadPlatformConfig, savePlatformConfig } from '../platform/platformConfig';
-import { localDateIso, localDateTimeIso } from '../utils/dates';
+import { replaceData } from '../data/repository';
+import { savePlatformConfig } from '../platform/platformConfig';
+import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
 
 export function BackupPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -19,65 +18,27 @@ export function BackupPanel() {
   }
 
   function handleBackupExport() {
-    const payload = {
-      exportedAt: localDateTimeIso(),
-      appData: loadStore() ?? getData(),
-      platformConfig: loadPlatformConfig(),
-      users: getUsers(),
-      clubs: getClubs(),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `academyhub-backup-${localDateIso()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    flash('Το backup κατέβηκε.');
+    downloadBackupZip();
+    flash('Το backup ZIP κατέβηκε.');
   }
 
-  function applyBackupFile(file: File) {
-    if (!file.name.toLowerCase().endsWith('.json')) {
+  async function applyBackupFile(file: File) {
+    try {
+      const parsed = await readBackupFile(file);
+
+      if (parsed.appData) replaceData(parsed.appData);
+      if (parsed.platformConfig) savePlatformConfig(parsed.platformConfig);
+      if (parsed.users?.length) saveUsers(parsed.users);
+      if (parsed.clubs?.length) saveClubs(parsed.clubs);
+
+      flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 600);
+    } catch (err) {
       setMessage('');
-      setError('Επιλέξτε αρχείο .json από «Λήψη backup» (όχι .zip).');
-      return;
+      setError(err instanceof Error ? err.message : 'Μη έγκυρο αρχείο backup.');
     }
-
-    const reader = new FileReader();
-    reader.onerror = () => {
-      setMessage('');
-      setError('Αποτυχία ανάγνωσης αρχείου.');
-    };
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result)) as {
-          appData?: ReturnType<typeof getData>;
-          platformConfig?: ReturnType<typeof loadPlatformConfig>;
-          users?: ReturnType<typeof getUsers>;
-          clubs?: ReturnType<typeof getClubs>;
-        };
-
-        if (!parsed.appData && !parsed.platformConfig && !parsed.users && !parsed.clubs) {
-          setMessage('');
-          setError('Το αρχείο δεν είναι έγκυρο backup της εφαρμογής.');
-          return;
-        }
-
-        if (parsed.appData) replaceData(parsed.appData);
-        if (parsed.platformConfig) savePlatformConfig(parsed.platformConfig);
-        if (parsed.users?.length) saveUsers(parsed.users);
-        if (parsed.clubs?.length) saveClubs(parsed.clubs);
-
-        flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
-        window.setTimeout(() => {
-          window.location.reload();
-        }, 600);
-      } catch {
-        setMessage('');
-        setError('Μη έγκυρο αρχείο backup. Χρησιμοποιήστε .json από «Λήψη backup».');
-      }
-    };
-    reader.readAsText(file);
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -87,7 +48,7 @@ export function BackupPanel() {
       return;
     }
     setFileLabel(file.name);
-    applyBackupFile(file);
+    void applyBackupFile(file);
   }
 
   return (
@@ -103,7 +64,7 @@ export function BackupPanel() {
       <div className="settings-backup-block">
         <div className="settings-backup-copy">
           <h3>Λήψη backup</h3>
-          <p>Κατεβάζει JSON αρχείο με όλα τα δεδομένα του συλλόγου.</p>
+          <p>Κατεβάζει αρχείο ZIP με όλα τα δεδομένα του συλλόγου.</p>
         </div>
         <div className="settings-backup-panel">
           <div className="ta-table">
@@ -119,7 +80,7 @@ export function BackupPanel() {
             </div>
           </div>
           <Button type="button" className="settings-backup-action" onClick={handleBackupExport}>
-            Λήψη backup συλλόγου
+            Λήψη backup συλλόγου (ZIP)
           </Button>
         </div>
       </div>
@@ -141,7 +102,7 @@ export function BackupPanel() {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="application/json,.json"
+                  accept="application/zip,.zip,application/json,.json"
                   hidden
                   onChange={handleFileChange}
                 />
@@ -156,7 +117,7 @@ export function BackupPanel() {
               </div>
             </div>
           </div>
-          <p className="settings-hint">Επιλέξτε αρχείο .json από προηγούμενο backup.</p>
+          <p className="settings-hint">Επιλέξτε αρχείο .zip (ή παλιό .json) από προηγούμενο backup.</p>
         </div>
       </div>
 

@@ -387,6 +387,19 @@ strong {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.dashboard-sport-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dashboard-sport-title {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2681,12 +2694,21 @@ th {
   margin-bottom: 0.4rem;
 }
 
+.login-brand-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: #fff;
+}
+
 .login-brand strong {
   display: block;
   color: #1f2937;
 }
 
-.login-brand span {
+.login-brand > div > span {
   display: block;
   color: #6b7280;
   font-size: 0.85rem;
@@ -2735,23 +2757,6 @@ th {
   background: #fff;
   color: #1a3e38;
   border: 1px solid rgba(26, 62, 56, 0.2);
-}
-
-.login-hint {
-  margin: 0.75rem 0 0;
-  padding: 0.75rem 0.85rem;
-  border-radius: 12px;
-  background: rgba(26, 62, 56, 0.08);
-  color: #6b7280;
-  font-size: 0.85rem;
-  line-height: 1.45;
-  word-break: break-all;
-}
-
-.login-hint code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #15231f;
-  font-size: 0.82rem;
 }
 
 .login-submit:disabled {
