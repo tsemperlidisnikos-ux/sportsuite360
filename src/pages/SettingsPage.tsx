@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { Building2, FileText, ImagePlus, Ruler, Trash2, Trophy } from 'lucide-react';
+import { Building2, Database, FileText, ImagePlus, Ruler, Trash2, Trophy } from 'lucide-react';
 import { getSession } from '../auth/auth';
 import { getClubById, updateClubLogo } from '../auth/clubs';
+import { BackupPanel } from '../components/BackupPanel';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SizeChartPanel } from '../components/SizeChartPanel';
@@ -12,7 +13,7 @@ import { TermsOfUsePanel } from './TermsOfUsePanel';
 
 const MAX_LOGO_BYTES = 500_000;
 
-type SettingsTab = 'appearance' | 'associations' | 'sports' | 'sizes' | 'terms';
+type SettingsTab = 'appearance' | 'associations' | 'sports' | 'sizes' | 'terms' | 'backup';
 
 export function SettingsPage() {
   const session = getSession();
@@ -83,7 +84,7 @@ export function SettingsPage() {
     <div className="stack-lg">
       <PageHeader
         title="Ρυθμίσεις"
-        subtitle="Εμφάνιση συλλόγου, σωματείο, αθλήματα, μεγεθολόγιο και όροι χρήσης."
+        subtitle="Εμφάνιση συλλόγου, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
       />
 
       <div className="tabs">
@@ -121,6 +122,13 @@ export function SettingsPage() {
           onClick={() => setTab('terms')}
         >
           <FileText size={15} /> Όροι χρήσης
+        </button>
+        <button
+          type="button"
+          className={`tab ${tab === 'backup' ? 'active' : ''}`}
+          onClick={() => setTab('backup')}
+        >
+          <Database size={15} /> BACKUP
         </button>
       </div>
 
@@ -182,6 +190,7 @@ export function SettingsPage() {
       {tab === 'sports' ? <SportsPage /> : null}
       {tab === 'sizes' ? <SizeChartPanel /> : null}
       {tab === 'terms' ? <TermsOfUsePanel /> : null}
+      {tab === 'backup' ? <BackupPanel /> : null}
     </div>
   );
 }

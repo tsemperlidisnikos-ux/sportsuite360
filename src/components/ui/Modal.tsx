@@ -10,6 +10,7 @@ interface ModalProps {
   footer?: ReactNode;
   className?: string;
   wide?: boolean;
+  fullscreen?: boolean;
 }
 
 export function Modal({
@@ -20,13 +21,18 @@ export function Modal({
   footer,
   className = '',
   wide = false,
+  fullscreen = false,
 }: ModalProps) {
   if (!open) return null;
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <div
+      className={`modal-backdrop${fullscreen ? ' modal-backdrop--fullscreen' : ''}`}
+      role="presentation"
+      onClick={onClose}
+    >
       <div
-        className={`modal ${wide ? 'modal--wide' : ''} ${className}`.trim()}
+        className={`modal ${wide ? 'modal--wide' : ''} ${fullscreen ? 'modal--fullscreen' : ''} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

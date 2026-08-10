@@ -1,21 +1,5 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react';
-import {
-  Bold,
-  Flag,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Megaphone,
-  Pencil,
-  Plus,
-  Strikethrough,
-  Trash2,
-  Underline,
-  Upload,
-  Wand2,
-  X,
-} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { Flag, Megaphone, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import * as announcementsService from '../api/services/announcementsService';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -26,8 +10,16 @@ import type {
   Announcement,
   AnnouncementAudienceRole,
   AnnouncementRecipient,
-  AnnouncementRecipientKind,
 } from '../types';
+
+const TEMPLATES_KEY = 'academyhub-announcement-templates';
+
+type MessageTemplate = {
+  id: string;
+  name: string;
+  title: string;
+  message: string;
+};
 
 const AUDIENCE_OPTIONS: Array<{ id: AnnouncementAudienceRole; label: string }> = [
   { id: 'athletes', label: 'Αθλητές' },
@@ -60,8 +52,29 @@ function formatDate(value: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-function applyFormat(command: string, value?: string) {
-  document.execCommand(command, false, value);
+function htmlToPlain(html: string): string {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  return (el.innerText || el.textContent || '').trim();
+}
+
+function loadTemplates(): MessageTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as MessageTemplate[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTemplates(items: MessageTemplate[]) {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(items));
+}
+
+function createTemplateId() {
+  return `tpl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function recipientKey(item: AnnouncementRecipient): string {
@@ -75,8 +88,19 @@ export function AnnouncementsPage() {
   const [form, setForm] = useState<AnnouncementInput>(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [templates, setTemplates] = useState<MessageTemplate[]>(() => loadTemplates());
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateName, setTemplateName] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [wholeClub, setWholeClub] = useState(true);
+  const [highlightAvailableClasses, setHighlightAvailableClasses] = useState<string[]>([]);
+  const [highlightSelectedClasses, setHighlightSelectedClasses] = useState<string[]>([]);
+  const [highlightAvailableAthletes, setHighlightAvailableAthletes] = useState<string[]>([]);
+  const [highlightSelectedAthletes, setHighlightSelectedAthletes] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    setTemplates(loadTemplates());
+  }, [open]);
 
   const announcements = useMemo(
     () =>
@@ -86,113 +110,186 @@ export function AnnouncementsPage() {
     [data.announcements],
   );
 
-  const peopleOptions = useMemo(() => {
-    const athletes = data.students
-      .filter((s) => s.status !== 'inactive')
-      .map((s) => ({
-        kind: 'athlete' as const,
-        id: s.id,
-        label: `${s.lastName} ${s.firstName}`.trim(),
-        group: 'Αθλητές',
-      }));
-    const coaches = data.coaches
-      .filter((c) => c.active)
-      .map((c) => ({
-        kind: 'coach' as const,
-        id: c.id,
-        label: `${c.lastName} ${c.firstName}`.trim(),
-        group: 'Προπονητές',
-      }));
-    const staff = data.staff
-      .filter((s) => s.active)
-      .map((s) => ({
-        kind: 'staff' as const,
-        id: s.id,
-        label: s.fullName,
-        group: 'Προσωπικό',
-      }));
-    return [...athletes, ...coaches, ...staff].sort((a, b) =>
-      a.label.localeCompare(b.label, 'el'),
-    );
-  }, [data.students, data.coaches, data.staff]);
-
+  const selectedClassIds = form.classIds ?? [];
   const selectedRecipientKeys = useMemo(
     () => new Set((form.recipientIds ?? []).map(recipientKey)),
     [form.recipientIds],
   );
 
-  function syncMessageFromEditor() {
-    const html = editorRef.current?.innerHTML?.trim() ?? '';
-    const text = editorRef.current?.innerText?.trim() ?? '';
-    setForm((prev) => ({ ...prev, message: text ? html : '' }));
+  const recipientsByClass = useMemo(() => {
+    return selectedClassIds
+      .map((classId) => {
+        const academyClass = data.classes.find((c) => c.id === classId);
+        if (!academyClass) return null;
+        const athletes = data.students
+          .filter((s) => s.classId === classId && s.status !== 'inactive')
+          .map((s) => ({
+            kind: 'athlete' as const,
+            id: s.id,
+            label: `${s.lastName} ${s.firstName}`.trim(),
+            className: academyClass.name,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label, 'el'));
+        return { classId, className: academyClass.name, athletes };
+      })
+      .filter(Boolean) as Array<{
+      classId: string;
+      className: string;
+      athletes: Array<{ kind: 'athlete'; id: string; label: string; className: string }>;
+    }>;
+  }, [selectedClassIds, data.classes, data.students]);
+
+  const availableClasses = useMemo(
+    () =>
+      data.classes
+        .filter((c) => !selectedClassIds.includes(c.id))
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'el')),
+    [data.classes, selectedClassIds],
+  );
+
+  const selectedClasses = useMemo(
+    () =>
+      data.classes
+        .filter((c) => selectedClassIds.includes(c.id))
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'el')),
+    [data.classes, selectedClassIds],
+  );
+
+  const availableAthletes = useMemo(() => {
+    const selectedKeys = selectedRecipientKeys;
+    return recipientsByClass
+      .flatMap((group) =>
+        group.athletes
+          .filter((a) => !selectedKeys.has(`athlete:${a.id}`))
+          .map((a) => ({ ...a, classId: group.classId })),
+      )
+      .sort((a, b) => a.label.localeCompare(b.label, 'el'));
+  }, [recipientsByClass, selectedRecipientKeys]);
+
+  const selectedAthletes = useMemo(() => {
+    return (form.recipientIds ?? [])
+      .map((r) => {
+        const student = data.students.find((s) => s.id === r.id);
+        if (!student) return null;
+        const academyClass = data.classes.find((c) => c.id === student.classId);
+        return {
+          kind: 'athlete' as const,
+          id: student.id,
+          label: `${student.lastName} ${student.firstName}`.trim(),
+          className: academyClass?.name ?? '',
+          classId: student.classId ?? '',
+        };
+      })
+      .filter(Boolean) as Array<{
+      kind: 'athlete';
+      id: string;
+      label: string;
+      className: string;
+      classId: string;
+    }>;
+  }, [form.recipientIds, data.students, data.classes]);
+
+  function clearShuttleHighlights() {
+    setHighlightAvailableClasses([]);
+    setHighlightSelectedClasses([]);
+    setHighlightAvailableAthletes([]);
+    setHighlightSelectedAthletes([]);
   }
 
-  function toggleAudienceRole(role: AnnouncementAudienceRole) {
-    setForm((prev) => {
-      const current = prev.audienceRoles ?? [];
-      const next = current.includes(role)
-        ? current.filter((item) => item !== role)
-        : [...current, role];
-      return { ...prev, audienceRoles: next };
-    });
+  function toggleHighlight(list: string[], id: string): string[] {
+    return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   }
 
-  function toggleClassId(classId: string) {
+  function syncClassSelection(classIds: string[]) {
+    setWholeClub(false);
     setForm((prev) => {
-      const current = prev.classIds ?? [];
-      const next = current.includes(classId)
-        ? current.filter((item) => item !== classId)
-        : [...current, classId];
-      const teamsLabel = data.classes
-        .filter((c) => next.includes(c.id))
-        .map((c) => c.name)
-        .join(', ');
+      const recipientIds = (prev.recipientIds ?? []).filter((r) => {
+        if (r.kind !== 'athlete') return true;
+        const student = data.students.find((s) => s.id === r.id);
+        return student?.classId ? classIds.includes(student.classId) : false;
+      });
+      const names = data.classes
+        .filter((c) => classIds.includes(c.id))
+        .map((c) => c.name);
       return {
         ...prev,
-        classIds: next,
-        teamsLabel,
-        targetType: next.length === 1 ? 'team' : 'club',
-        targetId: next.length === 1 ? next[0] : null,
+        classIds,
+        recipientIds,
+        targetType: classIds.length === 1 ? 'team' : 'club',
+        targetId: classIds.length === 1 ? classIds[0] : null,
+        teamsLabel: names.join(', '),
+        showTo: names.join(', ') || 'Ολόκληρος σύλλογος',
       };
     });
   }
 
-  function toggleRecipient(kind: AnnouncementRecipientKind, id: string) {
-    setForm((prev) => {
-      const current = prev.recipientIds ?? [];
-      const exists = current.some((item) => item.kind === kind && item.id === id);
-      const next = exists
-        ? current.filter((item) => !(item.kind === kind && item.id === id))
-        : [...current, { kind, id }];
-      return { ...prev, recipientIds: next };
-    });
+  function moveClassesToSelected() {
+    if (highlightAvailableClasses.length === 0) return;
+    const next = [...new Set([...selectedClassIds, ...highlightAvailableClasses])];
+    syncClassSelection(next);
+    setHighlightAvailableClasses([]);
   }
 
+  function moveClassesToAvailable() {
+    if (highlightSelectedClasses.length === 0) return;
+    const remove = new Set(highlightSelectedClasses);
+    const next = selectedClassIds.filter((id) => !remove.has(id));
+    syncClassSelection(next);
+    setHighlightSelectedClasses([]);
+    setHighlightAvailableAthletes([]);
+    setHighlightSelectedAthletes([]);
+  }
+
+  function moveAthletesToSelected() {
+    if (highlightAvailableAthletes.length === 0) return;
+    setWholeClub(false);
+    setForm((prev) => {
+      const current = prev.recipientIds ?? [];
+      const existing = new Set(current.map(recipientKey));
+      const added = highlightAvailableAthletes
+        .filter((id) => !existing.has(`athlete:${id}`))
+        .map((id) => ({ kind: 'athlete' as const, id }));
+      return { ...prev, recipientIds: [...current, ...added] };
+    });
+    setHighlightAvailableAthletes([]);
+  }
+
+  function moveAthletesToAvailable() {
+    if (highlightSelectedAthletes.length === 0) return;
+    const remove = new Set(highlightSelectedAthletes);
+    setForm((prev) => ({
+      ...prev,
+      recipientIds: (prev.recipientIds ?? []).filter((r) => !remove.has(r.id)),
+    }));
+    setHighlightSelectedAthletes([]);
+  }
   function describeAudience(item: Announcement): string {
     const parts: string[] = [];
-    const roles = item.audienceRoles ?? [];
-    if (roles.length > 0) {
-      parts.push(
-        roles
-          .map((role) => AUDIENCE_OPTIONS.find((o) => o.id === role)?.label ?? role)
-          .join(', '),
-      );
-    }
+    const roles = (item.audienceRoles ?? [])
+      .map((role) => AUDIENCE_OPTIONS.find((o) => o.id === role)?.label)
+      .filter(Boolean);
+    if (roles.length > 0) parts.push(roles.join(', '));
+
     const classNames = (item.classIds ?? [])
       .map((id) => data.classes.find((c) => c.id === id)?.name)
       .filter(Boolean);
     if (classNames.length > 0) parts.push(classNames.join(', '));
-    else if (item.teamsLabel) parts.push(item.teamsLabel);
+    else if (item.targetType === 'team' && item.targetId) {
+      const name = data.classes.find((c) => c.id === item.targetId)?.name;
+      if (name) parts.push(name);
+    }
 
     const people = (item.recipientIds ?? [])
       .map((r) => {
         if (r.kind === 'athlete') {
           const s = data.students.find((x) => x.id === r.id);
-          return s ? `${s.lastName} ${s.firstName}` : null;
+          return s ? `${s.lastName} ${s.firstName}`.trim() : null;
         }
         if (r.kind === 'coach') {
           const c = data.coaches.find((x) => x.id === r.id);
-          return c ? `${c.lastName} ${c.firstName}` : null;
+          return c ? `${c.lastName} ${c.firstName}`.trim() : null;
         }
         const staff = data.staff.find((x) => x.id === r.id);
         return staff?.fullName ?? null;
@@ -200,25 +297,34 @@ export function AnnouncementsPage() {
       .filter(Boolean);
     if (people.length > 0) parts.push(people.join(', '));
 
-    if (parts.length === 0) return item.showTo?.trim() || 'Όλοι';
+    if (item.teamsLabel?.trim() && classNames.length === 0) parts.push(item.teamsLabel.trim());
+    if (parts.length === 0) {
+      if (item.targetType === 'club') return 'Ολόκληρος σύλλογος';
+      return item.showTo?.trim() || 'Όλοι';
+    }
     return parts.join(' · ');
   }
 
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setWholeClub(true);
+    setSelectedTemplateId('');
+    setTemplateName('');
     setError('');
+    clearShuttleHighlights();
     setOpen(true);
-    window.setTimeout(() => {
-      if (editorRef.current) editorRef.current.innerHTML = '';
-    }, 0);
   }
 
   function openEdit(item: Announcement) {
+    const classIds =
+      item.classIds ??
+      (item.targetType === 'team' && item.targetId ? [item.targetId] : []);
+    const recipients = item.recipientIds ?? [];
     setEditing(item);
     setForm({
       title: item.title,
-      message: item.message,
+      message: htmlToPlain(item.message),
       targetType: item.targetType,
       targetId: item.targetId,
       highPriority: item.highPriority ?? false,
@@ -229,30 +335,67 @@ export function AnnouncementsPage() {
       sportCategories: item.sportCategories ?? '',
       teamsLabel: item.teamsLabel ?? '',
       audienceRoles: item.audienceRoles ?? [],
-      classIds:
-        item.classIds ??
-        (item.targetType === 'team' && item.targetId ? [item.targetId] : []),
-      recipientIds: item.recipientIds ?? [],
+      classIds,
+      recipientIds: recipients,
     });
+    setWholeClub(classIds.length === 0 && recipients.length === 0);
+    setSelectedTemplateId('');
+    setTemplateName('');
     setError('');
+    clearShuttleHighlights();
     setOpen(true);
-    window.setTimeout(() => {
-      if (editorRef.current) editorRef.current.innerHTML = item.message || '';
-    }, 0);
   }
 
   function closeModal() {
     setOpen(false);
     setError('');
+    setDragOver(false);
+    clearShuttleHighlights();
   }
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function applyTemplate(id: string) {
+    setSelectedTemplateId(id);
+    const template = templates.find((t) => t.id === id);
+    if (!template) return;
+    setForm((prev) => ({
+      ...prev,
+      title: template.title,
+      message: template.message,
+    }));
+    setTemplateName(template.name);
+  }
+
+  function handleSaveTemplate() {
+    const name = templateName.trim();
+    if (!name) {
+      setError('Συμπληρώστε όνομα προτύπου');
+      return;
+    }
+    if (!form.message.trim()) {
+      setError('Το μήνυμα είναι υποχρεωτικό για αποθήκευση προτύπου');
+      return;
+    }
+    setError('');
+    const next: MessageTemplate = {
+      id: selectedTemplateId || createTemplateId(),
+      name,
+      title: form.title.trim(),
+      message: form.message.trim(),
+    };
+    const updated = selectedTemplateId
+      ? templates.map((t) => (t.id === selectedTemplateId ? next : t))
+      : [...templates, next];
+    saveTemplates(updated);
+    setTemplates(updated);
+    setSelectedTemplateId(next.id);
+  }
+
+  function readImageFile(file: File) {
     if (!file.type.startsWith('image/')) {
       setError('Επιλέξτε αρχείο εικόνας.');
       return;
     }
+    setError('');
     const reader = new FileReader();
     reader.onload = () => {
       setForm((prev) => ({ ...prev, imageUrl: String(reader.result) }));
@@ -260,57 +403,84 @@ export function AnnouncementsPage() {
     reader.readAsDataURL(file);
   }
 
-  function handleAiHelp() {
-    const draft =
-      form.title.trim().length > 0
-        ? `<p>Αγαπητοί αθλητές και γονείς,</p><p>Σας ενημερώνουμε σχετικά με: <strong>${form.title}</strong>.</p><p>Περισσότερες λεπτομέρειες θα ακολουθήσουν.</p>`
-        : '<p>Αγαπητοί αθλητές και γονείς,</p><p>Σας ενημερώνουμε για μια σημαντική ανακοίνωση του συλλόγου.</p><p>Παρακαλούμε διαβάστε προσεκτικά τις λεπτομέρειες.</p>';
-    if (editorRef.current) editorRef.current.innerHTML = draft;
-    setForm((prev) => ({ ...prev, message: draft }));
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    readImageFile(file);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragOver(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    readImageFile(file);
+  }
+
+  function toggleWholeClub(checked: boolean) {
+    setWholeClub(checked);
+    clearShuttleHighlights();
+    if (checked) {
+      setForm((prev) => ({
+        ...prev,
+        targetType: 'club',
+        targetId: null,
+        classIds: [],
+        recipientIds: [],
+        teamsLabel: '',
+        showTo: 'Ολόκληρος σύλλογος',
+      }));
+    }
   }
 
   async function handleSave() {
-    syncMessageFromEditor();
-    const message =
-      (editorRef.current?.innerText?.trim()
-        ? editorRef.current.innerHTML.trim()
-        : form.message.trim()) || '';
-    if (!message || message === '<br>') {
-      setError('Το κείμενο είναι υποχρεωτικό');
+    const message = form.message.trim();
+    if (!message) {
+      setError('Το μήνυμα είναι υποχρεωτικό');
+      return;
+    }
+    if (!form.title.trim()) {
+      setError('Ο τίτλος είναι υποχρεωτικός');
+      return;
+    }
+    if (!wholeClub && (form.classIds ?? []).length === 0) {
+      setError('Επιλέξτε τουλάχιστον ένα τμήμα ή ολόκληρο τον σύλλογο');
       return;
     }
 
     setSaving(true);
     setError('');
-    const classIds = form.classIds ?? [];
-    const audienceRoles = form.audienceRoles ?? [];
-    const recipientIds = form.recipientIds ?? [];
-    const showTo =
-      [
-        ...audienceRoles.map(
-          (role) => AUDIENCE_OPTIONS.find((o) => o.id === role)?.label ?? role,
-        ),
-        ...recipientIds.map((r) => {
-          const person = peopleOptions.find((p) => p.kind === r.kind && p.id === r.id);
-          return person?.label;
-        }),
-      ]
-        .filter(Boolean)
-        .join(', ') || '';
+    const classIds = wholeClub ? [] : form.classIds ?? [];
+    const recipientIds = wholeClub ? [] : form.recipientIds ?? [];
+    const classNames = data.classes
+      .filter((c) => classIds.includes(c.id))
+      .map((c) => c.name);
+    const peopleLabels = recipientIds
+      .map((r) => {
+        const s = data.students.find((x) => x.id === r.id);
+        return s ? `${s.lastName} ${s.firstName}`.trim() : null;
+      })
+      .filter(Boolean) as string[];
+
+    const showParts = [
+      ...(classNames.length && recipientIds.length === 0 ? classNames : []),
+      ...peopleLabels,
+    ];
 
     const payload: AnnouncementInput = {
       ...form,
+      title: form.title.trim(),
       message,
       classIds,
-      audienceRoles,
+      audienceRoles: form.audienceRoles ?? [],
       recipientIds,
-      showTo,
-      teamsLabel: data.classes
-        .filter((c) => classIds.includes(c.id))
-        .map((c) => c.name)
-        .join(', '),
       targetType: classIds.length === 1 ? 'team' : 'club',
       targetId: classIds.length === 1 ? classIds[0] : null,
+      teamsLabel: classNames.join(', '),
+      showTo: wholeClub
+        ? 'Ολόκληρος σύλλογος'
+        : showParts.join(', ') || classNames.join(', ') || 'Όλοι',
     };
     const result = editing
       ? await announcementsService.updateAnnouncement(editing.id, payload)
@@ -360,43 +530,37 @@ export function AnnouncementsPage() {
               </tr>
             </thead>
             <tbody>
-              {announcements.map((item) => {
-                return (
-                  <tr key={item.id}>
-                    <td>{formatDate(item.createdAt)}</td>
-                    <td>
-                      {item.highPriority ? <Flag size={14} className="ann-priority-icon" /> : null}{' '}
-                      {item.title}
-                    </td>
-                    <td>{describeAudience(item)}</td>
-                    <td className="announcement-message-cell">
-                      <span
-                        dangerouslySetInnerHTML={{
-                          __html: item.message.replace(/<[^>]+>/g, ' ').slice(0, 120),
-                        }}
-                      />
-                    </td>
-                    <td className="row-actions">
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-label="Επεξεργασία"
-                        onClick={() => openEdit(item)}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-label="Διαγραφή"
-                        onClick={() => void handleDelete(item.id)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {announcements.map((item) => (
+                <tr key={item.id}>
+                  <td>{formatDate(item.createdAt)}</td>
+                  <td>
+                    {item.highPriority ? <Flag size={14} className="ann-priority-icon" /> : null}{' '}
+                    {item.title}
+                  </td>
+                  <td>{describeAudience(item)}</td>
+                  <td className="announcement-message-cell">
+                    <span>{htmlToPlain(item.message).slice(0, 120)}</span>
+                  </td>
+                  <td className="row-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label="Επεξεργασία"
+                      onClick={() => openEdit(item)}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label="Διαγραφή"
+                      onClick={() => void handleDelete(item.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}
@@ -406,66 +570,34 @@ export function AnnouncementsPage() {
         open={open}
         title={editing ? 'Επεξεργασία ανακοίνωσης' : 'Νέα ανακοίνωση'}
         onClose={closeModal}
-        wide
+        className="ann-compose-modal ann-compose-modal--wide"
+        fullscreen
         footer={
           <>
-            <Button type="button" variant="secondary" onClick={closeModal}>
-              Άκυρο
-            </Button>
             <Button type="button" disabled={saving} onClick={() => void handleSave()}>
-              {saving ? 'Αποθήκευση...' : 'Αποθήκευση'}
+              {saving ? 'Δημοσίευση...' : 'Δημοσίευση'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={closeModal}>
+              Ακύρωση
             </Button>
           </>
         }
       >
-        <div className="ann-form">
-          <div className="ann-form-top">
-            <label className="ann-priority">
-              <input
-                type="checkbox"
-                checked={Boolean(form.highPriority)}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, highPriority: e.target.checked }))
-                }
-              />
-              <Flag size={16} />
-              <span>Υψηλή προτεραιότητα</span>
-            </label>
-
-            <div className="ann-image-field">
-              <span className="ann-label">Εικόνα</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={handleImageChange}
-              />
-              {form.imageUrl ? (
-                <div className="ann-image-preview">
-                  <img src={form.imageUrl} alt="Προεπισκόπηση" />
-                  <button
-                    type="button"
-                    className="ann-image-remove"
-                    aria-label="Αφαίρεση εικόνας"
-                    onClick={() => setForm((prev) => ({ ...prev, imageUrl: null }))}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="ann-image-upload"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={18} />
-                  Πατήστε εδώ ή σύρετε αρχεία...
-                </button>
-              )}
-              <p className="ann-hint">Μπορείτε να ανεβάσετε μόνο ένα αρχείο</p>
-            </div>
-          </div>
+        <div className="ann-form ann-form--compose">
+          <label className="ann-field">
+            <span className="ann-label">Πρότυπα μηνυμάτων</span>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => applyTemplate(e.target.value)}
+            >
+              <option value="">Επίλεξε πρότυπο...</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <label className="ann-field">
             <span className="ann-label">Τίτλος</span>
@@ -475,189 +607,264 @@ export function AnnouncementsPage() {
             />
           </label>
 
-          <div className="ann-field">
-            <span className="ann-label">
-              Κείμενο <span className="ann-required">*</span>
-            </span>
-            <div className="ann-editor">
-              <div className="ann-editor-toolbar">
-                <select
-                  className="ann-editor-select"
-                  defaultValue="p"
-                  onChange={(e) => applyFormat('formatBlock', e.target.value)}
-                >
-                  <option value="p">Normal</option>
-                  <option value="h2">Heading</option>
-                  <option value="h3">Subheading</option>
-                </select>
-                <button type="button" onClick={() => applyFormat('insertUnorderedList')} aria-label="Λίστα">
-                  <List size={16} />
-                </button>
-                <button type="button" onClick={() => applyFormat('insertOrderedList')} aria-label="Αριθμημένη λίστα">
-                  <ListOrdered size={16} />
-                </button>
-                <button type="button" onClick={() => applyFormat('bold')} aria-label="Έντονα">
-                  <Bold size={16} />
-                </button>
-                <button type="button" onClick={() => applyFormat('italic')} aria-label="Πλάγια">
-                  <Italic size={16} />
-                </button>
-                <button type="button" onClick={() => applyFormat('underline')} aria-label="Υπογράμμιση">
-                  <Underline size={16} />
-                </button>
-                <button type="button" onClick={() => applyFormat('strikeThrough')} aria-label="Διαγραφή">
-                  <Strikethrough size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const url = window.prompt('URL συνδέσμου');
-                    if (url) applyFormat('createLink', url);
-                  }}
-                  aria-label="Σύνδεσμος"
-                >
-                  <Link2 size={16} />
-                </button>
-                <button type="button" onClick={() => applyFormat('removeFormat')} aria-label="Καθαρισμός">
-                  Tx
-                </button>
-              </div>
-              <div
-                ref={editorRef}
-                className="ann-editor-body"
-                contentEditable
-                role="textbox"
-                aria-multiline="true"
-                onInput={syncMessageFromEditor}
-                suppressContentEditableWarning
-              />
-            </div>
-            <button type="button" className="ann-ai-btn" onClick={handleAiHelp}>
-              <Wand2 size={16} />
-              Βοήθησέ με να γράψω
-            </button>
-          </div>
-
-          <div className="ann-dates">
-            <label className="ann-field">
-              <span className="ann-label">Να εμφανίζεται από</span>
-              <input
-                type="date"
-                value={form.visibleFrom ?? ''}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, visibleFrom: e.target.value }))
-                }
-              />
-            </label>
-            <label className="ann-field">
-              <span className="ann-label">μέχρι</span>
-              <input
-                type="date"
-                value={form.visibleUntil ?? ''}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, visibleUntil: e.target.value }))
-                }
-              />
-            </label>
-          </div>
-
-          <div className="ann-field">
-            <span className="ann-label">Εμφάνισε στους</span>
-            <div className="ann-chip-row">
-              {AUDIENCE_OPTIONS.map((option) => {
-                const active = (form.audienceRoles ?? []).includes(option.id);
-                return (
-                  <label key={option.id} className={`ann-chip ${active ? 'is-active' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      onChange={() => toggleAudienceRole(option.id)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                );
-              })}
-            </div>
-            <span className="ann-hint">
-              Αφήστε κενό για όλους. Μπορείτε να επιλέξετε ομάδες ρόλων και/ή συγκεκριμένα άτομα.
-            </span>
-          </div>
-
           <label className="ann-field">
-            <span className="ann-label">Για τις κατηγορίες αθλημάτων</span>
-            <input
-              value={form.sportCategories ?? ''}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, sportCategories: e.target.value }))
-              }
-              list="ann-sports-list"
+            <span className="ann-label">Μήνυμα</span>
+            <textarea
+              className="ann-message-textarea"
+              rows={7}
+              value={form.message}
+              onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
             />
-            <datalist id="ann-sports-list">
-              {data.sports.map((s) => (
-                <option key={s.id} value={s.name} />
-              ))}
-            </datalist>
-            <span className="ann-hint">
-              Αφήστε το κενό για να εμφανιστεί σε όλες τις κατηγορίες που διαχειρίζεστε
-            </span>
           </label>
 
-          <div className="ann-field">
-            <span className="ann-label">Τμήματα</span>
-            <div className="ann-chip-row">
-              {data.classes.length === 0 ? (
-                <span className="ann-hint">Δεν υπάρχουν τμήματα.</span>
-              ) : (
-                data.classes.map((item) => {
-                  const active = (form.classIds ?? []).includes(item.id);
-                  return (
-                    <label key={item.id} className={`ann-chip ${active ? 'is-active' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => toggleClassId(item.id)}
-                      />
-                      <span>{item.name}</span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-            <span className="ann-hint">
-              Αφήστε κενό για όλα τα διαχειριζόμενα τμήματα
-            </span>
+          <div className="ann-image-field ann-image-field--compose">
+            <span className="ann-label">Εικόνα</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleImageChange}
+            />
+            {form.imageUrl ? (
+              <div className="ann-image-preview">
+                <img src={form.imageUrl} alt="Προεπισκόπηση" />
+                <button
+                  type="button"
+                  className="ann-image-remove"
+                  aria-label="Αφαίρεση εικόνας"
+                  onClick={() => setForm((prev) => ({ ...prev, imageUrl: null }))}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className={`ann-image-dropzone${dragOver ? ' is-dragover' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+              >
+                <button
+                  type="button"
+                  className="ann-image-upload"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload size={18} />
+                  Πατήστε εδώ ή σύρετε αρχεία...
+                </button>
+              </div>
+            )}
+            <p className="ann-hint">Μπορείτε να ανεβάσετε μόνο ένα αρχείο</p>
           </div>
 
           <div className="ann-field">
-            <span className="ann-label">Συγκεκριμένα άτομα</span>
-            <div className="ann-people-list">
-              {peopleOptions.length === 0 ? (
-                <span className="ann-hint">Δεν υπάρχουν διαθέσιμα άτομα.</span>
-              ) : (
-                peopleOptions.map((person) => {
-                  const active = selectedRecipientKeys.has(`${person.kind}:${person.id}`);
-                  return (
-                    <label
-                      key={`${person.kind}:${person.id}`}
-                      className={`ann-person-row ${active ? 'is-active' : ''}`}
-                    >
-                      <span>
-                        {person.label}
-                        <small>{person.group}</small>
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => toggleRecipient(person.kind, person.id)}
-                      />
-                    </label>
-                  );
-                })
-              )}
+            <span className="ann-label">Στόχος</span>
+            <select
+              value={wholeClub ? 'club' : 'teams'}
+              onChange={(e) => {
+                const isClub = e.target.value === 'club';
+                toggleWholeClub(isClub);
+              }}
+            >
+              <option value="club">Ολόκληρος σύλλογος</option>
+              <option value="teams">Συγκεκριμένα τμήματα</option>
+            </select>
+          </div>
+
+          {!wholeClub ? (
+            <div className="ann-shuttle">
+              <div className="ann-shuttle-row">
+                <div className="ann-shuttle-box">
+                  <div className="ann-shuttle-head">Τμήματα</div>
+                  <ul className="ann-shuttle-list">
+                    {availableClasses.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className={`ann-shuttle-item${highlightAvailableClasses.includes(item.id) ? ' is-active' : ''}`}
+                          onClick={() =>
+                            setHighlightAvailableClasses((prev) =>
+                              toggleHighlight(prev, item.id),
+                            )
+                          }
+                          onDoubleClick={() => {
+                            syncClassSelection([...selectedClassIds, item.id]);
+                            setHighlightAvailableClasses([]);
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="ann-shuttle-actions">
+                  <button
+                    type="button"
+                    className="ann-shuttle-transfer"
+                    onClick={moveClassesToSelected}
+                    aria-label="Προσθήκη τμημάτων"
+                  >
+                    {'>>>>'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ann-shuttle-transfer"
+                    onClick={moveClassesToAvailable}
+                    aria-label="Αφαίρεση τμημάτων"
+                  >
+                    {'<<<<'}
+                  </button>
+                </div>
+
+                <div className="ann-shuttle-box">
+                  <div className="ann-shuttle-head">Για νέα ανακοίνωση</div>
+                  <ul className="ann-shuttle-list">
+                    {selectedClasses.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className={`ann-shuttle-item${highlightSelectedClasses.includes(item.id) ? ' is-active' : ''}`}
+                          onClick={() =>
+                            setHighlightSelectedClasses((prev) =>
+                              toggleHighlight(prev, item.id),
+                            )
+                          }
+                          onDoubleClick={() => {
+                            syncClassSelection(
+                              selectedClassIds.filter((id) => id !== item.id),
+                            );
+                            setHighlightSelectedClasses([]);
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="ann-shuttle-row">
+                <div className="ann-shuttle-box">
+                  <div className="ann-shuttle-head">Αθλητές επιλ. τμημάτων</div>
+                  <ul className="ann-shuttle-list">
+                    {availableAthletes.map((person) => (
+                      <li key={person.id}>
+                        <button
+                          type="button"
+                          className={`ann-shuttle-item${highlightAvailableAthletes.includes(person.id) ? ' is-active' : ''}`}
+                          onClick={() =>
+                            setHighlightAvailableAthletes((prev) =>
+                              toggleHighlight(prev, person.id),
+                            )
+                          }
+                          onDoubleClick={() => {
+                            setForm((prev) => ({
+                              ...prev,
+                              recipientIds: [
+                                ...(prev.recipientIds ?? []),
+                                { kind: 'athlete', id: person.id },
+                              ],
+                            }));
+                            setHighlightAvailableAthletes([]);
+                          }}
+                        >
+                          <span className="ann-shuttle-item-meta">{person.className}</span>
+                          <span className="ann-shuttle-item-name">{person.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="ann-shuttle-actions">
+                  <button
+                    type="button"
+                    className="ann-shuttle-transfer"
+                    onClick={moveAthletesToSelected}
+                    aria-label="Προσθήκη αθλητών"
+                  >
+                    {'>>>>'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ann-shuttle-transfer"
+                    onClick={moveAthletesToAvailable}
+                    aria-label="Αφαίρεση αθλητών"
+                  >
+                    {'<<<<'}
+                  </button>
+                </div>
+
+                <div className="ann-shuttle-box">
+                  <div className="ann-shuttle-head">Για ανακοίνωση</div>
+                  <ul className="ann-shuttle-list">
+                    {selectedAthletes.map((person) => (
+                      <li key={person.id}>
+                        <button
+                          type="button"
+                          className={`ann-shuttle-item${highlightSelectedAthletes.includes(person.id) ? ' is-active' : ''}`}
+                          onClick={() =>
+                            setHighlightSelectedAthletes((prev) =>
+                              toggleHighlight(prev, person.id),
+                            )
+                          }
+                          onDoubleClick={() => {
+                            setForm((prev) => ({
+                              ...prev,
+                              recipientIds: (prev.recipientIds ?? []).filter(
+                                (r) => r.id !== person.id,
+                              ),
+                            }));
+                            setHighlightSelectedAthletes([]);
+                          }}
+                        >
+                          <span className="ann-shuttle-item-meta">{person.className}</span>
+                          <span className="ann-shuttle-item-name">{person.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <p className="ann-hint">
+                Επίλεξε τμήματα και αθλητές και μετακίνησέ τους με τα βελάκια. Αν δεν επιλέξεις
+                αθλητές, η ανακοίνωση πάει σε όλα τα επιλεγμένα τμήματα.
+              </p>
             </div>
-            <span className="ann-hint">
-              Προαιρετικά: επιλέξτε συγκεκριμένους αθλητές, προπονητές ή προσωπικό
-            </span>
+          ) : null}
+
+          <label className="ann-field">
+            <span className="ann-label">Προγραμματισμός αποστολής</span>
+            <input
+              type="datetime-local"
+              value={form.visibleFrom ?? ''}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, visibleFrom: e.target.value }))
+              }
+            />
+            <span className="ann-hint">Άφησέ το κενό για άμεση δημοσίευση.</span>
+          </label>
+
+          <div className="ann-template-save-row">
+            <label className="ann-field">
+              <span className="ann-label">Όνομα προτύπου</span>
+              <input
+                value={templateName}
+                placeholder="π.χ. Υπενθύμιση προπόνησης"
+                onChange={(e) => setTemplateName(e.target.value)}
+              />
+            </label>
+            <Button type="button" variant="secondary" onClick={handleSaveTemplate}>
+              Αποθήκευση προτύπου
+            </Button>
           </div>
 
           {error ? <p className="form-error">{error}</p> : null}
