@@ -12,6 +12,7 @@ import * as transactionsService from '../api/services/transactionsService';
 import { useAppData } from '../hooks/useAppData';
 import type { TransactionInput } from '../schemas';
 import type { AthleteTransaction, Student } from '../types';
+import { PAYMENT_METHODS, normalizePaymentMethod } from '../shared/paymentMethods';
 import { formatCurrency, formatDate } from '../utils/labels';
 
 const MONTHS = [
@@ -199,7 +200,7 @@ export function TransactionsPage() {
       type: tx.type,
       month: tx.month,
       year: tx.year,
-      paymentMethod: tx.paymentMethod || '',
+      paymentMethod: normalizePaymentMethod(tx.paymentMethod),
       comments: tx.comments || '',
     });
     setSeasonStart(seasonStartFromPeriod(tx.month, tx.year));
@@ -233,7 +234,7 @@ export function TransactionsPage() {
     const payload = {
       ...form,
       athleteId: form.athleteId || selectedId || '',
-      paymentMethod: (form.paymentMethod || 'other') as TransactionInput['paymentMethod'],
+      paymentMethod: (normalizePaymentMethod(form.paymentMethod) || 'cash') as TransactionInput['paymentMethod'],
     };
     const result = editingId
       ? await transactionsService.updateTransaction(editingId, payload)
@@ -421,10 +422,11 @@ export function TransactionsPage() {
                     }
                   >
                     <option value="">—</option>
-                    <option value="cash">Μετρητά</option>
-                    <option value="card">Κάρτα</option>
-                    <option value="transfer">Κατάθεση</option>
-                    <option value="other">Viva</option>
+                    {PAYMENT_METHODS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
                   </select>
                 </label>
 

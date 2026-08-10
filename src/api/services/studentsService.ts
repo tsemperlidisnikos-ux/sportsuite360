@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { createId, getData, mutateData } from '../../data/repository';
 import { studentSchema, type StudentInput } from '../../schemas';
 import type { Student } from '../../types';
+import { localDateIso } from '../../utils/dates';
 
 export async function getStudents() {
   return apiClient(() => getData().students);
@@ -13,7 +14,7 @@ export async function createStudent(input: StudentInput) {
     const student: Student = {
       ...parsed,
       id: createId('stu'),
-      enrolledAt: new Date().toISOString().slice(0, 10),
+      enrolledAt: localDateIso(),
     };
     mutateData((data) => {
       data.students.push(student);

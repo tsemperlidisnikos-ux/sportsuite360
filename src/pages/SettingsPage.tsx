@@ -1,8 +1,18 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { Building2, Database, FileText, ImagePlus, Ruler, Trash2, Trophy } from 'lucide-react';
+import {
+  Building2,
+  Database,
+  FileText,
+  ImagePlus,
+  Ruler,
+  Trash2,
+  Trophy,
+  Users,
+} from 'lucide-react';
 import { getSession } from '../auth/auth';
 import { getClubById, updateClubLogo } from '../auth/clubs';
 import { BackupPanel } from '../components/BackupPanel';
+import { ClubUsersPanel } from '../components/ClubUsersPanel';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SizeChartPanel } from '../components/SizeChartPanel';
@@ -13,7 +23,14 @@ import { TermsOfUsePanel } from './TermsOfUsePanel';
 
 const MAX_LOGO_BYTES = 500_000;
 
-type SettingsTab = 'appearance' | 'associations' | 'sports' | 'sizes' | 'terms' | 'backup';
+type SettingsTab =
+  | 'appearance'
+  | 'users'
+  | 'associations'
+  | 'sports'
+  | 'sizes'
+  | 'terms'
+  | 'backup';
 
 export function SettingsPage() {
   const session = getSession();
@@ -24,6 +41,7 @@ export function SettingsPage() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const canManageUsers = session?.role === 'admin' || session?.role === 'platform_admin';
 
   function refreshClub() {
     setClub(getClubById(clubId));
@@ -84,7 +102,7 @@ export function SettingsPage() {
     <div className="stack-lg">
       <PageHeader
         title="Ρυθμίσεις"
-        subtitle="Εμφάνιση συλλόγου, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
+        subtitle="Εμφάνιση συλλόγου, χρήστες, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
       />
 
       <div className="tabs">
@@ -95,6 +113,15 @@ export function SettingsPage() {
         >
           Logo συλλόγου
         </button>
+        {canManageUsers ? (
+          <button
+            type="button"
+            className={`tab ${tab === 'users' ? 'active' : ''}`}
+            onClick={() => setTab('users')}
+          >
+            <Users size={15} /> Χρήστες
+          </button>
+        ) : null}
         <button
           type="button"
           className={`tab ${tab === 'associations' ? 'active' : ''}`}
@@ -186,6 +213,7 @@ export function SettingsPage() {
         )
       ) : null}
 
+      {tab === 'users' && clubId ? <ClubUsersPanel clubId={clubId} /> : null}
       {tab === 'associations' ? <AssociationsPage /> : null}
       {tab === 'sports' ? <SportsPage /> : null}
       {tab === 'sizes' ? <SizeChartPanel /> : null}

@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { createId, getData, mutateData } from '../../data/repository';
 import { trainingSchema, type TrainingInput } from '../../schemas';
 import type { Training } from '../../types';
+import { localDateIso } from '../../utils/dates';
 
 export async function getTrainings() {
   return apiClient(() => getData().trainings ?? []);
@@ -51,7 +52,7 @@ export async function createRecurringTrainings(input: {
     const cursor = new Date(start);
     while (cursor <= end) {
       if (cursor.getDay() === input.weekday) {
-        const date = cursor.toISOString().slice(0, 10);
+        const date = localDateIso(cursor);
         const training: Training = {
           id: createId('trn'),
           date,

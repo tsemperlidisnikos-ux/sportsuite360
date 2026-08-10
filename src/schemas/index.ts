@@ -139,7 +139,7 @@ export const transactionSchema = z.object({
   type: z.enum(['charge', 'payment']),
   month: z.coerce.number().int().min(1).max(12),
   year: z.coerce.number().int().min(2000),
-  paymentMethod: z.enum(['cash', 'card', 'transfer', 'other', '']),
+  paymentMethod: z.enum(['cash', 'transfer', 'card', 'viva', 'other', '']),
   comments: z.string().optional().default(''),
 });
 

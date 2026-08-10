@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { createId, getData, mutateData } from '../../data/repository';
 import { transactionSchema, type TransactionInput } from '../../schemas';
 import type { AthleteTransaction } from '../../types';
+import { localDateTimeIso } from '../../utils/dates';
 
 export async function getTransactions() {
   return apiClient(() => getData().transactions ?? []);
@@ -13,7 +14,7 @@ export async function createTransaction(input: TransactionInput) {
     const transaction: AthleteTransaction = {
       ...parsed,
       id: createId('txn'),
-      createdAt: new Date().toISOString(),
+      createdAt: localDateTimeIso(),
     };
     mutateData((data) => {
       if (!data.transactions) data.transactions = [];

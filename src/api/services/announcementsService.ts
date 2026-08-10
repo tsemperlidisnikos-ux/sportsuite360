@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { createId, mutateData } from '../../data/repository';
 import { announcementSchema, type AnnouncementInput } from '../../schemas';
 import type { Announcement } from '../../types';
+import { localDateTimeIso } from '../../utils/dates';
 
 function toAnnouncement(
   parsed: AnnouncementInput,
@@ -35,7 +36,7 @@ export async function createAnnouncement(input: AnnouncementInput) {
     const announcement = toAnnouncement(
       parsed,
       createId('ann'),
-      new Date().toISOString(),
+      localDateTimeIso(),
     );
     mutateData((data) => {
       data.announcements.unshift(announcement);

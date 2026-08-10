@@ -15,7 +15,10 @@ import {
   getConfiguredExpenseCategories,
   getConfiguredExpenseDescriptions,
 } from '../platform/financeCatalog';
+import { localDateIso } from '../utils/dates';
 import { formatCurrency, formatDate } from '../utils/labels';
+
+const today = () => localDateIso();
 
 function TitleAnalysisRow({
   title,
@@ -71,8 +74,6 @@ function AmountField({
     </div>
   );
 }
-
-const today = () => new Date().toISOString().slice(0, 10);
 
 function emptyMatchDetails(): MatchExpenseDetails {
   return {

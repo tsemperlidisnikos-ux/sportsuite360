@@ -181,13 +181,20 @@
   color: var(--color-text-muted);
 }
 
+.modal.prints-results-modal {
+  width: min(1100px, calc(100vw - 1.5rem));
+  max-width: min(1100px, calc(100vw - 1.5rem));
+  max-height: min(92vh, 960px);
+}
+
 .prints-results-modal-body {
-  max-height: min(60vh, 520px);
+  max-height: min(70vh, 720px);
   overflow: auto;
 }
 
 .prints-results-table {
-  min-width: 960px;
+  width: 100%;
+  min-width: 0;
 }
 
 .prints-results-empty {

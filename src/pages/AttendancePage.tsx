@@ -3,11 +3,12 @@ import { upsertAttendance } from '../api/services/attendanceService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Select } from '../components/ui/Select';
 import { useAppData } from '../hooks/useAppData';
+import { localDateIso } from '../utils/dates';
 
 export function AttendancePage() {
   const { data, refresh } = useAppData();
   const [classId, setClassId] = useState(data.classes[0]?.id ?? '');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => localDateIso());
 
   const students = useMemo(
     () => data.students.filter((s) => s.classId === classId && s.status !== 'inactive'),

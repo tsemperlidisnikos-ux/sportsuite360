@@ -30,7 +30,10 @@ export function StaffPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const staff = useMemo(() => data.staff ?? [], [data.staff]);
+  const staff = useMemo(
+    () => (data.staff ?? []).filter((member) => member.active),
+    [data.staff],
+  );
 
   function openCreate() {
     setEditing(null);

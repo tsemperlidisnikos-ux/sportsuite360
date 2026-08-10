@@ -14,6 +14,7 @@ import {
 } from '../platform/financeCatalog';
 import type { ReportFilters } from '../shared/reportFilters';
 import { buildSeasonPresets } from '../shared/seasonPresets';
+import { localDateIso } from '../utils/dates';
 import type { MatchExpenseDetails } from '../types';
 import { formatCurrency, formatDate } from '../utils/labels';
 
@@ -145,10 +146,10 @@ function exportCsv(items: ReportRow[], filename: string) {
 
 export function FinanceReportsPanel() {
   const { data, refresh } = useAppData();
-  const seasonPresets = useMemo(() => buildSeasonPresets(), []);
   const [draft, setDraft] = useState<ReportFilters>(emptyFilters);
   const [applied, setApplied] = useState<ReportFilters>(emptyFilters);
   const [activeSeason, setActiveSeason] = useState<string | null>(null);
+  const seasonPresets = buildSeasonPresets();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -200,6 +201,8 @@ export function FinanceReportsPanel() {
     ];
   }, [draft.type]);
 
+  const todayIso = localDateIso();
+
   const items = useMemo(
     () => allRows.filter((row) => matchesFilters(row, applied)),
     [allRows, applied],
@@ -211,6 +214,35 @@ export function FinanceReportsPanel() {
   const expenseTotal = items
     .filter((item) => item.type === 'expense')
     .reduce((sum, item) => sum + item.amount, 0);
+
+  const todayItems = useMemo(
+    () => allRows.filter((row) => row.date === todayIso),
+    [allRows, todayIso],
+  );
+  const todayIncomeTotal = todayItems
+    .filter((item) => item.type === 'income')
+    .reduce((sum, item) => sum + item.amount, 0);
+  const todayExpenseTotal = todayItems
+    .filter((item) => item.type === 'expense')
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const dailyTotals = useMemo(() => {
+    const byDay = new Map<string, { income: number; expense: number }>();
+    for (const item of items) {
+      const entry = byDay.get(item.date) ?? { income: 0, expense: 0 };
+      if (item.type === 'income') entry.income += item.amount;
+      else entry.expense += item.amount;
+      byDay.set(item.date, entry);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, values]) => ({
+        date,
+        income: values.income,
+        expense: values.expense,
+        balance: values.income - values.expense,
+      }));
+  }, [items]);
 
   function updateDraft<K extends keyof ReportFilters>(key: K, value: ReportFilters[K]) {
     if (key === 'dateFrom' || key === 'dateTo') setActiveSeason(null);
@@ -226,7 +258,7 @@ export function FinanceReportsPanel() {
   }
 
   function applySeason(seasonId: string) {
-    const season = seasonPresets.find((item) => item.id === seasonId);
+    const season = buildSeasonPresets().find((item) => item.id === seasonId);
     if (!season) return;
     const next = {
       ...draft,
@@ -326,7 +358,7 @@ export function FinanceReportsPanel() {
       <div className="report-templates no-print">
         <div className="report-templates-header">
           <h3>Περίοδος</h3>
-          <p className="muted-text">Γρήγορη επιλογή σεζόν ή τρέχοντος μήνα.</p>
+          <p className="muted-text">Γρήγορη επιλογή σεζόν, τρέχοντος μήνα ή τρέχουσας ημέρας.</p>
         </div>
         <div className="report-template-actions">
           {seasonPresets.map((season) => (
@@ -361,6 +393,51 @@ export function FinanceReportsPanel() {
           <strong>{formatCurrency(incomeTotal - expenseTotal)}</strong>
         </div>
       </div>
+
+      <div className="summary-row no-print">
+        <div className="summary-card">
+          <span>Έσοδα σήμερα</span>
+          <strong>{formatCurrency(todayIncomeTotal)}</strong>
+        </div>
+        <div className="summary-card">
+          <span>Έξοδα σήμερα</span>
+          <strong>{formatCurrency(todayExpenseTotal)}</strong>
+        </div>
+        <div className="summary-card">
+          <span>Υπόλοιπο σήμερα</span>
+          <strong>{formatCurrency(todayIncomeTotal - todayExpenseTotal)}</strong>
+        </div>
+      </div>
+
+      {dailyTotals.length > 0 ? (
+        <div className="panel report-daily-totals no-print">
+          <div className="panel-head">
+            <h3>Σύνολα ανά ημέρα</h3>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ημερομηνία</th>
+                  <th>Έσοδα</th>
+                  <th>Έξοδα</th>
+                  <th>Υπόλοιπο</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyTotals.map((day) => (
+                  <tr key={day.date}>
+                    <td>{formatDate(day.date)}</td>
+                    <td className="amount income">{formatCurrency(day.income)}</td>
+                    <td className="amount expense">{formatCurrency(day.expense)}</td>
+                    <td className="amount">{formatCurrency(day.balance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       <form className="filters-panel entry-form no-print" onSubmit={handleSubmit}>
         <TitleAnalysisTable>

@@ -57,6 +57,7 @@ export function StudentsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return data.students.filter((s) => {
+      if (s.status === 'inactive') return false;
       if (!q) return true;
       const hay = `${s.firstName} ${s.lastName} ${s.email} ${s.guardianName}`.toLowerCase();
       return hay.includes(q);

@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { getData, replaceData } from '../data/repository';
 import { loadStore } from '../data/store';
 import { loadPlatformConfig, savePlatformConfig } from '../platform/platformConfig';
+import { localDateIso, localDateTimeIso } from '../utils/dates';
 
 export function BackupPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -19,7 +20,7 @@ export function BackupPanel() {
 
   function handleBackupExport() {
     const payload = {
-      exportedAt: new Date().toISOString(),
+      exportedAt: localDateTimeIso(),
       appData: loadStore() ?? getData(),
       platformConfig: loadPlatformConfig(),
       users: getUsers(),
@@ -29,7 +30,7 @@ export function BackupPanel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `academyhub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `academyhub-backup-${localDateIso()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     flash('Το backup κατέβηκε.');

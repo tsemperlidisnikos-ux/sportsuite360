@@ -203,6 +203,26 @@
   width: 100%;
 }
 
+.admin-record-line-edit {
+  flex-wrap: wrap;
+}
+
+.admin-record-input {
+  flex: 1;
+  min-width: 10rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #c5d0d4;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.admin-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
 .admin-entry-note {
   margin: 0 0 0.65rem;
   color: var(--muted);

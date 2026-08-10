@@ -28,6 +28,11 @@ export function CoachesPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const activeCoaches = useMemo(
+    () => data.coaches.filter((coach) => coach.active),
+    [data.coaches],
+  );
+
   const sportOptions = useMemo(
     () => [
       { value: '', label: 'Επιλέξτε άθλημα' },
@@ -93,7 +98,7 @@ export function CoachesPage() {
       />
 
       <section className="panel table-wrap">
-        {data.coaches.length === 0 ? (
+        {activeCoaches.length === 0 ? (
           <div className="empty-state">
             <h3>Δεν υπάρχουν προπονητές</h3>
             <p>Πάτα «Νέος προπονητής» για να προσθέσεις τον πρώτο.</p>
@@ -116,7 +121,7 @@ export function CoachesPage() {
               </tr>
             </thead>
             <tbody>
-              {data.coaches.map((coach) => {
+              {activeCoaches.map((coach) => {
                 const assigned = data.classes.filter((c) => c.coachId === coach.id);
                 return (
                   <tr key={coach.id}>

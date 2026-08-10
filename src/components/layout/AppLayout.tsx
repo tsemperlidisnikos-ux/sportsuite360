@@ -27,7 +27,7 @@ import {
   type ComponentType,
   type SVGProps,
 } from 'react';
-import { getSession, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
+import { getSession, getUserById, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
 import { getClubById } from '../../auth/clubs';
 import { AthletesIcon } from '../icons/AthletesIcon';
 import { TrainingsIcon } from '../icons/TrainingsIcon';
@@ -38,6 +38,7 @@ import {
   getAppLogoUrl,
   getAppName,
   getPreviewClubId,
+  userCanAccessModule,
   updateAppLogo,
   type AcademyModuleId,
 } from '../../platform/platformConfig';
@@ -93,24 +94,45 @@ export function AppLayout() {
   const appLogoInputRef = useRef<HTMLInputElement>(null);
   const canUploadAppLogo = isPlatformAdmin();
 
+  const [usersTick, setUsersTick] = useState(0);
+
   useEffect(() => {
     const onClubsUpdated = () => setClubTick((n) => n + 1);
     const onPlatformUpdated = () => setPlatformTick((n) => n + 1);
+    const onUsersUpdated = () => setUsersTick((n) => n + 1);
     window.addEventListener('academyhub-clubs-updated', onClubsUpdated);
     window.addEventListener('academyhub-platform-updated', onPlatformUpdated);
+    window.addEventListener('academyhub-users-updated', onUsersUpdated);
     return () => {
       window.removeEventListener('academyhub-clubs-updated', onClubsUpdated);
       window.removeEventListener('academyhub-platform-updated', onPlatformUpdated);
+      window.removeEventListener('academyhub-users-updated', onUsersUpdated);
     };
   }, []);
 
   const enabledModules = useMemo(() => {
     if (!clubId) return new Set(ACADEMY_MODULES.map((m) => m.id));
     return new Set(getAcademyModulesForClub(clubId));
-  }, [clubId]);
+  }, [clubId, platformTick]);
 
-  const visibleAcademy = academyItems.filter((item) => enabledModules.has(item.id));
-  const visibleAnalysis = analysisItems.filter((item) => enabledModules.has(item.id));
+  const accessUser = useMemo(() => {
+    if (!session) return { role: '' as const, permissions: null };
+    if (session.role === 'platform_admin') {
+      return { role: session.role, permissions: null };
+    }
+    const stored = getUserById(session.id);
+    return {
+      role: session.role,
+      permissions: stored?.permissions ?? null,
+    };
+  }, [session, platformTick, clubTick, usersTick]);
+
+  const visibleAcademy = academyItems.filter(
+    (item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id),
+  );
+  const visibleAnalysis = analysisItems.filter(
+    (item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id),
+  );
 
   function handleLogout() {
     endPreview();

@@ -11,7 +11,9 @@ import {
   type RegistryFilters,
   type TriState,
 } from '../utils/athleteRegistryFilter';
+import { PAYMENT_METHODS, paymentMethodLabel } from '../shared/paymentMethods';
 import { sizeChartOptGroups } from '../utils/sizeChartOptions';
+import { localDateIso } from '../utils/dates';
 
 const COMPARE_OPS = ['=', '<', '>', '<=', '>='] as const;
 
@@ -50,10 +52,14 @@ const MENU_ITEMS: Array<{ id: MenuId; title: string }> = [
   { id: 'trainings', title: 'Πρόγραμμα προπονήσεων' },
 ];
 
+function transactionLocalDay(createdAt: string): string {
+  const parsed = new Date(createdAt);
+  if (!Number.isNaN(parsed.getTime())) return localDateIso(parsed);
+  return createdAt.slice(0, 10);
+}
+
 function todayIso(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return localDateIso();
 }
 
 function seasonStartIso(): string {
@@ -258,6 +264,7 @@ function ResultsModal({
   title,
   count,
   total,
+  summary,
   columns,
   rows,
   onClose,
@@ -266,6 +273,7 @@ function ResultsModal({
   title: string;
   count: number;
   total?: number;
+  summary?: string;
   columns: Array<{ key: string; label: string }>;
   rows: Array<Record<string, string>>;
   onClose: () => void;
@@ -275,6 +283,8 @@ function ResultsModal({
       open={open}
       title={title}
       onClose={onClose}
+      wide
+      className="prints-results-modal"
       footer={
         <>
           <Button
@@ -294,6 +304,7 @@ function ResultsModal({
       <p className="prints-results-modal-count">
         Εγγραφές: {count}
         {total != null ? ` / ${total}` : ''}
+        {summary ? ` · ${summary}` : ''}
       </p>
       {rows.length > 0 ? (
         <div className="prints-results-modal-body">
@@ -1145,47 +1156,85 @@ function PaymentsCollectionsSection() {
   const { data } = useAppData();
   const [fromDate, setFromDate] = useState(monthStartIso);
   const [untilDate, setUntilDate] = useState(todayIso);
-  const [teamId, setTeamId] = useState('');
+  const [sport, setSport] = useState('');
+  const [amountMin, setAmountMin] = useState('');
+  const [amountMax, setAmountMax] = useState('');
   const [method, setMethod] = useState('');
   const [entryType, setEntryType] = useState('');
+  const [athleteQuery, setAthleteQuery] = useState('');
+  const [teamId, setTeamId] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+
+  const sportOptions = useMemo(
+    () =>
+      [...new Set((data.sports ?? []).filter((s) => s.active).map((s) => s.name))].sort((a, b) =>
+        a.localeCompare(b, 'el'),
+      ),
+    [data.sports],
+  );
 
   function runSearch() {
-    const next = data.transactions
+    const min = amountMin.trim() ? Number(amountMin) : null;
+    const max = amountMax.trim() ? Number(amountMax) : null;
+    const q = athleteQuery.trim().toLowerCase();
+
+    const filtered = (data.transactions ?? [])
       .filter((t) => {
-        const day = t.createdAt.slice(0, 10);
+        const day = transactionLocalDay(t.createdAt);
         if (fromDate && day < fromDate) return false;
         if (untilDate && day > untilDate) return false;
-        if (entryType === 'charge' && t.type !== 'charge') return false;
-        if (entryType === 'payment' && t.type !== 'payment') return false;
-        if (method && t.paymentMethod !== method) return false;
-        if (teamId) {
-          const student = data.students.find((s) => s.id === t.athleteId);
-          if (!student || student.classId !== teamId) return false;
+        if (entryType && t.type !== entryType) return false;
+        if (method) {
+          const stored = t.paymentMethod === 'other' ? 'viva' : t.paymentMethod;
+          if (stored !== method) return false;
+        }
+        if (min != null && !Number.isNaN(min) && t.amount < min) return false;
+        if (max != null && !Number.isNaN(max) && t.amount > max) return false;
+
+        const student = data.students.find((s) => s.id === t.athleteId);
+        if (teamId && (!student || student.classId !== teamId)) return false;
+        if (sport) {
+          const studentSport = student?.sport ?? '';
+          const classSport = data.classes.find((c) => c.id === student?.classId)?.sport ?? '';
+          if (studentSport !== sport && classSport !== sport) return false;
+        }
+        if (q) {
+          const hay = `${student?.lastName ?? ''} ${student?.firstName ?? ''}`.toLowerCase();
+          if (!hay.includes(q)) return false;
         }
         return true;
       })
-      .map((t, index) => {
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    setTotalAmount(filtered.reduce((acc, t) => acc + t.amount, 0));
+    setRows(
+      filtered.map((t, index) => {
         const student = data.students.find((s) => s.id === t.athleteId);
+        const cls = data.classes.find((c) => c.id === student?.classId);
         return {
           id: t.id,
           index: String(index + 1),
-          date: t.createdAt.slice(0, 10),
-          athlete: student ? `${student.lastName} ${student.firstName}` : '',
+          date: transactionLocalDay(t.createdAt),
+          athlete: student ? `${student.lastName} ${student.firstName}` : '—',
+          sport: student?.sport || cls?.sport || '—',
+          team: cls?.name ?? '—',
+          type: t.type === 'charge' ? 'Χρέωση' : 'Πληρωμή',
           amount: `${t.amount.toFixed(2)} €`,
-          type: t.type === 'charge' ? 'Χρέωση' : 'Πίστωση',
-          method: t.paymentMethod || '—',
+          method: paymentMethodLabel(t.paymentMethod),
+          period: `${String(t.month).padStart(2, '0')}/${t.year}`,
+          receipt: t.receiptNumber || '—',
         };
-      });
-    setRows(next);
+      }),
+    );
     setShowResults(true);
   }
 
   return (
     <SectionShell
       title="Εισπράξεις περιόδου"
-      desc="Πληρωμένες χρεώσεις για επιλεγμένη περίοδο. Φίλτρα ανά τμήμα, τρόπο πληρωμής και τύπο κίνησης."
+      desc="Χρεώσεις και πληρωμές για επιλεγμένη περίοδο. Φίλτρα ανά ημερομηνία, άθλημα, ποσό, τρόπο πληρωμής, τύπο, αθλητή και τμήμα."
     >
       <FilterRow label="Από Ημερομηνία" htmlFor="pay-from">
         <input
@@ -1205,8 +1254,44 @@ function PaymentsCollectionsSection() {
           onChange={(e) => setUntilDate(e.target.value)}
         />
       </FilterRow>
-      <FilterRow label="Τμήματα" htmlFor="pay-team">
-        <TeamSelect id="pay-team" value={teamId} onChange={setTeamId} />
+      <FilterRow label="Άθλημα" htmlFor="pay-sport">
+        <select
+          id="pay-sport"
+          className="prints-filter-input"
+          value={sport}
+          onChange={(e) => setSport(e.target.value)}
+        >
+          <option value="">Όλα</option>
+          {sportOptions.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </FilterRow>
+      <FilterRow label="Ποσό από" htmlFor="pay-amount-min">
+        <input
+          id="pay-amount-min"
+          type="number"
+          min={0}
+          step="0.01"
+          className="prints-filter-input"
+          value={amountMin}
+          onChange={(e) => setAmountMin(e.target.value)}
+          placeholder="π.χ. 10"
+        />
+      </FilterRow>
+      <FilterRow label="Ποσό έως" htmlFor="pay-amount-max">
+        <input
+          id="pay-amount-max"
+          type="number"
+          min={0}
+          step="0.01"
+          className="prints-filter-input"
+          value={amountMax}
+          onChange={(e) => setAmountMax(e.target.value)}
+          placeholder="π.χ. 100"
+        />
       </FilterRow>
       <FilterRow label="Τρόπος πληρωμής" htmlFor="pay-method">
         <select
@@ -1216,10 +1301,11 @@ function PaymentsCollectionsSection() {
           onChange={(e) => setMethod(e.target.value)}
         >
           <option value="">Όλα</option>
-          <option value="cash">Μετρητά</option>
-          <option value="card">POS</option>
-          <option value="transfer">Κατάθεση</option>
-          <option value="other">Άλλο</option>
+          {PAYMENT_METHODS.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
         </select>
       </FilterRow>
       <FilterRow label="Τύπος κίνησης" htmlFor="pay-type">
@@ -1231,8 +1317,21 @@ function PaymentsCollectionsSection() {
         >
           <option value="">Όλα</option>
           <option value="charge">Χρέωση</option>
-          <option value="payment">Πίστωση</option>
+          <option value="payment">Πληρωμή</option>
         </select>
+      </FilterRow>
+      <FilterRow label="Αθλητής" htmlFor="pay-athlete">
+        <input
+          id="pay-athlete"
+          type="text"
+          className="prints-filter-input"
+          value={athleteQuery}
+          onChange={(e) => setAthleteQuery(e.target.value)}
+          placeholder="Επώνυμο ή όνομα"
+        />
+      </FilterRow>
+      <FilterRow label="Τμήματα" htmlFor="pay-team">
+        <TeamSelect id="pay-team" value={teamId} onChange={setTeamId} />
       </FilterRow>
       <div className="prints-filter-actions">
         <Button type="button" onClick={runSearch}>
@@ -1243,13 +1342,18 @@ function PaymentsCollectionsSection() {
         open={showResults}
         title="Εισπράξεις περιόδου"
         count={rows.length}
+        summary={`Σύνολο ποσών: ${totalAmount.toFixed(2)} €`}
         columns={[
           { key: 'index', label: '#' },
           { key: 'date', label: 'Ημερομηνία' },
           { key: 'athlete', label: 'Αθλητής' },
-          { key: 'amount', label: 'Ποσό' },
+          { key: 'sport', label: 'Άθλημα' },
+          { key: 'team', label: 'Τμήμα' },
           { key: 'type', label: 'Τύπος' },
+          { key: 'amount', label: 'Ποσό' },
           { key: 'method', label: 'Τρόπος' },
+          { key: 'period', label: 'Περίοδος' },
+          { key: 'receipt', label: 'Απόδειξη' },
         ]}
         rows={rows}
         onClose={() => setShowResults(false)}

@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { createId, mutateData } from '../../data/repository';
 import { warehouseProductSchema, type WarehouseProductInput } from '../../schemas';
 import type { WarehouseProduct } from '../../types';
+import { localDateTimeIso } from '../../utils/dates';
 
 export async function createProduct(input: WarehouseProductInput) {
   return apiClient(() => {
@@ -9,7 +10,7 @@ export async function createProduct(input: WarehouseProductInput) {
     const product: WarehouseProduct = {
       ...parsed,
       id: createId('product'),
-      createdAt: new Date().toISOString(),
+      createdAt: localDateTimeIso(),
     };
     mutateData((data) => {
       if (!data.products) data.products = [];

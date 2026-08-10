@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { createId, getData, mutateData } from '../../data/repository';
 import { coachSchema, type CoachInput } from '../../schemas';
 import type { Coach } from '../../types';
+import { localDateIso } from '../../utils/dates';
 
 export async function getCoaches() {
   return apiClient(() => getData().coaches);
@@ -13,7 +14,7 @@ export async function createCoach(input: CoachInput) {
     const coach: Coach = {
       ...parsed,
       id: createId('coach'),
-      hireDate: new Date().toISOString().slice(0, 10),
+      hireDate: localDateIso(),
     };
     mutateData((data) => {
       data.coaches.push(coach);

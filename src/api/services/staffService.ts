@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { apiClient } from '../apiClient';
 import { createId, getData, mutateData } from '../../data/repository';
 import type { StaffMember } from '../../types';
+import { localDateIso } from '../../utils/dates';
 
 export const staffSchema = z.object({
   fullName: z.string().min(2, 'Το ονοματεπώνυμο είναι υποχρεωτικό'),
@@ -23,7 +24,7 @@ export async function createStaff(input: StaffInput) {
     const member: StaffMember = {
       ...parsed,
       id: createId('staff'),
-      hireDate: new Date().toISOString().slice(0, 10),
+      hireDate: localDateIso(),
     };
     mutateData((data) => {
       if (!data.staff) data.staff = [];

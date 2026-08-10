@@ -383,6 +383,10 @@ strong {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.stats-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -923,6 +927,59 @@ th {
 .settings-panel .lede {
   margin: 0 0 1rem;
   color: var(--muted);
+}
+
+.club-users-panel h4 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.club-users-form {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.club-users-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.club-users-permissions {
+  margin-bottom: 0.85rem;
+}
+
+.club-users-permissions strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.9rem;
+}
+
+.club-users-permissions .admin-check-list {
+  max-height: none;
+  overflow: visible;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .club-users-permissions .admin-check-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.club-users-list {
+  margin-top: 0.5rem;
+}
+
+.club-users-search {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 0.85rem;
 }
 
 .settings-logo-row {
@@ -1476,7 +1533,8 @@ th {
   .grid-2,
   .form-grid,
   .stats-grid,
-  .stats-grid.cols-3 {
+  .stats-grid.cols-3,
+  .stats-grid.cols-4 {
     grid-template-columns: 1fr;
   }
 

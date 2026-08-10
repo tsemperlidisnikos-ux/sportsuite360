@@ -327,6 +327,16 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.report-daily-totals {
+  margin-bottom: 1rem;
+}
+
+.report-daily-totals .panel-head h3 {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .budget-summary-row {

@@ -14,7 +14,10 @@ import {
   getConfiguredIncomeCategories,
   getConfiguredIncomeDescriptions,
 } from '../platform/financeCatalog';
+import { localDateIso } from '../utils/dates';
 import { formatCurrency, formatDate } from '../utils/labels';
+
+const today = () => localDateIso();
 
 function TitleAnalysisRow({
   title,
@@ -47,11 +50,9 @@ function TitleAnalysisTable({ children }: { children: ReactNode }) {
   );
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   const { data } = useAppData();
-  const [subcategory, setSubcategory] = useState<string>(() => getConfiguredIncomeCategories()[0] ?? 'ΣΥΝΔΡΟΜΕΣ ΜΕΛΩΝ');
+  const [subcategory, setSubcategory] = useState<string>(() => getConfiguredIncomeCategories()[0] ?? 'ΕΙΣΙΤΗΡΙΑ ΑΓΩΝΩΝ');
   const [clubName, setClubName] = useState('');
   const [sport, setSport] = useState('');
   const [studentId, setStudentId] = useState('');

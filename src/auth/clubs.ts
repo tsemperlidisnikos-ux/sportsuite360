@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { fail, ok, type ApiResult } from '../api/apiClient';
+import { localDateIso } from '../utils/dates';
 import {
   getUsers,
   login,
@@ -104,7 +105,7 @@ export function registerClub(
     city: data.city?.trim() ?? '',
     phone: data.phone?.trim() ?? '',
     adminUserId: userId,
-    createdAt: new Date().toISOString().slice(0, 10),
+    createdAt: localDateIso(),
     athleteLicenseLimit: 10,
     athleteLicenseUsed: 0,
   };

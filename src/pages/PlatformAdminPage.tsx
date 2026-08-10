@@ -7,32 +7,25 @@ import { createId, getData, mutateData, replaceData, resetData } from '../data/r
 import { loadStore } from '../data/store';
 import {
   ACADEMY_MODULES,
-  ACADEMY_PERMISSIONS,
-  ACADEMY_PERMISSION_LABELS,
-  ACADEMY_ROLE_LABELS,
-  ACADEMY_ROLES,
+  CLUB_PERMISSION_LABELS,
+  CLUB_PERMISSIONS,
+  CLUB_ROLE_LABELS,
+  CLUB_ROLES,
   endPreview,
   getAcademyModulesForClub,
   getPreviewClubId,
-  getScfModulesForClub,
   loadPlatformConfig,
   resetFinanceCatalogDefaults,
+  saveFinanceCatalogAsDefaults,
   savePlatformConfig,
   updateAppLogo,
-  SCF_CLUB_ROLE_LABELS,
-  SCF_CLUB_ROLES,
-  SCF_MODULES,
-  SCF_PERMISSION_LABELS,
-  SCF_PERMISSIONS,
   startPreview,
   type AcademyModuleId,
-  type AcademyPermission,
-  type AcademyRole,
+  type ClubPermission,
+  type ClubRole,
   type PlatformConfig,
-  type ScfClubRole,
-  type ScfModuleId,
-  type ScfPermission,
 } from '../platform/platformConfig';
+import { localDateIso, localDateTimeIso } from '../utils/dates';
 
 function AdminRow({
   title,
@@ -78,14 +71,97 @@ function RecordsRow({ title, children }: { title: string; children: ReactNode })
   );
 }
 
+function EditableRecordLine({
+  value,
+  uppercase = false,
+  onSave,
+  onDelete,
+}: {
+  value: string;
+  uppercase?: boolean;
+  onSave: (nextValue: string) => { success: boolean; error?: string };
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  function startEdit() {
+    setDraft(value);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setDraft(value);
+    setEditing(false);
+  }
+
+  function saveEdit() {
+    const next = uppercase ? draft.trim().toUpperCase() : draft.trim();
+    if (!next) return;
+    if (next === value) {
+      setEditing(false);
+      return;
+    }
+    const result = onSave(next);
+    if (result.success) {
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="admin-record-line admin-record-line-edit">
+        <input
+          className="admin-record-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              saveEdit();
+            }
+            if (e.key === 'Escape') cancelEdit();
+          }}
+          autoFocus
+        />
+        <div className="admin-record-actions">
+          <button type="button" className="btn btn-ghost" onClick={saveEdit}>
+            Αποθήκευση
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={cancelEdit}>
+            Άκυρο
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-record-line">
+      <span>{value}</span>
+      <div className="admin-record-actions">
+        <button type="button" className="btn btn-ghost" onClick={startEdit}>
+          Επεξεργασία
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onDelete}>
+          Διαγραφή
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function PlatformAdminPage() {
   const navigate = useNavigate();
   const session = getSession();
   const clubs = useMemo(() => getClubs(), []);
-  const [config, setConfig] = useState<PlatformConfig>(() => resetFinanceCatalogDefaults());
+  const [config, setConfig] = useState<PlatformConfig>(() => {
+    const loaded = loadPlatformConfig();
+    saveFinanceCatalogAsDefaults(loaded);
+    return loaded;
+  });
   const [catalogClubId, setCatalogClubId] = useState(clubs[0]?.id ?? '');
-  const [scfRole, setScfRole] = useState<ScfClubRole>('treasurer');
-  const [academyRole, setAcademyRole] = useState<AcademyRole>('admin');
+  const [clubRole, setClubRole] = useState<ClubRole>('admin');
   const [message, setMessage] = useState('');
   const [newIncomeCategory, setNewIncomeCategory] = useState('');
   const [newExpenseCategory, setNewExpenseCategory] = useState('');
@@ -93,7 +169,6 @@ export function PlatformAdminPage() {
   const [expenseDescSub, setExpenseDescSub] = useState(config.expenseCategories[0] ?? '');
   const [newIncomeDesc, setNewIncomeDesc] = useState('');
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
-  const [newRegistryKind, setNewRegistryKind] = useState('');
   const [newAssociation, setNewAssociation] = useState('');
   const [newSport, setNewSport] = useState('');
   const [newSeason, setNewSeason] = useState('');
@@ -101,13 +176,8 @@ export function PlatformAdminPage() {
 
   const selectedClub: Club | undefined = clubs.find((c) => c.id === catalogClubId);
   const previewClubId = getPreviewClubId();
-  const scfModules = catalogClubId ? getScfModulesForClub(catalogClubId) : [];
   const academyModules = catalogClubId ? getAcademyModulesForClub(catalogClubId) : [];
   const appData = useMemo(() => getData(), [tick]);
-  const loginAccounts = useMemo(
-    () => getUsers().filter((u) => u.role !== 'platform_admin'),
-    [tick],
-  );
 
   function persist(next: PlatformConfig) {
     setConfig(next);
@@ -119,20 +189,77 @@ export function PlatformAdminPage() {
     window.setTimeout(() => setMessage(''), 2500);
   }
 
-  function toggleScfModule(moduleId: ScfModuleId) {
-    if (!catalogClubId) return;
-    const current = getScfModulesForClub(catalogClubId);
-    const nextList = current.includes(moduleId)
-      ? current.filter((id) => id !== moduleId)
-      : [...current, moduleId];
-    if (nextList.length === 0) {
-      flash('Πρέπει να μείνει τουλάχιστον μία καρτέλα.');
-      return;
+  function toggleClubPermission(permission: ClubPermission) {
+    const current = config.clubRolePermissions?.[clubRole] ?? [];
+    const nextList = current.includes(permission)
+      ? current.filter((p) => p !== permission)
+      : [...current, permission];
+    persist({
+      ...config,
+      clubRolePermissions: {
+        ...(config.clubRolePermissions ?? {}),
+        [clubRole]: nextList,
+      },
+    });
+  }
+
+  function renameIncomeCategory(oldLabel: string, nextLabel: string) {
+    if (nextLabel !== oldLabel && config.incomeCategories.includes(nextLabel)) {
+      flash('Υπάρχει ήδη.');
+      return { success: false, error: 'Υπάρχει ήδη.' };
+    }
+    const descriptions = { ...config.incomeDescriptions };
+    descriptions[nextLabel] = descriptions[oldLabel] ?? [];
+    if (nextLabel !== oldLabel) delete descriptions[oldLabel];
+    persist({
+      ...config,
+      incomeCategories: config.incomeCategories.map((c) => (c === oldLabel ? nextLabel : c)),
+      incomeDescriptions: descriptions,
+    });
+    if (incomeDescSub === oldLabel) setIncomeDescSub(nextLabel);
+    flash('Η κατηγορία ενημερώθηκε.');
+    return { success: true };
+  }
+
+  function renameExpenseCategory(oldLabel: string, nextLabel: string) {
+    if (nextLabel !== oldLabel && config.expenseCategories.includes(nextLabel)) {
+      flash('Υπάρχει ήδη.');
+      return { success: false, error: 'Υπάρχει ήδη.' };
+    }
+    const descriptions = { ...config.expenseDescriptions };
+    descriptions[nextLabel] = descriptions[oldLabel] ?? [];
+    if (nextLabel !== oldLabel) delete descriptions[oldLabel];
+    persist({
+      ...config,
+      expenseCategories: config.expenseCategories.map((c) => (c === oldLabel ? nextLabel : c)),
+      expenseDescriptions: descriptions,
+    });
+    if (expenseDescSub === oldLabel) setExpenseDescSub(nextLabel);
+    flash('Η κατηγορία ενημερώθηκε.');
+    return { success: true };
+  }
+
+  function renameDescription(
+    kind: 'income' | 'expense',
+    subcategory: string,
+    oldLabel: string,
+    nextLabel: string,
+  ) {
+    const mapKey = kind === 'income' ? 'incomeDescriptions' : 'expenseDescriptions';
+    const current = config[mapKey][subcategory] ?? [];
+    if (nextLabel !== oldLabel && current.includes(nextLabel)) {
+      flash('Υπάρχει ήδη.');
+      return { success: false, error: 'Υπάρχει ήδη.' };
     }
     persist({
       ...config,
-      scfModulesByClub: { ...config.scfModulesByClub, [catalogClubId]: nextList },
+      [mapKey]: {
+        ...config[mapKey],
+        [subcategory]: current.map((d) => (d === oldLabel ? nextLabel : d)),
+      },
     });
+    flash('Η περιγραφή ενημερώθηκε.');
+    return { success: true };
   }
 
   function toggleAcademyModule(moduleId: AcademyModuleId) {
@@ -148,28 +275,6 @@ export function PlatformAdminPage() {
     persist({
       ...config,
       academyModulesByClub: { ...config.academyModulesByClub, [catalogClubId]: nextList },
-    });
-  }
-
-  function toggleScfPermission(permission: ScfPermission) {
-    const current = config.scfRolePermissions[scfRole] ?? [];
-    const nextList = current.includes(permission)
-      ? current.filter((p) => p !== permission)
-      : [...current, permission];
-    persist({
-      ...config,
-      scfRolePermissions: { ...config.scfRolePermissions, [scfRole]: nextList },
-    });
-  }
-
-  function toggleAcademyPermission(permission: AcademyPermission) {
-    const current = config.academyRolePermissions[academyRole] ?? [];
-    const nextList = current.includes(permission)
-      ? current.filter((p) => p !== permission)
-      : [...current, permission];
-    persist({
-      ...config,
-      academyRolePermissions: { ...config.academyRolePermissions, [academyRole]: nextList },
     });
   }
 
@@ -190,7 +295,7 @@ export function PlatformAdminPage() {
 
   function handleBackupExport() {
     const payload = {
-      exportedAt: new Date().toISOString(),
+      exportedAt: localDateTimeIso(),
       appData: loadStore() ?? getData(),
       platformConfig: loadPlatformConfig(),
       users: getUsers(),
@@ -200,7 +305,7 @@ export function PlatformAdminPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `academyhub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `academyhub-backup-${localDateIso()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     flash('Το backup κατέβηκε.');
@@ -277,7 +382,7 @@ export function PlatformAdminPage() {
           <p className="eyebrow">Platform Admin</p>
           <h1>Διαχείριση</h1>
           <p className="lede">
-            Ρυθμίσεις Sport Club Finance και Academio για συλλόγους, ρόλους και καταλόγους.
+            Ρυθμίσεις πλατφόρμας και ακαδημίας για συλλόγους και καταλόγους.
           </p>
         </div>
         <div className="platform-admin-actions">
@@ -304,7 +409,7 @@ export function PlatformAdminPage() {
       {message ? <p className="platform-admin-banner">{message}</p> : null}
 
       <section className="admin-board-section">
-        <h2 className="admin-section-label">Sport Club Finance</h2>
+        <h2 className="admin-section-label">Πλατφόρμα</h2>
         <div className="admin-board">
           <div className="admin-board-header" aria-hidden="true">
             <div>Τίτλος</div>
@@ -377,231 +482,6 @@ export function PlatformAdminPage() {
           />
 
           <AdminRow
-            title="Preview συλλόγου"
-            description="Δείτε την εφαρμογή όπως εμφανίζεται σε συγκεκριμένο λογαριασμό, χωρίς αποθήκευση αλλαγών."
-            entry={
-              <div className="entry-form admin-entry">
-                <label className="field">
-                  <span>Λογαριασμός</span>
-                  <select
-                    value={catalogClubId}
-                    onChange={(e) => setCatalogClubId(e.target.value)}
-                  >
-                    <option value="">Επιλέξτε…</option>
-                    {clubs.map((club) => (
-                      <option key={club.id} value={club.id}>
-                        {club.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="admin-entry-actions">
-                  <Button type="button" onClick={handlePreview} disabled={!catalogClubId}>
-                    Preview εφαρμογής
-                  </Button>
-                  {previewClubId ? (
-                    <Button type="button" variant="secondary" onClick={handleEndPreview}>
-                      Τέλος preview
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            }
-            records={
-              <RecordsTable>
-                <RecordsRow title="Κατάσταση">
-                  {previewClubId
-                    ? `Ενεργό preview: ${clubs.find((c) => c.id === previewClubId)?.name ?? previewClubId}`
-                    : 'Δεν υπάρχει ενεργό preview.'}
-                </RecordsRow>
-              </RecordsTable>
-            }
-          />
-
-          <AdminRow
-            title="Καρτέλες συλλόγου"
-            description="Ποιες καρτέλες εμφανίζονται στο Finance (Dashboard, Έσοδα, Έξοδα, Προϋπολογισμός, Εκτυπώσεις)."
-            entry={
-              <div className="entry-form admin-entry">
-                <label className="field">
-                  <span>Λογαριασμός</span>
-                  <select
-                    value={catalogClubId}
-                    onChange={(e) => setCatalogClubId(e.target.value)}
-                  >
-                    <option value="">Επιλέξτε…</option>
-                    {clubs.map((club) => (
-                      <option key={club.id} value={club.id}>
-                        {club.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="admin-check-list">
-                  {SCF_MODULES.map((module) => (
-                    <label key={module.id} className="admin-check">
-                      <span>
-                        {module.label}: {scfModules.includes(module.id) ? 'Εμφανής' : 'Κρυφή'}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={scfModules.includes(module.id)}
-                        onChange={() => toggleScfModule(module.id)}
-                        disabled={!catalogClubId}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => flash('Οι καρτέλες αποθηκεύτηκαν.')}
-                  disabled={!catalogClubId}
-                >
-                  Αποθήκευση καρτελών
-                </Button>
-              </div>
-            }
-            records={
-              <RecordsTable>
-                <RecordsRow title="Ενεργές">
-                  {selectedClub
-                    ? scfModules
-                        .map((id) => SCF_MODULES.find((m) => m.id === id)?.label ?? id)
-                        .join(' · ') || '—'
-                    : 'Επιλέξτε λογαριασμό'}
-                </RecordsRow>
-              </RecordsTable>
-            }
-          />
-
-          <AdminRow
-            title="Δικαιώματα ρόλων"
-            description="Ορισμός δικαιωμάτων για ρόλους συλλόγου (Ταμίας, Γραμματεία κ.λπ.). Ισχύουν στο επόμενο login."
-            entry={
-              <div className="entry-form admin-entry">
-                <div className="admin-role-tabs">
-                  {SCF_CLUB_ROLES.map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      className={`report-chip ${scfRole === role ? 'is-active' : ''}`}
-                      onClick={() => setScfRole(role)}
-                    >
-                      {SCF_CLUB_ROLE_LABELS[role]}
-                    </button>
-                  ))}
-                </div>
-                <div className="admin-check-list">
-                  {SCF_PERMISSIONS.map((permission) => (
-                    <label key={permission} className="admin-check">
-                      <span>
-                        {SCF_PERMISSION_LABELS[permission]}:{' '}
-                        {(config.scfRolePermissions[scfRole] ?? []).includes(permission)
-                          ? 'Ενεργό'
-                          : 'Ανενεργό'}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={(config.scfRolePermissions[scfRole] ?? []).includes(permission)}
-                        onChange={() => toggleScfPermission(permission)}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <Button type="button" onClick={() => flash('Τα δικαιώματα αποθηκεύτηκαν.')}>
-                  Αποθήκευση δικαιωμάτων
-                </Button>
-              </div>
-            }
-            records={
-              <RecordsTable>
-                <RecordsRow title="Ενεργά">
-                  {(config.scfRolePermissions[scfRole] ?? [])
-                    .map((p) => SCF_PERMISSION_LABELS[p])
-                    .join(' · ') || 'Κανένα'}
-                </RecordsRow>
-                <RecordsRow title="Σημείωση">
-                  Οι αλλαγές εφαρμόζονται στο επόμενο login ή ανανέωση συνεδρίας.
-                </RecordsRow>
-              </RecordsTable>
-            }
-          />
-
-          <AdminRow
-            title="Κατηγορίες εξόδων"
-            description="Υποκατηγορίες εξόδων που εμφανίζονται στη φόρμα καταχώρησης (προεπιλογές Sport Club Finance)."
-            entry={
-              <form
-                className="entry-form admin-entry"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const label = newExpenseCategory.trim().toUpperCase();
-                  if (!label) return;
-                  if (config.expenseCategories.includes(label)) {
-                    flash('Υπάρχει ήδη.');
-                    return;
-                  }
-                  persist({
-                    ...config,
-                    expenseCategories: [...config.expenseCategories, label],
-                    expenseDescriptions: { ...config.expenseDescriptions, [label]: [] },
-                  });
-                  setNewExpenseCategory('');
-                  flash('Προστέθηκε κατηγορία εξόδου.');
-                }}
-              >
-                <div className="admin-entry-actions">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      const next = resetFinanceCatalogDefaults(config);
-                      setConfig(next);
-                      setIncomeDescSub(next.incomeCategories[0] ?? '');
-                      setExpenseDescSub(next.expenseCategories[0] ?? '');
-                      flash('Επαναφορά προεπιλογών εσόδων/εξόδων.');
-                    }}
-                  >
-                    Επαναφορά defaults
-                  </Button>
-                </div>
-                <label className="field">
-                  <span>Νέα κατηγορία</span>
-                  <input
-                    value={newExpenseCategory}
-                    onChange={(e) => setNewExpenseCategory(e.target.value)}
-                    placeholder="π.χ. ΜΕΤΑΦΟΡΕΣ"
-                  />
-                </label>
-                <Button type="submit">Προσθήκη</Button>
-              </form>
-            }
-            records={
-              <RecordsTable>
-                {config.expenseCategories.map((item) => (
-                  <RecordsRow key={item} title="Κατηγορία">
-                    <div className="admin-record-line">
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => {
-                          persist({
-                            ...config,
-                            expenseCategories: config.expenseCategories.filter((c) => c !== item),
-                          });
-                        }}
-                      >
-                        Διαγραφή
-                      </button>
-                    </div>
-                  </RecordsRow>
-                ))}
-              </RecordsTable>
-            }
-          />
-
-          <AdminRow
             title="Κατηγορίες εσόδων"
             description="Υποκατηγορίες εσόδων που εμφανίζονται στη φόρμα καταχώρησης."
             entry={
@@ -624,6 +504,31 @@ export function PlatformAdminPage() {
                   flash('Προστέθηκε κατηγορία εσόδου.');
                 }}
               >
+                <div className="admin-entry-actions">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      saveFinanceCatalogAsDefaults(config);
+                      flash('Οι τρέχουσες κατηγορίες ορίστηκαν ως προεπιλογές.');
+                    }}
+                  >
+                    Ορισμός ως προεπιλογές
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      const next = resetFinanceCatalogDefaults(config);
+                      setConfig(next);
+                      setIncomeDescSub(next.incomeCategories[0] ?? '');
+                      setExpenseDescSub(next.expenseCategories[0] ?? '');
+                      flash('Επαναφορά προεπιλογών εσόδων/εξόδων.');
+                    }}
+                  >
+                    Επαναφορά defaults
+                  </Button>
+                </div>
                 <label className="field">
                   <span>Νέα κατηγορία</span>
                   <input
@@ -639,21 +544,25 @@ export function PlatformAdminPage() {
               <RecordsTable>
                 {config.incomeCategories.map((item) => (
                   <RecordsRow key={item} title="Κατηγορία">
-                    <div className="admin-record-line">
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => {
-                          persist({
-                            ...config,
-                            incomeCategories: config.incomeCategories.filter((c) => c !== item),
-                          });
-                        }}
-                      >
-                        Διαγραφή
-                      </button>
-                    </div>
+                    <EditableRecordLine
+                      value={item}
+                      uppercase
+                      onSave={(next) => renameIncomeCategory(item, next)}
+                      onDelete={() => {
+                        const descriptions = { ...config.incomeDescriptions };
+                        delete descriptions[item];
+                        persist({
+                          ...config,
+                          incomeCategories: config.incomeCategories.filter((c) => c !== item),
+                          incomeDescriptions: descriptions,
+                        });
+                        if (incomeDescSub === item) {
+                          setIncomeDescSub(
+                            config.incomeCategories.find((c) => c !== item) ?? '',
+                          );
+                        }
+                      }}
+                    />
                   </RecordsRow>
                 ))}
               </RecordsTable>
@@ -661,40 +570,132 @@ export function PlatformAdminPage() {
           />
 
           <AdminRow
-            title="Backup βάσης"
-            description="Εξαγωγή / εισαγωγή πλήρους αντιγράφου (δεδομένα εφαρμογής + ρυθμίσεις πλατφόρμας)."
+            title="Περιγραφές εσόδων"
+            description="Επιλογές dropdown ανά υποκατηγορία εσόδου."
             entry={
-              <div className="entry-form admin-entry">
-                <div className="admin-entry-actions">
-                  <Button type="button" onClick={handleBackupExport}>
-                    Λήψη backup
-                  </Button>
-                  <Button type="button" variant="danger" onClick={handleResetAppData}>
-                    Μηδενισμός δεδομένων
-                  </Button>
-                </div>
-                <form onSubmit={handleBackupImport} className="admin-import-form">
-                  <p className="admin-entry-note">
-                    Επιλέξτε αρχείο <strong>.json</strong> που κατεβάσατε από «Λήψη backup»
-                    (όχι το .zip του κώδικα). Η επαναφορά ξεκινά μόλις επιλέξετε το αρχείο.
-                  </p>
-                  <input
-                    name="backupFile"
-                    type="file"
-                    accept="application/json,.json"
-                    onChange={handleBackupFileChange}
-                  />
-                  <Button type="submit" variant="secondary">
-                    Επαναφορά από αρχείο
-                  </Button>
-                </form>
-              </div>
+              <form
+                className="entry-form admin-entry"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const label = newIncomeDesc.trim().toUpperCase();
+                  if (!incomeDescSub || !label) return;
+                  const current = config.incomeDescriptions[incomeDescSub] ?? [];
+                  if (current.includes(label)) {
+                    flash('Υπάρχει ήδη.');
+                    return;
+                  }
+                  persist({
+                    ...config,
+                    incomeDescriptions: {
+                      ...config.incomeDescriptions,
+                      [incomeDescSub]: [...current, label],
+                    },
+                  });
+                  setNewIncomeDesc('');
+                }}
+              >
+                <label className="field">
+                  <span>Υποκατηγορία</span>
+                  <select value={incomeDescSub} onChange={(e) => setIncomeDescSub(e.target.value)}>
+                    {config.incomeCategories.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Νέα περιγραφή</span>
+                  <input value={newIncomeDesc} onChange={(e) => setNewIncomeDesc(e.target.value)} />
+                </label>
+                <Button type="submit">Προσθήκη</Button>
+              </form>
             }
             records={
               <RecordsTable>
-                <RecordsRow title="Περιεχόμενο">
-                  Users, clubs, app data, κατηγορίες, περιγραφές, δικαιώματα.
-                </RecordsRow>
+                {(config.incomeDescriptions[incomeDescSub] ?? []).map((item) => (
+                  <RecordsRow key={item} title="Περιγραφή">
+                    <EditableRecordLine
+                      value={item}
+                      uppercase
+                      onSave={(next) => renameDescription('income', incomeDescSub, item, next)}
+                      onDelete={() => {
+                        persist({
+                          ...config,
+                          incomeDescriptions: {
+                            ...config.incomeDescriptions,
+                            [incomeDescSub]: (config.incomeDescriptions[incomeDescSub] ?? []).filter(
+                              (d) => d !== item,
+                            ),
+                          },
+                        });
+                      }}
+                    />
+                  </RecordsRow>
+                ))}
+              </RecordsTable>
+            }
+          />
+
+          <AdminRow
+            title="Κατηγορίες εξόδων"
+            description="Υποκατηγορίες εξόδων που εμφανίζονται στη φόρμα καταχώρησης."
+            entry={
+              <form
+                className="entry-form admin-entry"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const label = newExpenseCategory.trim().toUpperCase();
+                  if (!label) return;
+                  if (config.expenseCategories.includes(label)) {
+                    flash('Υπάρχει ήδη.');
+                    return;
+                  }
+                  persist({
+                    ...config,
+                    expenseCategories: [...config.expenseCategories, label],
+                    expenseDescriptions: { ...config.expenseDescriptions, [label]: [] },
+                  });
+                  setNewExpenseCategory('');
+                  flash('Προστέθηκε κατηγορία εξόδου.');
+                }}
+              >
+                <label className="field">
+                  <span>Νέα κατηγορία</span>
+                  <input
+                    value={newExpenseCategory}
+                    onChange={(e) => setNewExpenseCategory(e.target.value)}
+                    placeholder="π.χ. ΜΕΤΑΦΟΡΕΣ"
+                  />
+                </label>
+                <Button type="submit">Προσθήκη</Button>
+              </form>
+            }
+            records={
+              <RecordsTable>
+                {config.expenseCategories.map((item) => (
+                  <RecordsRow key={item} title="Κατηγορία">
+                    <EditableRecordLine
+                      value={item}
+                      uppercase
+                      onSave={(next) => renameExpenseCategory(item, next)}
+                      onDelete={() => {
+                        const descriptions = { ...config.expenseDescriptions };
+                        delete descriptions[item];
+                        persist({
+                          ...config,
+                          expenseCategories: config.expenseCategories.filter((c) => c !== item),
+                          expenseDescriptions: descriptions,
+                        });
+                        if (expenseDescSub === item) {
+                          setExpenseDescSub(
+                            config.expenseCategories.find((c) => c !== item) ?? '',
+                          );
+                        }
+                      }}
+                    />
+                  </RecordsRow>
+                ))}
               </RecordsTable>
             }
           />
@@ -751,26 +752,22 @@ export function PlatformAdminPage() {
               <RecordsTable>
                 {(config.expenseDescriptions[expenseDescSub] ?? []).map((item) => (
                   <RecordsRow key={item} title="Περιγραφή">
-                    <div className="admin-record-line">
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => {
-                          persist({
-                            ...config,
-                            expenseDescriptions: {
-                              ...config.expenseDescriptions,
-                              [expenseDescSub]: (config.expenseDescriptions[expenseDescSub] ?? []).filter(
-                                (d) => d !== item,
-                              ),
-                            },
-                          });
-                        }}
-                      >
-                        Διαγραφή
-                      </button>
-                    </div>
+                    <EditableRecordLine
+                      value={item}
+                      uppercase
+                      onSave={(next) => renameDescription('expense', expenseDescSub, item, next)}
+                      onDelete={() => {
+                        persist({
+                          ...config,
+                          expenseDescriptions: {
+                            ...config.expenseDescriptions,
+                            [expenseDescSub]: (config.expenseDescriptions[expenseDescSub] ?? []).filter(
+                              (d) => d !== item,
+                            ),
+                          },
+                        });
+                      }}
+                    />
                   </RecordsRow>
                 ))}
               </RecordsTable>
@@ -778,123 +775,159 @@ export function PlatformAdminPage() {
           />
 
           <AdminRow
-            title="Περιγραφές εσόδων"
-            description="Επιλογές dropdown ανά υποκατηγορία εσόδου."
+            title="Δικαιώματα ρόλων"
+            description="Καθολικές προεπιλογές για όλα τα σωματεία. Ό,τι ορίζει εδώ ο Platform Admin ισχύει by default σε κάθε σύλλογο."
             entry={
-              <form
-                className="entry-form admin-entry"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const label = newIncomeDesc.trim().toUpperCase();
-                  if (!incomeDescSub || !label) return;
-                  const current = config.incomeDescriptions[incomeDescSub] ?? [];
-                  if (current.includes(label)) {
-                    flash('Υπάρχει ήδη.');
-                    return;
-                  }
-                  persist({
-                    ...config,
-                    incomeDescriptions: {
-                      ...config.incomeDescriptions,
-                      [incomeDescSub]: [...current, label],
-                    },
-                  });
-                  setNewIncomeDesc('');
-                }}
-              >
+              <div className="entry-form admin-entry">
+                <p className="admin-entry-note">
+                  Τα δικαιώματα αποθηκεύονται κεντρικά και εφαρμόζονται αυτόματα σε όλα τα
+                  σωματεία για τον αντίστοιχο ρόλο.
+                </p>
+                <div className="admin-role-tabs">
+                  {CLUB_ROLES.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      className={`report-chip ${clubRole === role ? 'is-active' : ''}`}
+                      onClick={() => setClubRole(role)}
+                    >
+                      {CLUB_ROLE_LABELS[role]}
+                    </button>
+                  ))}
+                </div>
+                <div className="admin-check-list">
+                  {CLUB_PERMISSIONS.map((permission) => {
+                    const active = (config.clubRolePermissions?.[clubRole] ?? []).includes(
+                      permission,
+                    );
+                    return (
+                      <label key={permission} className="admin-check">
+                        <span>
+                          {CLUB_PERMISSION_LABELS[permission]}: {active ? 'Ενεργό' : 'Ανενεργό'}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={() => toggleClubPermission(permission)}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => flash('Τα δικαιώματα ρόλων αποθηκεύτηκαν για όλα τα σωματεία.')}
+                >
+                  Αποθήκευση δικαιωμάτων
+                </Button>
+              </div>
+            }
+            records={
+              <RecordsTable>
+                <RecordsRow title="Εμβέλεια">Όλα τα σωματεία (by default)</RecordsRow>
+                <RecordsRow title="Ρόλος">{CLUB_ROLE_LABELS[clubRole]}</RecordsRow>
+                <RecordsRow title="Ενεργά">
+                  {(config.clubRolePermissions?.[clubRole] ?? [])
+                    .map((p) => CLUB_PERMISSION_LABELS[p])
+                    .filter(Boolean)
+                    .join(' · ') || 'Κανένα'}
+                </RecordsRow>
+                <RecordsRow title="Σύνολο">
+                  {(config.clubRolePermissions?.[clubRole] ?? []).length} /{' '}
+                  {CLUB_PERMISSIONS.length}
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
+
+          <AdminRow
+            title="Backup βάσης"
+            description="Εξαγωγή / εισαγωγή πλήρους αντιγράφου (δεδομένα εφαρμογής + ρυθμίσεις πλατφόρμας)."
+            entry={
+              <div className="entry-form admin-entry">
+                <div className="admin-entry-actions">
+                  <Button type="button" onClick={handleBackupExport}>
+                    Λήψη backup
+                  </Button>
+                  <Button type="button" variant="danger" onClick={handleResetAppData}>
+                    Μηδενισμός δεδομένων
+                  </Button>
+                </div>
+                <form onSubmit={handleBackupImport} className="admin-import-form">
+                  <p className="admin-entry-note">
+                    Επιλέξτε αρχείο <strong>.json</strong> που κατεβάσατε από «Λήψη backup»
+                    (όχι το .zip του κώδικα). Η επαναφορά ξεκινά μόλις επιλέξετε το αρχείο.
+                  </p>
+                  <input
+                    name="backupFile"
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleBackupFileChange}
+                  />
+                  <Button type="submit" variant="secondary">
+                    Επαναφορά από αρχείο
+                  </Button>
+                </form>
+              </div>
+            }
+            records={
+              <RecordsTable>
+                <RecordsRow title="Περιεχόμενο">
+                  Users, clubs, app data, κατηγορίες, περιγραφές.
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
+        </div>
+      </section>
+
+      <section className="admin-board-section">
+        <h2 className="admin-section-label">Academio</h2>
+        <div className="admin-board">
+          <div className="admin-board-header" aria-hidden="true">
+            <div>Τίτλος</div>
+            <div>Εισαγωγή δεδομένων</div>
+            <div>Καταχωρημένα δεδομένα</div>
+          </div>
+
+          <AdminRow
+            title="Preview συλλόγου"
+            description="Δείτε την εφαρμογή όπως εμφανίζεται σε συγκεκριμένο λογαριασμό, χωρίς αποθήκευση αλλαγών."
+            entry={
+              <div className="entry-form admin-entry">
                 <label className="field">
-                  <span>Υποκατηγορία</span>
-                  <select value={incomeDescSub} onChange={(e) => setIncomeDescSub(e.target.value)}>
-                    {config.incomeCategories.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
+                  <span>Λογαριασμός</span>
+                  <select
+                    value={catalogClubId}
+                    onChange={(e) => setCatalogClubId(e.target.value)}
+                  >
+                    <option value="">Επιλέξτε…</option>
+                    {clubs.map((club) => (
+                      <option key={club.id} value={club.id}>
+                        {club.name}
                       </option>
                     ))}
                   </select>
                 </label>
-                <label className="field">
-                  <span>Νέα περιγραφή</span>
-                  <input value={newIncomeDesc} onChange={(e) => setNewIncomeDesc(e.target.value)} />
-                </label>
-                <Button type="submit">Προσθήκη</Button>
-              </form>
+                <div className="admin-entry-actions">
+                  <Button type="button" onClick={handlePreview} disabled={!catalogClubId}>
+                    Preview εφαρμογής
+                  </Button>
+                  {previewClubId ? (
+                    <Button type="button" variant="secondary" onClick={handleEndPreview}>
+                      Τέλος preview
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             }
             records={
               <RecordsTable>
-                {(config.incomeDescriptions[incomeDescSub] ?? []).map((item) => (
-                  <RecordsRow key={item} title="Περιγραφή">
-                    <div className="admin-record-line">
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => {
-                          persist({
-                            ...config,
-                            incomeDescriptions: {
-                              ...config.incomeDescriptions,
-                              [incomeDescSub]: (config.incomeDescriptions[incomeDescSub] ?? []).filter(
-                                (d) => d !== item,
-                              ),
-                            },
-                          });
-                        }}
-                      >
-                        Διαγραφή
-                      </button>
-                    </div>
-                  </RecordsRow>
-                ))}
-              </RecordsTable>
-            }
-          />
-
-          <AdminRow
-            title="Μητρώο"
-            description="Υποκατηγορίες μητρώου (π.χ. ΑΘΛΗΤΕΣ, ΜΕΛΗ)."
-            entry={
-              <form
-                className="entry-form admin-entry"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const label = newRegistryKind.trim().toUpperCase();
-                  if (!label) return;
-                  if (config.registryKinds.includes(label)) return;
-                  persist({ ...config, registryKinds: [...config.registryKinds, label] });
-                  setNewRegistryKind('');
-                }}
-              >
-                <label className="field">
-                  <span>Νέα υποκατηγορία</span>
-                  <input
-                    value={newRegistryKind}
-                    onChange={(e) => setNewRegistryKind(e.target.value)}
-                  />
-                </label>
-                <Button type="submit">Προσθήκη</Button>
-              </form>
-            }
-            records={
-              <RecordsTable>
-                {config.registryKinds.map((item) => (
-                  <RecordsRow key={item} title="Υποκατηγορία">
-                    <div className="admin-record-line">
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() =>
-                          persist({
-                            ...config,
-                            registryKinds: config.registryKinds.filter((k) => k !== item),
-                          })
-                        }
-                      >
-                        Διαγραφή
-                      </button>
-                    </div>
-                  </RecordsRow>
-                ))}
+                <RecordsRow title="Κατάσταση">
+                  {previewClubId
+                    ? `Ενεργό preview: ${clubs.find((c) => c.id === previewClubId)?.name ?? previewClubId}`
+                    : 'Δεν υπάρχει ενεργό preview.'}
+                </RecordsRow>
               </RecordsTable>
             }
           />
@@ -941,21 +974,24 @@ export function PlatformAdminPage() {
                 ) : (
                   appData.associations.map((item) => (
                     <RecordsRow key={item.id} title="Σωματείο">
-                      <div className="admin-record-line">
-                        <span>{item.name}</span>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => {
-                            mutateData((data) => {
-                              data.associations = data.associations.filter((a) => a.id !== item.id);
-                            });
-                            setTick((n) => n + 1);
-                          }}
-                        >
-                          Διαγραφή
-                        </button>
-                      </div>
+                      <EditableRecordLine
+                        value={item.name}
+                        onSave={(next) => {
+                          mutateData((data) => {
+                            const target = data.associations.find((a) => a.id === item.id);
+                            if (target) target.name = next;
+                          });
+                          setTick((n) => n + 1);
+                          flash('Το σωματείο ενημερώθηκε.');
+                          return { success: true };
+                        }}
+                        onDelete={() => {
+                          mutateData((data) => {
+                            data.associations = data.associations.filter((a) => a.id !== item.id);
+                          });
+                          setTick((n) => n + 1);
+                        }}
+                      />
                     </RecordsRow>
                   ))
                 )}
@@ -998,63 +1034,30 @@ export function PlatformAdminPage() {
                 ) : (
                   appData.sports.map((item) => (
                     <RecordsRow key={item.id} title="Άθλημα">
-                      <div className="admin-record-line">
-                        <span>{item.name}</span>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => {
-                            mutateData((data) => {
-                              data.sports = data.sports.filter((s) => s.id !== item.id);
-                            });
-                            setTick((n) => n + 1);
-                          }}
-                        >
-                          Διαγραφή
-                        </button>
-                      </div>
+                      <EditableRecordLine
+                        value={item.name}
+                        onSave={(next) => {
+                          mutateData((data) => {
+                            const target = data.sports.find((s) => s.id === item.id);
+                            if (target) target.name = next;
+                          });
+                          setTick((n) => n + 1);
+                          flash('Το άθλημα ενημερώθηκε.');
+                          return { success: true };
+                        }}
+                        onDelete={() => {
+                          mutateData((data) => {
+                            data.sports = data.sports.filter((s) => s.id !== item.id);
+                          });
+                          setTick((n) => n + 1);
+                        }}
+                      />
                     </RecordsRow>
                   ))
                 )}
               </RecordsTable>
             }
           />
-
-          <AdminRow
-            title="Λογαριασμοί σύνδεσης"
-            description="Λογαριασμοί χρηστών συλλόγων. Νέοι λογαριασμοί δημιουργούνται από εγγραφή συλλόγου."
-            entry={
-              <div className="entry-form admin-entry">
-                <p className="admin-entry-note">
-                  Διαχείριση χρηστών, impersonation και αδειών στην καρτέλα Χρήστες.
-                </p>
-                <Link className="btn btn-primary" to="/platform/users">
-                  Άνοιγμα χρηστών
-                </Link>
-              </div>
-            }
-            records={
-              <RecordsTable>
-                <RecordsRow title="Ενεργοί">{loginAccounts.length} λογαριασμοί συλλόγου</RecordsRow>
-                {loginAccounts.slice(0, 8).map((user) => (
-                  <RecordsRow key={user.id} title={user.role}>
-                    {user.fullName} · {user.email}
-                  </RecordsRow>
-                ))}
-              </RecordsTable>
-            }
-          />
-        </div>
-      </section>
-
-      <section className="admin-board-section">
-        <h2 className="admin-section-label">Academio</h2>
-        <div className="admin-board">
-          <div className="admin-board-header" aria-hidden="true">
-            <div>Τίτλος</div>
-            <div>Εισαγωγή δεδομένων</div>
-            <div>Καταχωρημένα δεδομένα</div>
-          </div>
 
           <AdminRow
             title="Καρτέλες μενού ακαδημίας"
@@ -1114,58 +1117,6 @@ export function PlatformAdminPage() {
           />
 
           <AdminRow
-            title="Δικαιώματα ρόλων Academio"
-            description="Δικαιώματα ανά ρόλο ακαδημίας (admin, coach, secretariat, athlete, parent)."
-            entry={
-              <div className="entry-form admin-entry">
-                <div className="admin-role-tabs">
-                  {ACADEMY_ROLES.map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      className={`report-chip ${academyRole === role ? 'is-active' : ''}`}
-                      onClick={() => setAcademyRole(role)}
-                    >
-                      {ACADEMY_ROLE_LABELS[role]}
-                    </button>
-                  ))}
-                </div>
-                <div className="admin-check-list">
-                  {ACADEMY_PERMISSIONS.map((permission) => (
-                    <label key={permission} className="admin-check">
-                      <span>
-                        {ACADEMY_PERMISSION_LABELS[permission]}:{' '}
-                        {(config.academyRolePermissions[academyRole] ?? []).includes(permission)
-                          ? 'Ενεργό'
-                          : 'Ανενεργό'}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={(config.academyRolePermissions[academyRole] ?? []).includes(
-                          permission,
-                        )}
-                        onChange={() => toggleAcademyPermission(permission)}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <Button type="button" onClick={() => flash('Τα δικαιώματα Academio αποθηκεύτηκαν.')}>
-                  Αποθήκευση δικαιωμάτων
-                </Button>
-              </div>
-            }
-            records={
-              <RecordsTable>
-                <RecordsRow title="Ενεργά">
-                  {(config.academyRolePermissions[academyRole] ?? [])
-                    .map((p) => ACADEMY_PERMISSION_LABELS[p])
-                    .join(' · ') || 'Κανένα'}
-                </RecordsRow>
-              </RecordsTable>
-            }
-          />
-
-          <AdminRow
             title="Σεζόν"
             description="Διαθέσιμες αγωνιστικές σεζόν για φίλτρα και οικονομικά."
             entry={
@@ -1195,21 +1146,27 @@ export function PlatformAdminPage() {
               <RecordsTable>
                 {config.seasons.map((item) => (
                   <RecordsRow key={item} title="Σεζόν">
-                    <div className="admin-record-line">
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() =>
-                          persist({
-                            ...config,
-                            seasons: config.seasons.filter((s) => s !== item),
-                          })
+                    <EditableRecordLine
+                      value={item}
+                      onSave={(next) => {
+                        if (next !== item && config.seasons.includes(next)) {
+                          flash('Υπάρχει ήδη.');
+                          return { success: false, error: 'Υπάρχει ήδη.' };
                         }
-                      >
-                        Διαγραφή
-                      </button>
-                    </div>
+                        persist({
+                          ...config,
+                          seasons: config.seasons.map((s) => (s === item ? next : s)),
+                        });
+                        flash('Η σεζόν ενημερώθηκε.');
+                        return { success: true };
+                      }}
+                      onDelete={() =>
+                        persist({
+                          ...config,
+                          seasons: config.seasons.filter((s) => s !== item),
+                        })
+                      }
+                    />
                   </RecordsRow>
                 ))}
               </RecordsTable>

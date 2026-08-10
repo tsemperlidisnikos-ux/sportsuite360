@@ -15,6 +15,8 @@ export interface AppUser {
   active: boolean;
   clubId?: string | null;
   athleteId?: string | null;
+  /** Προσαρμοσμένα δικαιώματα από τον σύλλογο· αν λείπει → defaults ρόλου από Platform Admin. */
+  permissions?: string[] | null;
 }
 
 const SESSION_KEY = 'academyhub-session-v1';
@@ -114,6 +116,7 @@ export function getUsers(): AppUser[] {
 export function saveUsers(users: AppUser[]): void {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
   ensurePlatformAdmin();
+  window.dispatchEvent(new CustomEvent('academyhub-users-updated'));
 }
 
 export function login(
@@ -180,30 +183,53 @@ export const roleLabels: Record<UserRole, string> = {
   parent: 'Γονέας',
 };
 
-export function updateUserEmail(
+export function getUserById(userId: string): AppUser | null {
+  return getUsers().find((u) => u.id === userId) ?? null;
+}
+
+export function updateUser(
   userId: string,
-  email: string,
+  patch: Partial<Pick<AppUser, 'fullName' | 'email' | 'password' | 'role' | 'active' | 'permissions'>>,
 ): { success: boolean; data?: AppUser; error?: string } {
-  const nextEmail = email.trim().toLowerCase();
-  if (!nextEmail.includes('@')) {
-    return { success: false, error: 'Μη έγκυρο email' };
-  }
   const users = getUsers();
-  if (users.some((u) => u.id !== userId && u.email.toLowerCase() === nextEmail)) {
-    return { success: false, error: 'Το email χρησιμοποιείται ήδη' };
-  }
   const index = users.findIndex((u) => u.id === userId);
   if (index < 0) return { success: false, error: 'Ο χρήστης δεν βρέθηκε' };
-  users[index] = { ...users[index], email: nextEmail };
+
+  if (patch.email) {
+    const nextEmail = patch.email.trim().toLowerCase();
+    if (!nextEmail.includes('@')) {
+      return { success: false, error: 'Μη έγκυρο email' };
+    }
+    if (users.some((u) => u.id !== userId && u.email.toLowerCase() === nextEmail)) {
+      return { success: false, error: 'Το email χρησιμοποιείται ήδη' };
+    }
+    patch = { ...patch, email: nextEmail };
+  }
+
+  users[index] = { ...users[index], ...patch };
   saveUsers(users);
+
   const session = getSession();
   if (session?.id === userId) {
     localStorage.setItem(
       SESSION_KEY,
-      JSON.stringify({ ...session, email: nextEmail }),
+      JSON.stringify({
+        ...session,
+        email: users[index].email,
+        fullName: users[index].fullName,
+        role: users[index].role,
+      }),
     );
   }
+
   return { success: true, data: users[index] };
+}
+
+export function updateUserEmail(
+  userId: string,
+  email: string,
+): { success: boolean; data?: AppUser; error?: string } {
+  return updateUser(userId, { email });
 }
 
 export function deleteUser(

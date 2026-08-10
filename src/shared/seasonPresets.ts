@@ -1,3 +1,7 @@
+import { localDateIso } from '../utils/dates';
+
+export { localDateIso, localDateTimeIso } from '../utils/dates';
+
 export type SeasonDateRange = {
   dateFrom: string;
   dateTo: string;
@@ -35,6 +39,11 @@ export function monthBounds(year: number, month: number): SeasonDateRange {
   };
 }
 
+export function dayBounds(now = new Date()): SeasonDateRange {
+  const day = localDateIso(now);
+  return { dateFrom: day, dateTo: day };
+}
+
 export function buildSeasonPresets(now = new Date()): SeasonPreset[] {
   const seasonStart = currentSeasonStartYear(now);
   const year = now.getFullYear();
@@ -50,6 +59,11 @@ export function buildSeasonPresets(now = new Date()): SeasonPreset[] {
       id: 'month-current',
       label: 'Τρέχων μήνας',
       filters: monthBounds(year, month),
+    },
+    {
+      id: 'day-current',
+      label: 'Τρέχουσα ημέρα',
+      filters: dayBounds(now),
     },
   ];
 }
