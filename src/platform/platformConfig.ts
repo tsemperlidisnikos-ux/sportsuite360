@@ -31,6 +31,7 @@ export const ACADEMY_MODULES = [
   { id: 'warehouse', label: 'Αποθήκη', path: '/warehouse' },
   { id: 'fees', label: 'Συνδρομές / Πληρωμές', path: '/fees' },
   { id: 'transactions', label: 'Συναλλαγές', path: '/transactions' },
+  { id: 'partnerBusinesses', label: 'Συμβεβλημένες Επιχειρήσεις', path: '/partner-businesses' },
   { id: 'settings', label: 'Ρυθμίσεις', path: '/settings' },
   { id: 'finance', label: 'Οικονομικά', path: '/finance' },
 ] as const;
@@ -66,6 +67,7 @@ export const CLUB_PERMISSIONS = [
   'warehouse',
   'fees',
   'transactions',
+  'partnerBusinesses',
   'settings',
   'finance',
 ] as const;
@@ -85,6 +87,7 @@ export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
   warehouse: 'Αποθήκη',
   fees: 'Συνδρομές / Πληρωμές',
   transactions: 'Συναλλαγές',
+  partnerBusinesses: 'Συμβεβλημένες Επιχειρήσεις',
   settings: 'Ρυθμίσεις',
   finance: 'Οικονομικά',
 };
@@ -109,6 +112,7 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
     'warehouse',
     'fees',
     'transactions',
+    'partnerBusinesses',
     'settings',
     'finance',
   ],
@@ -217,6 +221,11 @@ function sanitizeClubRolePermissions(
     const list = stored[role];
     if (!list) continue;
     result[role] = list.filter((p): p is ClubPermission => allowed.has(p));
+    // Newer modules: εμφανίζονται δίπλα στις Ρυθμίσεις αν ο ρόλος τις είχε ήδη
+    if (result[role].includes('settings') && !result[role].includes('partnerBusinesses')) {
+      const settingsIndex = result[role].indexOf('settings');
+      result[role].splice(settingsIndex, 0, 'partnerBusinesses');
+    }
   }
   return result;
 }
@@ -452,7 +461,7 @@ export function getAcademyModulesForClub(clubId: string): AcademyModuleId[] {
   const allowed = new Set(allIds);
   const filtered = stored.filter((id): id is AcademyModuleId => allowed.has(id as AcademyModuleId));
   // Newer modules (e.g. warehouse) appear even if older club configs omit them
-  for (const id of ['warehouse', 'settings'] as const) {
+  for (const id of ['warehouse', 'partnerBusinesses', 'settings'] as const) {
     if (!filtered.includes(id)) filtered.push(id);
   }
   return filtered.length > 0 ? filtered : allIds;

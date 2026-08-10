@@ -6,8 +6,13 @@ import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import { PRODUCT_CATEGORIES, type WarehouseProductInput } from '../schemas';
-import type { WarehouseProduct } from '../types';
+import type { ProductSizeGroup, WarehouseProduct } from '../types';
 import { formatCurrency } from '../utils/labels';
+import {
+  formatProductSize,
+  sizeChartOptGroups,
+  type SizeChartGroupId,
+} from '../utils/sizeChartOptions';
 
 const emptyForm: WarehouseProductInput = {
   name: '',
@@ -15,8 +20,25 @@ const emptyForm: WarehouseProductInput = {
   sku: '',
   salePrice: 0,
   size: '',
+  sizeGroup: '',
   notes: '',
 };
+
+function encodeSizeValue(group: SizeChartGroupId, size: string): string {
+  return `${group}::${size}`;
+}
+
+function parseSizeValue(value: string): { sizeGroup: ProductSizeGroup | ''; size: string } {
+  if (!value) return { sizeGroup: '', size: '' };
+  const sep = value.indexOf('::');
+  if (sep === -1) return { sizeGroup: '', size: value };
+  const group = value.slice(0, sep);
+  const size = value.slice(sep + 2);
+  if (group === 'kids' || group === 'adult') {
+    return { sizeGroup: group, size };
+  }
+  return { sizeGroup: '', size };
+}
 
 export function WarehousePage() {
   const { data, refresh } = useAppData();
@@ -31,6 +53,55 @@ export function WarehousePage() {
       [...(data.products ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'el')),
     [data.products],
   );
+
+  const sizeOptions = useMemo(() => {
+    const groups = sizeChartOptGroups(data.sizeChart);
+    const keys = new Set(
+      groups.flatMap((g) => g.sizes.map((s) => encodeSizeValue(g.category, s).toUpperCase())),
+    );
+    const currentSize = form.size.trim();
+    const currentGroup = (form.sizeGroup || '') as SizeChartGroupId | '';
+    if (currentSize && currentGroup) {
+      const key = encodeSizeValue(currentGroup, currentSize).toUpperCase();
+      if (!keys.has(key)) {
+        return [
+          ...groups,
+          {
+            category: currentGroup,
+            label: 'Τρέχον',
+            sizes: [currentSize],
+          },
+        ];
+      }
+    } else if (currentSize) {
+      const inChart = groups.some((g) =>
+        g.sizes.some((s) => s.toUpperCase() === currentSize.toUpperCase()),
+      );
+      if (!inChart) {
+        return [
+          ...groups,
+          { category: 'adult' as const, label: 'Τρέχον', sizes: [currentSize] },
+        ];
+      }
+    }
+    return groups;
+  }, [data.sizeChart, form.size, form.sizeGroup]);
+
+  const selectedSizeValue = useMemo(() => {
+    if (!form.size) return '';
+    if (form.sizeGroup === 'kids' || form.sizeGroup === 'adult') {
+      return encodeSizeValue(form.sizeGroup, form.size);
+    }
+    const match = sizeOptions.find((g) =>
+      g.sizes.some((s) => s.toUpperCase() === form.size.trim().toUpperCase()),
+    );
+    if (match) {
+      const size =
+        match.sizes.find((s) => s.toUpperCase() === form.size.trim().toUpperCase()) ?? form.size;
+      return encodeSizeValue(match.category, size);
+    }
+    return form.size;
+  }, [form.size, form.sizeGroup, sizeOptions]);
 
   function openCreate() {
     setEditing(null);
@@ -47,6 +118,7 @@ export function WarehousePage() {
       sku: product.sku ?? '',
       salePrice: product.salePrice,
       size: product.size ?? '',
+      sizeGroup: product.sizeGroup ?? '',
       notes: product.notes ?? '',
     });
     setError('');
@@ -124,7 +196,7 @@ export function WarehousePage() {
                   </td>
                   <td>{item.category || '—'}</td>
                   <td>{item.sku || '—'}</td>
-                  <td>{item.size || '—'}</td>
+                  <td>{formatProductSize(item.size, item.sizeGroup)}</td>
                   <td>{formatCurrency(item.salePrice)}</td>
                   <td className="row-actions">
                     <button
@@ -225,11 +297,32 @@ export function WarehousePage() {
             </label>
             <label className="field">
               <span className="field-label">Μέγεθος</span>
-              <input
+              <select
                 className="field-input"
-                value={form.size}
-                onChange={(e) => setForm({ ...form, size: e.target.value })}
-              />
+                value={selectedSizeValue}
+                onChange={(e) => {
+                  const parsed = parseSizeValue(e.target.value);
+                  setForm({
+                    ...form,
+                    size: parsed.size,
+                    sizeGroup: parsed.sizeGroup,
+                  });
+                }}
+              >
+                <option value="">—</option>
+                {sizeOptions.map((group) => (
+                  <optgroup key={group.category} label={group.label}>
+                    {group.sizes.map((size) => (
+                      <option
+                        key={`${group.category}-${size}`}
+                        value={encodeSizeValue(group.category, size)}
+                      >
+                        {size}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </label>
           </div>
 

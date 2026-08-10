@@ -15,6 +15,7 @@ import {
   Printer,
   Megaphone,
   Package,
+  Building2,
   Settings,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -65,6 +66,12 @@ const academyItems: Array<{
   { id: 'warehouse', to: '/warehouse', label: 'Αποθήκη', icon: Package },
   { id: 'fees', to: '/fees', label: 'Συνδρομές / Πληρωμές', icon: CreditCard },
   { id: 'transactions', to: '/transactions', label: 'Συναλλαγές', icon: ArrowLeftRight },
+  {
+    id: 'partnerBusinesses',
+    to: '/partner-businesses',
+    label: 'Συμβεβλημένες Επιχειρήσεις',
+    icon: Building2,
+  },
   { id: 'settings', to: '/settings', label: 'Ρυθμίσεις', icon: Settings },
 ];
 

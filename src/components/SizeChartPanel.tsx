@@ -1,45 +1,68 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileText, Plus } from 'lucide-react';
 import * as sizeChartService from '../api/services/sizeChartService';
 import { Button } from './ui/Button';
 import { useAppData } from '../hooks/useAppData';
-import type { SizeChart, SizeChartCategory } from '../types';
+import type { SizeChart } from '../types';
+import {
+  SIZE_CHART_GROUP_LABELS,
+  adultSizesFromChart,
+  type SizeChartGroupId,
+} from '../utils/sizeChartOptions';
 
-const CATEGORY_LABELS: Record<SizeChartCategory, string> = {
-  kids: 'ΠΑΙΔΙΚΟ',
-  men: 'ΑΝΔΡΙΚΟ',
-  women: 'ΓΥΝΑΙΚΕΙΟ',
-};
-
-const CATEGORIES: SizeChartCategory[] = ['kids', 'men', 'women'];
+const GROUPS: SizeChartGroupId[] = ['kids', 'adult'];
 
 function emptyChart(): SizeChart {
   return { kids: [], men: [], women: [] };
 }
 
+function toDraft(chart: SizeChart | undefined | null): SizeChart {
+  const base = chart ?? emptyChart();
+  const adult = adultSizesFromChart(base);
+  return {
+    kids: [...(base.kids ?? [])],
+    men: [...adult],
+    women: [...adult],
+  };
+}
+
 export function SizeChartPanel() {
   const { data, refresh } = useAppData();
-  const [draft, setDraft] = useState<SizeChart>(() => data.sizeChart ?? emptyChart());
+  const [draft, setDraft] = useState<SizeChart>(() => toDraft(data.sizeChart));
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [addingFor, setAddingFor] = useState<SizeChartCategory | null>(null);
+  const [addingFor, setAddingFor] = useState<SizeChartGroupId | null>(null);
   const [newSize, setNewSize] = useState('');
 
   useEffect(() => {
-    setDraft(data.sizeChart ?? emptyChart());
+    setDraft(toDraft(data.sizeChart));
   }, [data.sizeChart]);
 
-  function removeSize(category: SizeChartCategory, size: string) {
-    setDraft((prev) => ({
-      ...prev,
-      [category]: prev[category].filter((item) => item !== size),
-    }));
+  const lists = useMemo(
+    () => ({
+      kids: draft.kids,
+      adult: adultSizesFromChart(draft),
+    }),
+    [draft],
+  );
+
+  function removeSize(group: SizeChartGroupId, size: string) {
+    setDraft((prev) => {
+      if (group === 'kids') {
+        return {
+          ...prev,
+          kids: prev.kids.filter((item) => item !== size),
+        };
+      }
+      const nextAdult = adultSizesFromChart(prev).filter((item) => item !== size);
+      return { ...prev, men: nextAdult, women: nextAdult };
+    });
     setMessage('');
   }
 
-  function startAdd(category: SizeChartCategory) {
-    setAddingFor(category);
+  function startAdd(group: SizeChartGroupId) {
+    setAddingFor(group);
     setNewSize('');
     setError('');
   }
@@ -51,14 +74,18 @@ export function SizeChartPanel() {
       setError('Συμπληρώστε μέγεθος');
       return;
     }
-    if (draft[addingFor].some((item) => item.toUpperCase() === value)) {
+    const existing = lists[addingFor];
+    if (existing.some((item) => item.toUpperCase() === value)) {
       setError('Το μέγεθος υπάρχει ήδη σε αυτή την κατηγορία');
       return;
     }
-    setDraft((prev) => ({
-      ...prev,
-      [addingFor]: [...prev[addingFor], value],
-    }));
+    setDraft((prev) => {
+      if (addingFor === 'kids') {
+        return { ...prev, kids: [...prev.kids, value] };
+      }
+      const nextAdult = [...adultSizesFromChart(prev), value];
+      return { ...prev, men: nextAdult, women: nextAdult };
+    });
     setAddingFor(null);
     setNewSize('');
     setError('');
@@ -69,7 +96,12 @@ export function SizeChartPanel() {
     setSaving(true);
     setError('');
     setMessage('');
-    const result = await sizeChartService.saveSizeChart(draft);
+    const adult = adultSizesFromChart(draft);
+    const result = await sizeChartService.saveSizeChart({
+      kids: [...draft.kids],
+      men: [...adult],
+      women: [...adult],
+    });
     setSaving(false);
     if (!result.success) {
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
@@ -106,14 +138,14 @@ export function SizeChartPanel() {
 
       {addingFor ? (
         <div className="size-chart-add-row">
-          <span>Νέο μέγεθος για {CATEGORY_LABELS[addingFor]}:</span>
+          <span>Νέο μέγεθος για {SIZE_CHART_GROUP_LABELS[addingFor]}:</span>
           <select
             value={addingFor}
-            onChange={(e) => setAddingFor(e.target.value as SizeChartCategory)}
+            onChange={(e) => setAddingFor(e.target.value as SizeChartGroupId)}
           >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {CATEGORY_LABELS[cat]}
+            {GROUPS.map((group) => (
+              <option key={group} value={group}>
+                {SIZE_CHART_GROUP_LABELS[group]}
               </option>
             ))}
           </select>
@@ -137,21 +169,21 @@ export function SizeChartPanel() {
         </div>
       ) : null}
 
-      <div className="size-chart-grid">
-        {CATEGORIES.map((category) => (
-          <div key={category} className="size-chart-column">
-            <h3>{CATEGORY_LABELS[category]}</h3>
+      <div className="size-chart-grid size-chart-grid--2">
+        {GROUPS.map((group) => (
+          <div key={group} className="size-chart-column">
+            <h3>{SIZE_CHART_GROUP_LABELS[group]}</h3>
             <ul>
-              {draft[category].length === 0 ? (
+              {lists[group].length === 0 ? (
                 <li className="size-chart-empty">Δεν υπάρχουν μεγέθη</li>
               ) : (
-                draft[category].map((size) => (
+                lists[group].map((size) => (
                   <li key={size}>
                     <span>{size}</span>
                     <button
                       type="button"
                       className="size-chart-delete"
-                      onClick={() => removeSize(category, size)}
+                      onClick={() => removeSize(group, size)}
                     >
                       Διαγραφή
                     </button>
@@ -162,7 +194,7 @@ export function SizeChartPanel() {
             <button
               type="button"
               className="size-chart-add-inline"
-              onClick={() => startAdd(category)}
+              onClick={() => startAdd(group)}
             >
               + Προσθήκη
             </button>

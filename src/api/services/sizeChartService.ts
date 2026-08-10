@@ -1,6 +1,7 @@
 import { apiClient } from '../apiClient';
 import { getData, mutateData } from '../../data/repository';
 import type { SizeChart } from '../../types';
+import { adultSizesFromChart } from '../../utils/sizeChartOptions';
 
 export async function getSizeChart() {
   return apiClient(() => getData().sizeChart);
@@ -8,11 +9,12 @@ export async function getSizeChart() {
 
 export async function saveSizeChart(chart: SizeChart) {
   return apiClient(() => {
+    const adult = adultSizesFromChart(chart);
     mutateData((data) => {
       data.sizeChart = {
         kids: [...chart.kids],
-        men: [...chart.men],
-        women: [...chart.women],
+        men: [...adult],
+        women: [...adult],
       };
     });
     return getData().sizeChart;

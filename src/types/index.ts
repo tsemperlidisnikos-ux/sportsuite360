@@ -245,6 +245,8 @@ export interface BudgetLine {
   notes?: string;
 }
 
+export type ProductSizeGroup = 'kids' | 'adult';
+
 export interface WarehouseProduct {
   id: string;
   name: string;
@@ -252,7 +254,31 @@ export interface WarehouseProduct {
   sku: string;
   salePrice: number;
   size: string;
+  /** Παιδικό ή Ανδρικό/Γυναικείο — για εμφάνιση στην αποθήκη. */
+  sizeGroup?: ProductSizeGroup | '';
   notes: string;
+  createdAt: string;
+}
+
+export type PartnerStatus = 'active' | 'inactive';
+
+export interface PartnerBusiness {
+  id: string;
+  name: string;
+  url: string;
+  status: PartnerStatus;
+  categories: string;
+  isSponsor: boolean;
+  lastModifiedBy: string;
+  lastModifiedAt: string;
+  createdAt: string;
+}
+
+export interface PartnerOffer {
+  id: string;
+  name: string;
+  businessId: string;
+  status: PartnerStatus;
   createdAt: string;
 }
 
@@ -280,6 +306,8 @@ export interface AppData {
   announcements: Announcement[];
   budgets: BudgetLine[];
   products: WarehouseProduct[];
+  partnerBusinesses: PartnerBusiness[];
+  partnerOffers: PartnerOffer[];
   sizeChart: SizeChart;
   /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
   termsOfUseHtml?: string;

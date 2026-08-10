@@ -15,6 +15,8 @@ function ensureCollections(data: AppData): void {
   if (!data.announcements) data.announcements = structuredClone(seedData.announcements);
   if (!data.budgets) data.budgets = structuredClone(seedData.budgets);
   if (!data.products) data.products = structuredClone(seedData.products);
+  if (!data.partnerBusinesses) data.partnerBusinesses = structuredClone(seedData.partnerBusinesses);
+  if (!data.partnerOffers) data.partnerOffers = structuredClone(seedData.partnerOffers);
   if (!data.sizeChart) data.sizeChart = structuredClone(seedData.sizeChart);
   if (data.termsOfUseHtml === undefined) data.termsOfUseHtml = seedData.termsOfUseHtml ?? '';
 }

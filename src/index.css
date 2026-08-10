@@ -467,10 +467,66 @@ strong {
 }
 
 .panel-head h2,
+.panel-head h3,
 .schedule-day h3,
 .entity-card h3 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.stack-md {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.partner-table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.partner-page-size,
+.partner-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.partner-page-size select,
+.partner-search input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.4rem 0.55rem;
+  background: var(--surface);
+}
+
+.partner-search input {
+  min-width: 180px;
+}
+
+.partner-table-footer {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .text-link {
@@ -1203,6 +1259,10 @@ th {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
+}
+
+.size-chart-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .size-chart-column h3 {

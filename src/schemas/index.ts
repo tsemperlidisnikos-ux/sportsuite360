@@ -230,7 +230,26 @@ export const warehouseProductSchema = z.object({
   sku: z.string().optional().default(''),
   salePrice: z.coerce.number().min(0, 'Η τιμή πρέπει να είναι ≥ 0'),
   size: z.string().optional().default(''),
+  sizeGroup: z.enum(['kids', 'adult', '']).optional().default(''),
   notes: z.string().optional().default(''),
 });
 
 export type WarehouseProductInput = z.infer<typeof warehouseProductSchema>;
+
+export const partnerBusinessSchema = z.object({
+  name: z.string().min(1, 'Το όνομα είναι υποχρεωτικό'),
+  url: z.string().optional().default(''),
+  status: z.enum(['active', 'inactive']),
+  categories: z.string().optional().default(''),
+  isSponsor: z.boolean().optional().default(false),
+});
+
+export type PartnerBusinessInput = z.infer<typeof partnerBusinessSchema>;
+
+export const partnerOfferSchema = z.object({
+  name: z.string().min(1, 'Το όνομα είναι υποχρεωτικό'),
+  businessId: z.string().min(1, 'Επιλέξτε επιχείρηση'),
+  status: z.enum(['active', 'inactive']),
+});
+
+export type PartnerOfferInput = z.infer<typeof partnerOfferSchema>;

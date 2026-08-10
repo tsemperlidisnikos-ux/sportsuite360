@@ -26,6 +26,7 @@ import { StudentsPage } from './pages/StudentsPage';
 import { TrainingsPage } from './pages/TrainingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { WarehousePage } from './pages/WarehousePage';
+import { PartnerBusinessesPage } from './pages/PartnerBusinessesPage';
 import { getPreviewClubId } from './platform/platformConfig';
 
 function HomeRoute() {
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="warehouse" element={<WarehousePage />} />
             <Route path="fees" element={<FeesPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
+            <Route path="partner-businesses" element={<PartnerBusinessesPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
