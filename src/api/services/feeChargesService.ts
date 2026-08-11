@@ -289,7 +289,11 @@ export function listDebtReminders(): DebtReminderRow[] {
       oldestChargeDate: chargeDay,
       daysOverdue,
       reminderDays: defaultReminder,
-      email: student.email || student.guardianPhone || '',
+      email:
+        student.motherEmail?.trim() ||
+        student.fatherEmail?.trim() ||
+        student.email?.trim() ||
+        '',
     });
   }
 

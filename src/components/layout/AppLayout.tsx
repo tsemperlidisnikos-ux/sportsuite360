@@ -140,9 +140,13 @@ export function AppLayout() {
     };
   }, [session, platformTick, clubTick, usersTick]);
 
-  const visibleAcademy = academyItems.filter(
-    (item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id),
-  );
+  const visibleAcademy = academyItems
+    .filter((item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id))
+    .map((item) =>
+      item.id === 'dashboard' && session?.role === 'parent'
+        ? { ...item, label: 'Αρχική γονέα' }
+        : item,
+    );
   const visibleAnalysis = analysisItems.filter(
     (item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id),
   );

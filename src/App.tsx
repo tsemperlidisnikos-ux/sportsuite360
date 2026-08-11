@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { isPlatformAdmin } from './auth/auth';
+import { getSession, isPlatformAdmin } from './auth/auth';
 import { RequireAuth } from './auth/RequireAuth';
+import { RequireModule } from './auth/RequireModule';
 import { RequirePlatformAdmin } from './auth/RequirePlatformAdmin';
 import { AppLayout } from './components/layout/AppLayout';
 import { AthleteProfilePage } from './pages/AthleteProfilePage';
@@ -15,6 +16,7 @@ import { FeesPage } from './pages/FeesPage';
 import { FinancePage } from './pages/FinancePage';
 import { LicensePackagesPage } from './pages/LicensePackagesPage';
 import { LoginPage } from './pages/LoginPage';
+import { ParentPortalPage } from './pages/ParentPortalPage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { PlatformUsersPage } from './pages/PlatformUsersPage';
 import { PrintsPage } from './pages/PrintsPage';
@@ -36,6 +38,10 @@ function HomeRoute() {
   if (isPlatformAdmin() && !getPreviewClubId()) {
     return <Navigate to="/platform" replace />;
   }
+  const session = getSession();
+  if (session?.role === 'parent') {
+    return <ParentPortalPage />;
+  }
   return <DashboardPage />;
 }
 
@@ -55,28 +61,175 @@ export default function App() {
 
           <Route element={<AppLayout />}>
             <Route index element={<HomeRoute />} />
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="athletes" element={<StudentsPage />} />
-            <Route path="athletes/:athleteId" element={<AthleteProfilePage />} />
+            <Route
+              path="calendar"
+              element={
+                <RequireModule moduleId="calendar">
+                  <CalendarPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="athletes"
+              element={
+                <RequireModule moduleId="athletes">
+                  <StudentsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="athletes/:athleteId"
+              element={
+                <RequireModule moduleId="athletes">
+                  <AthleteProfilePage />
+                </RequireModule>
+              }
+            />
             <Route path="students" element={<Navigate to="/athletes" replace />} />
-            <Route path="staff" element={<StaffPage />} />
-            <Route path="coaches" element={<CoachesPage />} />
-            <Route path="classes" element={<ClassesPage />} />
-            <Route path="parents" element={<ParentsPage />} />
-            <Route path="trainings" element={<TrainingsPage />} />
-            <Route path="schedule" element={<SchedulePage />} />
-            <Route path="attendance" element={<AttendancePage />} />
-            <Route path="associations" element={<AssociationsPage />} />
-            <Route path="sports" element={<SportsPage />} />
-            <Route path="announcements" element={<AnnouncementsPage />} />
-            <Route path="prints" element={<PrintsPage />} />
-            <Route path="photos" element={<PhotosPage />} />
-            <Route path="warehouse" element={<WarehousePage />} />
-            <Route path="fees" element={<FeesPage />} />
-            <Route path="transactions" element={<TransactionsPage />} />
-            <Route path="partner-businesses" element={<PartnerBusinessesPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="finance" element={<FinancePage />} />
+            <Route
+              path="staff"
+              element={
+                <RequireModule moduleId="staff">
+                  <StaffPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="coaches"
+              element={
+                <RequireModule moduleId="coaches">
+                  <CoachesPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="classes"
+              element={
+                <RequireModule moduleId="classes">
+                  <ClassesPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="parents"
+              element={
+                <RequireModule moduleId="parents">
+                  <ParentsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="trainings"
+              element={
+                <RequireModule moduleId="trainings">
+                  <TrainingsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="schedule"
+              element={
+                <RequireModule moduleId="schedule">
+                  <SchedulePage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="attendance"
+              element={
+                <RequireModule moduleId="attendance">
+                  <AttendancePage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="associations"
+              element={
+                <RequireModule moduleId="associations">
+                  <AssociationsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="sports"
+              element={
+                <RequireModule moduleId="sports">
+                  <SportsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="announcements"
+              element={
+                <RequireModule moduleId="announcements">
+                  <AnnouncementsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="prints"
+              element={
+                <RequireModule moduleId="prints">
+                  <PrintsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="photos"
+              element={
+                <RequireModule moduleId="photos">
+                  <PhotosPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="warehouse"
+              element={
+                <RequireModule moduleId="warehouse">
+                  <WarehousePage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="fees"
+              element={
+                <RequireModule moduleId="fees">
+                  <FeesPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="transactions"
+              element={
+                <RequireModule moduleId="transactions">
+                  <TransactionsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="partner-businesses"
+              element={
+                <RequireModule moduleId="partnerBusinesses">
+                  <PartnerBusinessesPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <RequireModule moduleId="settings">
+                  <SettingsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="finance"
+              element={
+                <RequireModule moduleId="finance">
+                  <FinancePage />
+                </RequireModule>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>

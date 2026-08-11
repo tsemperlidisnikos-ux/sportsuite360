@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, History, Send } from 'lucide-react';
+import * as emailService from '../api/services/emailService';
 import {
-  appendClubSmtpSendLog,
   getClubById,
   getClubSmtp,
   getClubSmtpSendLog,
@@ -10,7 +10,6 @@ import {
 } from '../auth/clubs';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
-import { localDateTimeIso } from '../utils/dates';
 
 type Props = {
   clubId: string;
@@ -80,21 +79,19 @@ export function ClubEmailPanel({ clubId }: Props) {
     }
 
     setTesting(true);
-    // Client-side app: καταγράφουμε επιτυχή επαλήθευση ρυθμίσεων.
-    // Πραγματική SMTP αποστολή απαιτεί backend — εδώ επιβεβαιώνουμε ότι ο σύλλογος έχει έγκυρο config.
-    const log = appendClubSmtpSendLog(clubId, {
+    const result = await emailService.sendClubEmail({
+      clubId,
       to,
-      status: 'ok',
-      message: `Δοκιμή ρυθμίσεων SMTP (${current.host}:${current.port}) για ${club?.name ?? 'σύλλογο'}`,
-      at: localDateTimeIso(),
+      subject: `Δοκιμή SMTP — ${club?.name ?? 'SPORTSUITE 360'}`,
+      text: `Αυτό είναι δοκιμαστικό μήνυμα από το SportSuite 360 για τον σύλλογο «${club?.name ?? '—'}».\n\nΑν το λαμβάνετε, οι ρυθμίσεις SMTP λειτουργούν.`,
     });
     setTesting(false);
-    if (!log.success) {
-      setError(log.error ?? 'Αποτυχία καταγραφής δοκιμής');
+    setHistory(getClubSmtpSendLog(clubId));
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία αποστολής');
       return;
     }
-    setHistory(log.data ?? []);
-    setMessage(`Η δοκιμή καταχωρήθηκε για ${to}. Οι ρυθμίσεις SMTP του συλλόγου είναι έτοιμες.`);
+    setMessage(`Το δοκιμαστικό email στάλθηκε επιτυχώς στο ${to}.`);
   }
 
   return (
@@ -105,6 +102,10 @@ export function ClubEmailPanel({ clubId }: Props) {
           <p className="club-email-banner">
             Σύνδεσε Gmail μέσω App Password ή άλλο SMTP για προσκλήσεις, υπενθυμίσεις και
             αποδείξεις του συλλόγου «{club?.name ?? '—'}».
+          </p>
+          <p className="club-email-banner club-viva-info">
+            Η πραγματική αποστολή γίνεται μέσω του production API (`/api/send-email`). Σε τοπικό
+            `npm run dev` η δοκιμή θα αποτύχει μέχρι να κάνετε deploy στο Vercel.
           </p>
         </div>
         <Button type="button" variant="secondary" onClick={() => setShowHelp(true)}>
@@ -251,6 +252,7 @@ export function ClubEmailPanel({ clubId }: Props) {
             4. Host: <code>smtp.gmail.com</code>, Port: <code>587</code> (STARTTLS).
           </p>
           <p>5. Ενεργοποίησε «Ενεργό SMTP συλλόγου» και πάτα Αποθήκευση.</p>
+          <p>6. Κάνε deploy στο Vercel και δοκίμασε «Αποστολή δοκιμής» από το production.</p>
           <p className="muted">
             Οι ρυθμίσεις αποθηκεύονται μόνο για αυτόν τον σύλλογο και δεν επηρεάζουν άλλους
             συλλόγους.

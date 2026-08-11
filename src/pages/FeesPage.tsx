@@ -1,12 +1,16 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Bell, Plus, Receipt } from 'lucide-react';
+import * as emailService from '../api/services/emailService';
 import * as feeChargesService from '../api/services/feeChargesService';
+import * as vivaService from '../api/services/vivaService';
+import { getSession } from '../auth/auth';
+import { getClubById, getClubSmtp, getClubViva } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
-import { loadPlatformConfig } from '../platform/platformConfig';
+import { getPreviewClubId, loadPlatformConfig } from '../platform/platformConfig';
 import type { FeeChargeTemplateInput } from '../schemas';
 import type { FeeChargeTemplate } from '../types';
 import { formatCurrency, formatDate } from '../utils/labels';
@@ -38,12 +42,26 @@ function toggleMonth(list: number[], month: number): number[] {
 
 export function FeesPage() {
   const { data, refresh } = useAppData();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const session = getSession();
+  const clubId = getPreviewClubId() ?? session?.clubId ?? null;
+  const vivaEnabled = clubId ? getClubViva(clubId).enabled : false;
   const [query, setQuery] = useState('');
   const [panel, setPanel] = useState<Panel>('list');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+
+  useEffect(() => {
+    const txnId = searchParams.get('t');
+    if (!txnId) return;
+    setMessage(
+      `Επιστροφή από Viva (transaction ${txnId}). Καταχωρήστε τη σχετική πληρωμή στις Συναλλαγές αν δεν εμφανίζεται αυτόματα.`,
+    );
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const seasons = useMemo(() => {
     const fromConfig = loadPlatformConfig().seasons ?? [];
@@ -174,17 +192,74 @@ export function FeesPage() {
   }
 
   async function handleSendReminder(row: feeChargesService.DebtReminderRow) {
-    const result = await feeChargesService.logDebtReminder({
-      athleteId: row.athleteId,
-      amount: row.balance,
-      note: `Υπενθύμιση οφειλής ${formatCurrency(row.balance)} · ${row.daysOverdue} ημέρες`,
-    });
-    if (!result.success) {
-      setError(result.error ?? 'Αποτυχία καταγραφής υπενθύμισης');
+    if (!clubId) {
+      setError('Δεν βρέθηκε σύλλογος.');
       return;
     }
-    setMessage(`Καταχωρήθηκε υπενθύμιση για ${row.athleteName}.`);
+    if (!row.email.includes('@')) {
+      setError(
+        `Ο ${row.athleteName} δεν έχει έγκυρο email γονέα/αθλητή. Συμπληρώστε το στο προφίλ.`,
+      );
+      return;
+    }
+
+    const smtp = getClubSmtp(clubId);
+    if (!smtp.enabled) {
+      setError('Ενεργοποιήστε το SMTP στις Ρυθμίσεις → Email για αποστολή υπενθυμίσεων.');
+      return;
+    }
+
+    const club = getClubById(clubId);
+    setSaving(true);
+    setError('');
+    const send = await emailService.sendClubEmail({
+      clubId,
+      to: row.email,
+      subject: `Υπενθύμιση οφειλής — ${club?.name ?? 'Σύλλογος'}`,
+      text: [
+        `Αγαπητοί γονείς / κηδεμόνες,`,
+        ``,
+        `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${row.athleteName}.`,
+        `Ποσό: ${formatCurrency(row.balance)}`,
+        `Ημέρες καθυστέρησης: ${row.daysOverdue}`,
+        ``,
+        `Παρακαλούμε τακτοποιήστε την οφειλή το συντομότερο.`,
+        ``,
+        club?.name ?? 'SPORTSUITE 360',
+      ].join('\n'),
+    });
+    setSaving(false);
+    if (!send.success) {
+      setError(send.error ?? 'Αποτυχία αποστολής email');
+      return;
+    }
+
+    await feeChargesService.logDebtReminder({
+      athleteId: row.athleteId,
+      amount: row.balance,
+      note: `Email υπενθύμισης σε ${row.email} · ${formatCurrency(row.balance)}`,
+    });
+    setMessage(`Στάλθηκε υπενθύμιση email στον/στην ${row.athleteName} (${row.email}).`);
     refresh();
+  }
+
+  async function handleVivaPay(athleteId: string, amount: number, athleteName: string, email: string) {
+    if (!clubId) return;
+    setPayingId(athleteId);
+    setError('');
+    const result = await vivaService.createVivaCheckout({
+      clubId,
+      amountEuro: amount,
+      customerEmail: email || undefined,
+      customerFullName: athleteName,
+      merchantTrns: `Οφειλή ${athleteName}`,
+    });
+    setPayingId(null);
+    if (!result.success || !result.data?.checkoutUrl) {
+      setError(result.error ?? 'Αποτυχία Viva checkout');
+      return;
+    }
+    window.location.href = result.data.checkoutUrl;
   }
 
   function templateSummary(tpl: FeeChargeTemplate): string {
@@ -280,6 +355,22 @@ export function FeesPage() {
                     : '—'}
                 </td>
                 <td className="row-actions">
+                  {balance > 0 && vivaEnabled ? (
+                    <Button
+                      type="button"
+                      disabled={payingId === athlete.id}
+                      onClick={() =>
+                        void handleVivaPay(
+                          athlete.id,
+                          balance,
+                          `${athlete.lastName} ${athlete.firstName}`,
+                          athlete.motherEmail || athlete.email || '',
+                        )
+                      }
+                    >
+                      {payingId === athlete.id ? 'Viva…' : 'Viva'}
+                    </Button>
+                  ) : null}
                   <Link className="btn btn-secondary" to={`/athletes/${athlete.id}`}>
                     Προφίλ
                   </Link>
@@ -613,7 +704,8 @@ export function FeesPage() {
       >
         <div className="stack-md">
           <p className="muted">
-            Αθλητές με οφειλή μετά τις ημέρες υπενθύμισης του προτύπου χρέωσης.
+            Αθλητές με οφειλή μετά τις ημέρες υπενθύμισης. Η «Υπενθύμιση» στέλνει πραγματικό email
+            μέσω SMTP (μόνο αν είναι ενεργό στις Ρυθμίσεις και υπάρχει έγκυρο email).
           </p>
           {reminders.length === 0 ? (
             <p className="muted">Δεν υπάρχουν οφειλές προς υπενθύμιση αυτή τη στιγμή.</p>

@@ -1,10 +1,11 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { isAuthenticated, isPlatformAdmin, login } from '../auth/auth';
+import { getSession, isAuthenticated, login } from '../auth/auth';
 import { endPreview, getAppLogoUrl, getAppName } from '../platform/platformConfig';
 
 function homeForRole(role?: string) {
-  return role === 'platform_admin' ? '/platform' : '/';
+  if (role === 'platform_admin') return '/platform';
+  return '/';
 }
 
 export function LoginPage() {
@@ -21,7 +22,8 @@ export function LoginPage() {
   const appLogoUrl = useMemo(() => getAppLogoUrl(), []);
 
   if (isAuthenticated()) {
-    return <Navigate to={homeForRole(isPlatformAdmin() ? 'platform_admin' : 'admin')} replace />;
+    const role = getSession()?.role;
+    return <Navigate to={homeForRole(role)} replace />;
   }
 
   function completeLogin(result: ReturnType<typeof login>) {
