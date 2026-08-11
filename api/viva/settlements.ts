@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { consumeSettlement, listOpenSettlements } from '../lib/serverStore';
+import { consumeSettlement, listOpenSettlements } from '../lib/serverStore.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {

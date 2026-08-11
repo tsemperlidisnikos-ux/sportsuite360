@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { listMirrorKeys, loadMirror, saveMirror } from '../lib/serverStore';
+import { listMirrorKeys, loadMirror, saveMirror } from '../lib/serverStore.js';
 
 /**
  * Experimental cloud mirror for club AppData (in-memory on Vercel instances).

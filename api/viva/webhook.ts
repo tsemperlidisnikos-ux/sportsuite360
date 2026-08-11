@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { addSettlement } from '../lib/serverStore';
+import { addSettlement } from '../lib/serverStore.js';
 
 /**
  * Viva Wallet webhook receiver.
