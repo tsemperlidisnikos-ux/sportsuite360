@@ -1541,6 +1541,16 @@ function DevelopmentReportSection() {
   const [untilDate, setUntilDate] = useState(todayIso);
   const [preview, setPreview] = useState(false);
 
+  const reports = useMemo(() => {
+    if (!athleteId || !preview) return [];
+    return (data.progressReports ?? [])
+      .filter((r) => r.athleteId === athleteId)
+      .filter((r) => r.date >= fromDate && r.date <= untilDate)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [data.progressReports, athleteId, fromDate, untilDate, preview]);
+
+  const athlete = data.students.find((s) => s.id === athleteId);
+
   return (
     <SectionShell
       title="Αναφορά προόδου"
@@ -1594,10 +1604,33 @@ function DevelopmentReportSection() {
         ) : null}
       </div>
       {preview ? (
-        <p className="prints-placeholder-note">
-          Δεν υπάρχουν ακόμη καταχωρήσεις αναφοράς προόδου για τον επιλεγμένο αθλητή
-          ({fromDate} – {untilDate}).
-        </p>
+        <div className="prints-preview stack-md">
+          <h3>
+            Αναφορά προόδου — {athlete ? `${athlete.lastName} ${athlete.firstName}` : '—'}
+          </h3>
+          <p className="muted">
+            Περίοδος {fromDate} – {untilDate}
+          </p>
+          {reports.length === 0 ? (
+            <p className="prints-placeholder-note">
+              Δεν υπάρχουν καταχωρήσεις αναφοράς προόδου για την επιλεγμένη περίοδο.
+            </p>
+          ) : (
+            <ul className="parent-portal-list">
+              {reports.map((r) => (
+                <li key={r.id}>
+                  <strong>
+                    {r.date} · {r.title} · {r.rating}/5
+                  </strong>
+                  <span className="muted">
+                    {r.createdByName}
+                    {r.notes ? ` · ${r.notes}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       ) : null}
     </SectionShell>
   );

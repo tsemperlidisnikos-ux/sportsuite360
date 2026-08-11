@@ -3,6 +3,7 @@ import {
   deleteUser,
   getSession,
   getUsers,
+  prepareStoredPassword,
   roleLabels,
   saveUsers,
   updateUser,
@@ -278,7 +279,7 @@ export async function setClubMemberActive(
 }
 
 export async function inviteClubUser(input: InviteClubUserInput) {
-  return apiClient(() => {
+  return apiClient(async () => {
     if (!canManageClubUsers(input.clubId)) {
       throw new Error('Δεν έχετε δικαίωμα πρόσκλησης χρηστών');
     }
@@ -304,7 +305,7 @@ export async function inviteClubUser(input: InviteClubUserInput) {
       id: createId('user'),
       fullName,
       email,
-      password,
+      password: await prepareStoredPassword(password),
       role: input.role as UserRole,
       active: true,
       clubId: input.clubId,
@@ -327,7 +328,7 @@ export async function updateClubUser(
     active?: boolean;
   },
 ) {
-  return apiClient(() => {
+  return apiClient(async () => {
     if (!canManageClubUsers(clubId)) {
       throw new Error('Δεν έχετε δικαίωμα επεξεργασίας χρηστών');
     }
@@ -351,7 +352,7 @@ export async function updateClubUser(
       if (patch.password.trim().length < 6) {
         throw new Error('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες');
       }
-      nextPatch.password = patch.password.trim();
+      nextPatch.password = await prepareStoredPassword(patch.password.trim());
     }
     if (patch.active !== undefined) nextPatch.active = patch.active;
 

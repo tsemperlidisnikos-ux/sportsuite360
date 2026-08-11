@@ -26,7 +26,7 @@ export function LoginPage() {
     return <Navigate to={homeForRole(role)} replace />;
   }
 
-  function completeLogin(result: ReturnType<typeof login>) {
+  function completeLogin(result: Awaited<ReturnType<typeof login>>) {
     if (!result.success) {
       setError(result.error ?? 'Αποτυχία σύνδεσης');
       return;
@@ -40,11 +40,11 @@ export function LoginPage() {
     navigate(target, { replace: true });
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
     setError('');
-    const result = login(email, password);
+    const result = await login(email, password);
     setSaving(false);
     completeLogin(result);
   }

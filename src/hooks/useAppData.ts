@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeAppData } from '../data/appDataEvents';
-import { getData } from '../data/repository';
+import { clearDataCache, getData } from '../data/repository';
+import { APP_DATA_STORAGE_KEYS } from '../data/store';
 import type { AppData } from '../types';
-
-const STORAGE_KEY = 'academyhub-data-v12';
 
 function snapshotData(): AppData {
   const current = getData();
-  // Shallow copy so React always sees a new root reference after mutations.
-  return { ...current, photos: [...(current.photos ?? [])] };
+  return {
+    ...current,
+    photos: [...(current.photos ?? [])],
+    progressReports: [...(current.progressReports ?? [])],
+  };
 }
 
 export function useAppData() {
@@ -25,13 +27,26 @@ export function useAppData() {
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) {
-        setData(snapshotData());
-        setVersion((v) => v + 1);
+      if (!event.key || !(APP_DATA_STORAGE_KEYS as readonly string[]).includes(event.key)) {
+        return;
       }
+      clearDataCache();
+      setData(snapshotData());
+      setVersion((v) => v + 1);
+    };
+    const onClubContext = () => {
+      clearDataCache();
+      setData(snapshotData());
+      setVersion((v) => v + 1);
     };
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('academyhub-platform-updated', onClubContext);
+    window.addEventListener('academyhub-clubs-updated', onClubContext);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('academyhub-platform-updated', onClubContext);
+      window.removeEventListener('academyhub-clubs-updated', onClubContext);
+    };
   }, []);
 
   const refresh = useCallback(() => {

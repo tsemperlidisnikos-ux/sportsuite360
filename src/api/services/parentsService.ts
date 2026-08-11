@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import {
   getSession,
   getUsers,
+  prepareStoredPassword,
   saveUsers,
   type AppUser,
 } from '../../auth/auth';
@@ -69,7 +70,7 @@ export async function listParentLinks(clubId: string) {
 }
 
 export async function connectParent(input: ConnectParentInput) {
-  return apiClient(() => {
+  return apiClient(async () => {
     if (!canManageParents(input.clubId)) {
       throw new Error('Δεν έχετε δικαίωμα σύνδεσης γονέα');
     }
@@ -99,6 +100,8 @@ export async function connectParent(input: ConnectParentInput) {
       throw new Error('Το email ανήκει ήδη σε άλλο ρόλο');
     }
 
+    const hashed = await prepareStoredPassword(password);
+
     if (!parent) {
       if (users.some((u) => u.email.toLowerCase() === email)) {
         throw new Error('Υπάρχει ήδη λογαριασμός με αυτό το email');
@@ -106,7 +109,7 @@ export async function connectParent(input: ConnectParentInput) {
       parent = {
         id: createId('user'),
         email,
-        password,
+        password: hashed,
         fullName,
         role: 'parent',
         active: true,
@@ -120,7 +123,7 @@ export async function connectParent(input: ConnectParentInput) {
           ? {
               ...u,
               fullName,
-              password: password || u.password,
+              password: hashed,
               active: true,
               role: 'parent' as const,
             }

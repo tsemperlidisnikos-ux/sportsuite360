@@ -1239,6 +1239,20 @@ th {
   padding-bottom: 0;
 }
 
+.ap-progress-item {
+  display: grid;
+  gap: 0.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(15, 40, 38, 0.08);
+}
+
+.ap-progress-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .photos-upload-panel {
   max-width: 42rem;
 }

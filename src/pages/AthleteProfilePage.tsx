@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
 import * as studentsService from '../api/services/studentsService';
+import * as progressReportsService from '../api/services/progressReportsService';
 import { Button } from '../components/ui/Button';
 import { useAppData } from '../hooks/useAppData';
 import type { StudentInput } from '../schemas';
 import type { Gender, Student } from '../types';
 import { buildHealthCardPdf } from '../utils/healthCardPdf';
 import { sizeChartOptGroups } from '../utils/sizeChartOptions';
+import { formatDate } from '../utils/labels';
+import { localDateIso } from '../utils/dates';
 
 const MONTH_LABELS = [
   'Αύγουστος',
@@ -111,6 +114,12 @@ export function AthleteProfilePage() {
   const [seasonStart, setSeasonStart] = useState(2026);
   const [gdprOpen, setGdprOpen] = useState(true);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [progressTitle, setProgressTitle] = useState('');
+  const [progressNotes, setProgressNotes] = useState('');
+  const [progressRating, setProgressRating] = useState(3);
+  const [progressDate, setProgressDate] = useState(localDateIso);
+  const [progressError, setProgressError] = useState('');
+  const [progressSaving, setProgressSaving] = useState(false);
   const [loadingHealthCardPreview, setLoadingHealthCardPreview] = useState(false);
   const healthCardPreviewUrlRef = useRef<string | null>(null);
 
@@ -943,8 +952,111 @@ export function AthleteProfilePage() {
                 {progressOpen ? <ChevronUp size={16} /> : <ChevronRight size={16} />}
               </button>
               {progressOpen ? (
-                <div className="ap-progress-panel">
-                  Δεν υπάρχουν ακόμη καταχωρήσεις αναφοράς προόδου για αυτόν τον αθλητή.
+                <div className="ap-progress-panel stack-md">
+                  {(data.progressReports ?? [])
+                    .filter((r) => r.athleteId === athleteId)
+                    .map((report) => (
+                      <article key={report.id} className="ap-progress-item">
+                        <div className="ap-progress-item-head">
+                          <strong>{report.title}</strong>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => {
+                              if (!confirm('Διαγραφή αναφοράς;')) return;
+                              void progressReportsService
+                                .deleteProgressReport(report.id)
+                                .then(() => refresh());
+                            }}
+                          >
+                            Διαγραφή
+                          </button>
+                        </div>
+                        <span className="muted">
+                          {formatDate(report.date)} · Βαθμός {report.rating}/5 ·{' '}
+                          {report.createdByName}
+                        </span>
+                        {report.notes ? <p>{report.notes}</p> : null}
+                      </article>
+                    ))}
+                  {(data.progressReports ?? []).filter((r) => r.athleteId === athleteId)
+                    .length === 0 ? (
+                    <p className="muted">Δεν υπάρχουν ακόμη καταχωρήσεις.</p>
+                  ) : null}
+
+                  <div className="stack-md">
+                    <strong>Νέα αναφορά</strong>
+                    <label className="field">
+                      <span className="field-label">Ημερομηνία</span>
+                      <input
+                        className="field-input"
+                        type="date"
+                        value={progressDate}
+                        onChange={(e) => setProgressDate(e.target.value)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="field-label">Τίτλος</span>
+                      <input
+                        className="field-input"
+                        value={progressTitle}
+                        onChange={(e) => setProgressTitle(e.target.value)}
+                        placeholder="π.χ. Τεχνική / φυσική κατάσταση"
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="field-label">Βαθμός (1–5)</span>
+                      <input
+                        className="field-input"
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={progressRating}
+                        onChange={(e) => setProgressRating(Number(e.target.value) || 3)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="field-label">Σχόλια</span>
+                      <textarea
+                        className="field-input"
+                        rows={3}
+                        value={progressNotes}
+                        onChange={(e) => setProgressNotes(e.target.value)}
+                      />
+                    </label>
+                    {progressError ? <p className="form-error">{progressError}</p> : null}
+                    <Button
+                      type="button"
+                      disabled={progressSaving}
+                      onClick={() => {
+                        if (!athleteId) return;
+                        setProgressSaving(true);
+                        setProgressError('');
+                        void progressReportsService
+                          .createProgressReport({
+                            athleteId,
+                            date: progressDate,
+                            title: progressTitle,
+                            notes: progressNotes,
+                            rating: progressRating,
+                          })
+                          .then((result) => {
+                            setProgressSaving(false);
+                            if (!result.success) {
+                              setProgressError(result.error ?? 'Σφάλμα αποθήκευσης');
+                              return;
+                            }
+                            setProgressTitle('');
+                            setProgressNotes('');
+                            setProgressRating(3);
+                            setProgressDate(localDateIso());
+                            refresh();
+                          });
+                      }}
+                    >
+                      {progressSaving ? 'Αποθήκευση…' : 'Αποθήκευση αναφοράς'}
+                    </Button>
+                  </div>
                 </div>
               ) : null}
             </div>

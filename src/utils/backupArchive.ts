@@ -1,6 +1,6 @@
 import { getUsers } from '../auth/auth';
 import { getClubs } from '../auth/clubs';
-import { getData } from '../data/repository';
+import { exportAllClubsData, getData } from '../data/repository';
 import { loadStore } from '../data/store';
 import { loadPlatformConfig } from '../platform/platformConfig';
 import { localDateIso, localDateTimeIso } from './dates';
@@ -11,6 +11,8 @@ export const BACKUP_JSON_FILENAME = 'academyhub-backup.json';
 export type BackupPayload = {
   exportedAt: string;
   appData?: ReturnType<typeof getData>;
+  /** Multi-tenant map clubId → AppData (newer backups). */
+  appDataByClub?: Record<string, ReturnType<typeof getData>>;
   platformConfig?: ReturnType<typeof loadPlatformConfig>;
   users?: ReturnType<typeof getUsers>;
   clubs?: ReturnType<typeof getClubs>;
@@ -20,6 +22,7 @@ export function buildBackupPayload(): BackupPayload {
   return {
     exportedAt: localDateTimeIso(),
     appData: loadStore() ?? getData(),
+    appDataByClub: exportAllClubsData(),
     platformConfig: loadPlatformConfig(),
     users: getUsers(),
     clubs: getClubs(),
@@ -46,7 +49,7 @@ export function downloadBackupZip(payload: BackupPayload = buildBackupPayload())
 
 function parseBackupJson(text: string): BackupPayload {
   const parsed = JSON.parse(text) as BackupPayload;
-  if (!parsed.appData && !parsed.platformConfig && !parsed.users && !parsed.clubs) {
+  if (!parsed.appData && !parsed.appDataByClub && !parsed.platformConfig && !parsed.users && !parsed.clubs) {
     throw new Error('Το αρχείο δεν είναι έγκυρο backup της εφαρμογής.');
   }
   return parsed;

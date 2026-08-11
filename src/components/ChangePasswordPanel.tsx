@@ -10,12 +10,12 @@ export function ChangePasswordPanel() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
     setError('');
     setMessage('');
-    const result = changePassword({
+    const result = await changePassword({
       currentPassword,
       newPassword,
       confirmPassword,

@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import { saveUsers } from '../auth/auth';
 import { saveClubs } from '../auth/clubs';
 import { Button } from './ui/Button';
-import { replaceData } from '../data/repository';
+import { replaceAllClubsData, replaceData } from '../data/repository';
 import { savePlatformConfig } from '../platform/platformConfig';
 import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
 
@@ -26,7 +26,11 @@ export function BackupPanel() {
     try {
       const parsed = await readBackupFile(file);
 
-      if (parsed.appData) replaceData(parsed.appData);
+      if (parsed.appDataByClub && Object.keys(parsed.appDataByClub).length > 0) {
+        replaceAllClubsData(parsed.appDataByClub);
+      } else if (parsed.appData) {
+        replaceData(parsed.appData);
+      }
       if (parsed.platformConfig) savePlatformConfig(parsed.platformConfig);
       if (parsed.users?.length) saveUsers(parsed.users);
       if (parsed.clubs?.length) saveClubs(parsed.clubs);

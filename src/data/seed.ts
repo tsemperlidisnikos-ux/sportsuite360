@@ -22,6 +22,7 @@ export const seedData: AppData = {
   feeReminderLogs: [],
   photos: [],
   parentLinks: [],
+  progressReports: [],
   sizeChart: {
     kids: ['XS', 'S', 'M', 'L', 'XL'],
     men: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],

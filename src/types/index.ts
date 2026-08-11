@@ -333,6 +333,18 @@ export interface ParentAthleteLink {
   createdAt: string;
 }
 
+/** Αναφορά προόδου αθλητή (προπονητής / γραμματεία). */
+export interface ProgressReport {
+  id: string;
+  athleteId: string;
+  date: string;
+  title: string;
+  notes: string;
+  rating: number;
+  createdByName: string;
+  createdAt: string;
+}
+
 export interface AppData {
   students: Student[];
   coaches: Coach[];
@@ -355,6 +367,7 @@ export interface AppData {
   feeReminderLogs: FeeReminderLog[];
   photos: GalleryPhoto[];
   parentLinks: ParentAthleteLink[];
+  progressReports: ProgressReport[];
   sizeChart: SizeChart;
   /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
   termsOfUseHtml?: string;

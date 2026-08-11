@@ -1,15 +1,16 @@
 import { apiClient } from '../apiClient';
 import { getClubById, getClubViva } from '../../auth/clubs';
+import { localDateTimeIso } from '../../utils/dates';
+import { addVivaPending } from '../../utils/vivaPending';
 
 export type CreateVivaPaymentInput = {
   clubId: string;
   amountEuro: number;
+  athleteId?: string;
+  athleteName?: string;
   customerEmail?: string;
   customerFullName?: string;
   merchantTrns?: string;
-  /** Absolute success/failure URLs optional — Viva source settings usually cover this. */
-  successUrl?: string;
-  failureUrl?: string;
 };
 
 export async function createVivaCheckout(input: CreateVivaPaymentInput) {
@@ -67,8 +68,20 @@ export async function createVivaCheckout(input: CreateVivaPaymentInput) {
       throw new Error(err);
     }
 
+    const orderCode = String(payload.orderCode ?? '');
+    if (input.athleteId && orderCode) {
+      addVivaPending({
+        clubId: input.clubId,
+        orderCode,
+        athleteId: input.athleteId,
+        amountEuro: input.amountEuro,
+        athleteName: input.athleteName || input.customerFullName || 'Αθλητής',
+        createdAt: localDateTimeIso(),
+      });
+    }
+
     return {
-      orderCode: String(payload.orderCode ?? ''),
+      orderCode,
       checkoutUrl: payload.checkoutUrl,
     };
   });

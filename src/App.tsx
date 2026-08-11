@@ -17,6 +17,8 @@ import { FinancePage } from './pages/FinancePage';
 import { LicensePackagesPage } from './pages/LicensePackagesPage';
 import { LoginPage } from './pages/LoginPage';
 import { ParentPortalPage } from './pages/ParentPortalPage';
+import { CoachPortalPage } from './pages/CoachPortalPage';
+import { AthletePortalPage } from './pages/AthletePortalPage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { PlatformUsersPage } from './pages/PlatformUsersPage';
 import { PrintsPage } from './pages/PrintsPage';
@@ -39,9 +41,9 @@ function HomeRoute() {
     return <Navigate to="/platform" replace />;
   }
   const session = getSession();
-  if (session?.role === 'parent') {
-    return <ParentPortalPage />;
-  }
+  if (session?.role === 'parent') return <ParentPortalPage />;
+  if (session?.role === 'coach') return <CoachPortalPage />;
+  if (session?.role === 'athlete') return <AthletePortalPage />;
   return <DashboardPage />;
 }
 

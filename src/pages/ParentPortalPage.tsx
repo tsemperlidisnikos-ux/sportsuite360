@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bell, CalendarDays, CreditCard, Users } from 'lucide-react';
 import * as vivaService from '../api/services/vivaService';
 import { getSession } from '../auth/auth';
@@ -7,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import { getPreviewClubId } from '../platform/platformConfig';
+import { settleVivaReturn } from '../utils/vivaSettle';
 import { formatCurrency, formatDate } from '../utils/labels';
 import { localDateIso } from '../utils/dates';
 
@@ -20,12 +22,35 @@ function athleteBalance(
 }
 
 export function ParentPortalPage() {
-  const { data } = useAppData();
+  const { data, refresh } = useAppData();
   const session = getSession();
   const clubId = getPreviewClubId() ?? session?.clubId ?? null;
   const viva = clubId ? getClubViva(clubId) : null;
+  const [searchParams, setSearchParams] = useSearchParams();
   const [payError, setPayError] = useState('');
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const txnId = searchParams.get('t');
+    const orderCode = searchParams.get('s');
+    if ((!txnId && !orderCode) || !clubId) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await settleVivaReturn({
+        clubId,
+        orderCode,
+        transactionId: txnId,
+      });
+      if (cancelled) return;
+      setMessage(result.message);
+      if (result.settled) refresh();
+      setSearchParams({}, { replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams, clubId, refresh]);
 
   const linkedAthletes = useMemo(() => {
     if (!session) return [];
@@ -112,6 +137,8 @@ export function ParentPortalPage() {
     const result = await vivaService.createVivaCheckout({
       clubId,
       amountEuro: amount,
+      athleteId,
+      athleteName,
       customerEmail: email,
       customerFullName: session?.fullName ?? athleteName,
       merchantTrns: `Οφειλή ${athleteName}`,
@@ -130,6 +157,8 @@ export function ParentPortalPage() {
         title="Περιοχή γονέα"
         subtitle={`Καλώς ήρθατε, ${session?.fullName ?? 'γονέα'}. Δείτε τα στοιχεία των συνδεδεμένων αθλητών.`}
       />
+
+      {message ? <p className="settings-success">{message}</p> : null}
 
       {linkedAthletes.length === 0 ? (
         <section className="panel">

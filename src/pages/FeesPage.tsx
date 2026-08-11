@@ -56,12 +56,28 @@ export function FeesPage() {
 
   useEffect(() => {
     const txnId = searchParams.get('t');
-    if (!txnId) return;
-    setMessage(
-      `Επιστροφή από Viva (transaction ${txnId}). Καταχωρήστε τη σχετική πληρωμή στις Συναλλαγές αν δεν εμφανίζεται αυτόματα.`,
-    );
-    setSearchParams({}, { replace: true });
-  }, [searchParams, setSearchParams]);
+    const orderCode = searchParams.get('s');
+    if (!txnId && !orderCode) return;
+    if (!clubId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const { settleVivaReturn } = await import('../utils/vivaSettle');
+      const result = await settleVivaReturn({
+        clubId,
+        orderCode,
+        transactionId: txnId,
+      });
+      if (cancelled) return;
+      setMessage(result.message);
+      if (result.settled) refresh();
+      setSearchParams({}, { replace: true });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams, clubId, refresh]);
 
   const seasons = useMemo(() => {
     const fromConfig = loadPlatformConfig().seasons ?? [];
@@ -250,6 +266,8 @@ export function FeesPage() {
     const result = await vivaService.createVivaCheckout({
       clubId,
       amountEuro: amount,
+      athleteId,
+      athleteName,
       customerEmail: email || undefined,
       customerFullName: athleteName,
       merchantTrns: `Οφειλή ${athleteName}`,

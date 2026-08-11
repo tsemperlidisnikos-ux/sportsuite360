@@ -1,3 +1,5 @@
+import { hashPassword, isPasswordHashed, verifyPassword } from './password';
+
 export type UserRole =
   | 'platform_admin'
   | 'admin'
@@ -52,6 +54,20 @@ function findApollonClubId(): string | null {
   }
 }
 
+function setSessionFromUser(user: AppUser): void {
+  localStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      clubId: user.clubId ?? null,
+      athleteId: user.athleteId ?? null,
+    }),
+  );
+}
+
 /** Always keep a working platform admin account in localStorage. */
 export function ensurePlatformAdmin(): AppUser {
   let users: AppUser[] = [];
@@ -67,6 +83,7 @@ export function ensurePlatformAdmin(): AppUser {
     users = [];
   }
 
+  const existingAdmin = users.find((u) => u.id === PLATFORM_ADMIN.id);
   const others = users.filter(
     (u) => u.id !== PLATFORM_ADMIN.id && u.role !== 'platform_admin',
   );
@@ -76,12 +93,15 @@ export function ensurePlatformAdmin(): AppUser {
   );
   const clubId = findApollonClubId();
   if (apollonIndex >= 0) {
+    const prev = others[apollonIndex];
     others[apollonIndex] = {
-      ...others[apollonIndex],
+      ...prev,
       email: APOLLON_ADMIN_EMAIL,
-      password: APOLLON_ADMIN_PASSWORD,
+      password: isPasswordHashed(prev.password)
+        ? prev.password
+        : prev.password || APOLLON_ADMIN_PASSWORD,
       active: true,
-      clubId: others[apollonIndex].clubId ?? clubId,
+      clubId: prev.clubId ?? clubId,
     };
   } else {
     others.push({
@@ -95,7 +115,18 @@ export function ensurePlatformAdmin(): AppUser {
     });
   }
 
-  const next = [{ ...PLATFORM_ADMIN }, ...others];
+  const admin: AppUser = {
+    ...PLATFORM_ADMIN,
+    password:
+      existingAdmin && isPasswordHashed(existingAdmin.password)
+        ? existingAdmin.password
+        : existingAdmin?.password || PLATFORM_ADMIN.password,
+    fullName: existingAdmin?.fullName || PLATFORM_ADMIN.fullName,
+    email: PLATFORM_ADMIN.email,
+    active: true,
+  };
+
+  const next = [admin, ...others];
   localStorage.setItem(USERS_KEY, JSON.stringify(next));
   return next[0];
 }
@@ -120,31 +151,34 @@ export function saveUsers(users: AppUser[]): void {
   window.dispatchEvent(new CustomEvent('academyhub-users-updated'));
 }
 
-export function login(
+export async function login(
   email: string,
   password: string,
-): { success: boolean; data?: AppUser; error?: string } {
+): Promise<{ success: boolean; data?: AppUser; error?: string }> {
   ensurePlatformAdmin();
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPassword = password.trim();
-  const user = getUsers().find(
-    (u) =>
-      u.email.toLowerCase() === normalizedEmail &&
-      u.password === normalizedPassword &&
-      u.active,
+  const users = getUsers();
+  const index = users.findIndex(
+    (u) => u.email.toLowerCase() === normalizedEmail && u.active,
   );
-  if (!user) {
+  if (index < 0) {
     return { success: false, error: 'Λάθος email ή κωδικός' };
   }
-  const session = {
-    id: user.id,
-    email: user.email,
-    fullName: user.fullName,
-    role: user.role,
-    clubId: user.clubId ?? null,
-  };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return { success: true, data: user };
+
+  const user = users[index];
+  const ok = await verifyPassword(normalizedPassword, user.password);
+  if (!ok) {
+    return { success: false, error: 'Λάθος email ή κωδικός' };
+  }
+
+  if (!isPasswordHashed(user.password)) {
+    users[index] = { ...user, password: await hashPassword(normalizedPassword) };
+    saveUsers(users);
+  }
+
+  setSessionFromUser(users[index]);
+  return { success: true, data: users[index] };
 }
 
 export function logout(): void {
@@ -157,6 +191,7 @@ export function getSession(): {
   fullName: string;
   role: UserRole;
   clubId?: string | null;
+  athleteId?: string | null;
 } | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
@@ -191,7 +226,9 @@ export function getUserById(userId: string): AppUser | null {
 
 export function updateUser(
   userId: string,
-  patch: Partial<Pick<AppUser, 'fullName' | 'email' | 'password' | 'role' | 'active' | 'permissions'>>,
+  patch: Partial<
+    Pick<AppUser, 'fullName' | 'email' | 'password' | 'role' | 'active' | 'permissions'>
+  >,
 ): { success: boolean; data?: AppUser; error?: string } {
   const users = getUsers();
   const index = users.findIndex((u) => u.id === userId);
@@ -213,15 +250,7 @@ export function updateUser(
 
   const session = getSession();
   if (session?.id === userId) {
-    localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({
-        ...session,
-        email: users[index].email,
-        fullName: users[index].fullName,
-        role: users[index].role,
-      }),
-    );
+    setSessionFromUser(users[index]);
   }
 
   return { success: true, data: users[index] };
@@ -234,11 +263,11 @@ export function updateUserEmail(
   return updateUser(userId, { email });
 }
 
-export function changePassword(input: {
+export async function changePassword(input: {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-}): { success: boolean; error?: string } {
+}): Promise<{ success: boolean; error?: string }> {
   const session = getSession();
   if (!session) return { success: false, error: 'Δεν υπάρχει ενεργή σύνδεση' };
 
@@ -254,21 +283,20 @@ export function changePassword(input: {
 
   const user = getUserById(session.id);
   if (!user) return { success: false, error: 'Ο χρήστης δεν βρέθηκε' };
-  if (user.password !== current) {
+  if (!(await verifyPassword(current, user.password))) {
     return { success: false, error: 'Ο τρέχων κωδικός είναι λάθος' };
   }
-  if (user.password === next) {
+  if (current === next) {
     return { success: false, error: 'Ο νέος κωδικός πρέπει να είναι διαφορετικός' };
   }
 
-  const result = updateUser(user.id, { password: next });
+  const hashed = await hashPassword(next);
+  const result = updateUser(user.id, { password: hashed });
   if (!result.success) return { success: false, error: result.error ?? 'Σφάλμα ενημέρωσης' };
   return { success: true };
 }
 
-export function deleteUser(
-  userId: string,
-): { success: boolean; error?: string } {
+export function deleteUser(userId: string): { success: boolean; error?: string } {
   const session = getSession();
   if (session?.id === userId) {
     return { success: false, error: 'Δεν μπορείτε να διαγράψετε τον ενεργό λογαριασμό' };
@@ -288,15 +316,11 @@ export function impersonateUser(
 ): { success: boolean; data?: AppUser; error?: string } {
   const user = getUsers().find((u) => u.id === userId && u.active);
   if (!user) return { success: false, error: 'Ο χρήστης δεν βρέθηκε' };
-  localStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      clubId: user.clubId ?? null,
-    }),
-  );
+  setSessionFromUser(user);
   return { success: true, data: user };
+}
+
+/** Hash plaintext password when creating users (club invites / parents). */
+export async function prepareStoredPassword(plain: string): Promise<string> {
+  return hashPassword(plain.trim());
 }

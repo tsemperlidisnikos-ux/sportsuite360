@@ -559,10 +559,12 @@ export function userCanAccessModule(
 
 export function startPreview(clubId: string): void {
   localStorage.setItem(PREVIEW_KEY, clubId);
+  window.dispatchEvent(new CustomEvent('academyhub-platform-updated'));
 }
 
 export function endPreview(): void {
   localStorage.removeItem(PREVIEW_KEY);
+  window.dispatchEvent(new CustomEvent('academyhub-platform-updated'));
 }
 
 export function getPreviewClubId(): string | null {

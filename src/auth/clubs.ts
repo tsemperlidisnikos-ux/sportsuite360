@@ -1,12 +1,7 @@
 import { z } from 'zod';
 import { fail, ok, type ApiResult } from '../api/apiClient';
 import { localDateIso } from '../utils/dates';
-import {
-  getUsers,
-  login,
-  saveUsers,
-  type AppUser,
-} from './auth';
+import { getUsers, login, prepareStoredPassword, saveUsers, type AppUser } from './auth';
 
 export interface ClubSmtpSettings {
   enabled: boolean;
@@ -95,9 +90,9 @@ export function getClubById(clubId: string | null | undefined): Club | null {
   return getClubs().find((c) => c.id === clubId) ?? null;
 }
 
-export function registerClub(
+export async function registerClub(
   input: ClubRegistrationInput,
-): ApiResult<{ club: Club; user: AppUser }> {
+): Promise<ApiResult<{ club: Club; user: AppUser }>> {
   const parsed = clubRegistrationSchema.safeParse(input);
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? 'Μη έγκυρα στοιχεία');
@@ -118,11 +113,12 @@ export function registerClub(
 
   const userId = `user_${Date.now()}`;
   const clubId = `club_${Date.now()}`;
+  const hashedPassword = await prepareStoredPassword(data.password);
 
   const user: AppUser = {
     id: userId,
     email,
-    password: data.password,
+    password: hashedPassword,
     fullName: data.adminFullName.trim(),
     role: 'admin',
     active: true,
@@ -143,7 +139,7 @@ export function registerClub(
   saveUsers([...users, user]);
   saveClubs([...clubs, club]);
 
-  const sessionResult = login(email, data.password);
+  const sessionResult = await login(email, data.password);
   if (!sessionResult.success) {
     return fail(sessionResult.error ?? 'Η εγγραφή ολοκληρώθηκε, αλλά απέτυχε η σύνδεση');
   }

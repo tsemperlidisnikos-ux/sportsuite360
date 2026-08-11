@@ -23,21 +23,23 @@ export function RegisterClubPage() {
     event.preventDefault();
     setSaving(true);
     setError('');
-    const result = registerClub({
-      clubName,
-      city,
-      phone,
-      adminFullName,
-      email,
-      password,
-      confirmPassword,
-    });
-    setSaving(false);
-    if (!result.success) {
-      setError(result.error ?? 'Αποτυχία εγγραφής');
-      return;
-    }
-    navigate('/', { replace: true });
+    void (async () => {
+      const result = await registerClub({
+        clubName,
+        city,
+        phone,
+        adminFullName,
+        email,
+        password,
+        confirmPassword,
+      });
+      setSaving(false);
+      if (!result.success) {
+        setError(result.error ?? 'Αποτυχία εγγραφής');
+        return;
+      }
+      navigate('/', { replace: true });
+    })();
   }
 
   return (

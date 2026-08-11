@@ -142,11 +142,13 @@ export function AppLayout() {
 
   const visibleAcademy = academyItems
     .filter((item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id))
-    .map((item) =>
-      item.id === 'dashboard' && session?.role === 'parent'
-        ? { ...item, label: 'Αρχική γονέα' }
-        : item,
-    );
+    .map((item) => {
+      if (item.id !== 'dashboard') return item;
+      if (session?.role === 'parent') return { ...item, label: 'Αρχική γονέα' };
+      if (session?.role === 'coach') return { ...item, label: 'Αρχική προπονητή' };
+      if (session?.role === 'athlete') return { ...item, label: 'Αρχική αθλητή' };
+      return item;
+    });
   const visibleAnalysis = analysisItems.filter(
     (item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id),
   );
