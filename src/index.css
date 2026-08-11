@@ -3178,6 +3178,20 @@ th {
   cursor: wait;
 }
 
+.login-demo-block {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.login-demo-hint {
+  margin: 0;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .login-footer-link {
   margin: 0.15rem 0 0;
   text-align: center;

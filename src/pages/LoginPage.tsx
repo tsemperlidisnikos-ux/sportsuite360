@@ -1,6 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getSession, isAuthenticated, login } from '../auth/auth';
+import { enterDemoPresentation, getDemoLoginHint } from '../auth/demoAccess';
 import { clearDataCache } from '../data/repository';
 import { endPreview, getAppLogoUrl, getAppName } from '../platform/platformConfig';
 
@@ -18,9 +19,11 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const appName = useMemo(() => getAppName(), []);
   const appLogoUrl = useMemo(() => getAppLogoUrl(), []);
+  const demoHint = useMemo(() => getDemoLoginHint(), []);
 
   if (isAuthenticated()) {
     const role = getSession()?.role;
@@ -50,6 +53,18 @@ export function LoginPage() {
     const result = await login(email, password);
     setSaving(false);
     completeLogin(result);
+  }
+
+  async function handleEnterDemo() {
+    setDemoLoading(true);
+    setError('');
+    const result = await enterDemoPresentation();
+    setDemoLoading(false);
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία εισόδου DEMO');
+      return;
+    }
+    navigate('/', { replace: true });
   }
 
   return (
@@ -90,9 +105,23 @@ export function LoginPage() {
 
         {error ? <p className="form-error">{error}</p> : null}
 
-        <button type="submit" className="login-submit" disabled={saving}>
+        <button type="submit" className="login-submit" disabled={saving || demoLoading}>
           {saving ? 'Σύνδεση...' : 'Σύνδεση'}
         </button>
+
+        <div className="login-demo-block">
+          <button
+            type="button"
+            className="login-submit login-submit-secondary"
+            disabled={saving || demoLoading}
+            onClick={() => void handleEnterDemo()}
+          >
+            {demoLoading ? 'Φόρτωση DEMO…' : 'Είσοδος DEMO παρουσίασης'}
+          </button>
+          <p className="login-demo-hint">
+            Σύλλογος DEMO με πλήρη δείγματα · {demoHint.email} / {demoHint.password}
+          </p>
+        </div>
 
         <p className="login-footer-link">
           Δεν έχετε λογαριασμό; <Link to="/register">Εγγραφή συλλόγου</Link>
