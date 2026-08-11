@@ -1,24 +1,23 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import * as backendSyncService from '../api/services/backendSyncService';
-import { getSession, saveUsers } from '../auth/auth';
-import { getClubById, saveClubs } from '../auth/clubs';
+import { getSession } from '../auth/auth';
+import { getClubById } from '../auth/clubs';
 import { Button } from './ui/Button';
 import {
   clearDataCache,
-  replaceAllClubsData,
+  getData,
   replaceClubData,
   replaceData,
   reseedDemoShowcase,
 } from '../data/repository';
-import { isDemoClubName } from '../data/demoShowcase';
-import { getPreviewClubId, savePlatformConfig } from '../platform/platformConfig';
+import { isDemoClubName, markDemoShowcaseApplied } from '../data/demoShowcase';
+import { getPreviewClubId } from '../platform/platformConfig';
 import {
+  downloadBackupJson,
   downloadBackupZip,
   formatBackupError,
-  isQuotaError,
   pickAppDataForRestore,
   readBackupFile,
-  stripHeavyMedia,
 } from '../utils/backupArchive';
 
 export function BackupPanel() {
@@ -27,6 +26,7 @@ export function BackupPanel() {
   const [error, setError] = useState('');
   const [fileLabel, setFileLabel] = useState('Δεν επιλέχθηκε κανένα αρχείο.');
   const [syncing, setSyncing] = useState<'push' | 'pull' | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   const clubId = getPreviewClubId() ?? getSession()?.clubId ?? null;
   const club = clubId ? getClubById(clubId) : null;
@@ -40,6 +40,11 @@ export function BackupPanel() {
   function handleBackupExport() {
     downloadBackupZip();
     flash('Το backup ZIP κατέβηκε.');
+  }
+
+  function handleBackupExportJson() {
+    downloadBackupJson();
+    flash('Το backup JSON κατέβηκε.');
   }
 
   async function handlePushMirror() {
@@ -107,66 +112,51 @@ export function BackupPanel() {
     }, 500);
   }
 
-  function persistAppData(data: ReturnType<typeof pickAppDataForRestore>, stripped: boolean) {
-    if (!data) throw new Error('Το backup δεν περιέχει δεδομένα συλλόγου.');
-    const payload = stripped ? stripHeavyMedia(data) : data;
-    if (clubId) {
-      replaceClubData(clubId, payload);
-    } else {
-      replaceData(payload);
-    }
-  }
-
   async function applyBackupFile(file: File) {
+    setRestoring(true);
+    setError('');
+    setMessage('');
     try {
+      if (!clubId) {
+        throw new Error('Δεν βρέθηκε ενεργός σύλλογος. Κάντε login και ξαναδοκιμάστε.');
+      }
+
       const parsed = await readBackupFile(file);
       const clubData = pickAppDataForRestore(parsed, clubId);
-
-      try {
-        persistAppData(clubData, false);
-      } catch (err) {
-        if (isQuotaError(err)) {
-          persistAppData(clubData, true);
-          flash(
-            'Η επαναφορά ολοκληρώθηκε χωρίς βαριές φωτογραφίες (όριο χώρου browser). Ανανέωση…',
-          );
-          clearDataCache();
-          window.setTimeout(() => window.location.reload(), 700);
-          return;
-        }
-        throw err;
+      if (!clubData) {
+        throw new Error('Το backup δεν περιέχει δεδομένα συλλόγου.');
       }
 
-      // Club restore: do NOT overwrite all users/clubs from another device by default
-      // (that would break the current Vercel login). Platform config is optional.
-      const restoreAccounts = window.confirm(
-        'Να εισαχθούν επίσης χρήστες & κατάλογος συλλόγων από το backup;\n\n' +
-          'Επιλέξτε OK μόνο αν θέλετε πλήρη αντικατάσταση λογαριασμών.\n' +
-          'Συνήθως για μεταφορά δεδομένων σε άλλο browser πατήστε Άκυρο ' +
-          '(κρατάτε την τρέχουσα σύνδεση, φορτώνονται μόνο τα δεδομένα συλλόγου).',
-      );
+      const expectedStudents = clubData.students?.length ?? 0;
+      replaceClubData(clubId, clubData);
 
-      if (restoreAccounts) {
-        if (parsed.platformConfig) savePlatformConfig(parsed.platformConfig);
-        if (parsed.users?.length) saveUsers(parsed.users);
-        if (parsed.clubs?.length) saveClubs(parsed.clubs);
-        if (parsed.appDataByClub && Object.keys(parsed.appDataByClub).length > 1) {
-          try {
-            replaceAllClubsData(parsed.appDataByClub);
-          } catch {
-            /* already wrote current club */
-          }
-        }
+      // Prevent DEMO showcase auto-seed from overwriting a manual restore.
+      if (isDemoClubName(getClubById(clubId)?.name)) {
+        markDemoShowcaseApplied(clubId);
       }
 
-      flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
       clearDataCache();
+      const verify = getData();
+      const gotStudents = verify.students?.length ?? 0;
+
+      if (expectedStudents > 0 && gotStudents === 0) {
+        throw new Error(
+          'Η εγγραφή ολοκληρώθηκε αλλά τα δεδομένα δεν διαβάστηκαν πίσω. Καθαρίστε τα δεδομένα ιστότοπου και δοκιμάστε αρχείο .json.',
+        );
+      }
+
+      flash(
+        `Επαναφορά OK στον σύλλογο «${getClubById(clubId)?.name ?? clubId}»: ` +
+          `${gotStudents} αθλητές, ${verify.classes?.length ?? 0} τμήματα. Ανανέωση…`,
+      );
       window.setTimeout(() => {
         window.location.reload();
-      }, 600);
+      }, 800);
     } catch (err) {
       setMessage('');
       setError(formatBackupError(err));
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -178,7 +168,6 @@ export function BackupPanel() {
     }
     setFileLabel(file.name);
     void applyBackupFile(file);
-    // allow re-selecting the same file
     event.target.value = '';
   }
 
@@ -187,19 +176,24 @@ export function BackupPanel() {
       <header className="settings-backup-head">
         <h2>Αντίγραφα ασφαλείας</h2>
         <p>
-          Backup και επαναφορά όλων των δεδομένων του συλλόγου σας (κινήσεις, μητρώο,
-          προϋπολογισμοί, ομάδες, αθλήματα).
+          Backup και επαναφορά δεδομένων στον τρέχοντα σύλλογο (δουλεύει και από localhost →
+          Vercel).
         </p>
       </header>
 
       <div className="settings-backup-block">
         <div className="settings-backup-copy">
           <h3>Λήψη backup</h3>
-          <p>Κατεβάζει αρχείο ZIP με όλα τα δεδομένα του συλλόγου.</p>
+          <p>
+            Κατεβάστε ZIP ή JSON. Για μεταφορά στο Vercel προτείνεται <strong>JSON</strong>.
+          </p>
         </div>
-        <div className="settings-backup-panel">
+        <div className="settings-backup-panel" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Button type="button" className="settings-backup-action" onClick={handleBackupExport}>
-            Λήψη backup συλλόγου (ZIP)
+            Λήψη ZIP
+          </Button>
+          <Button type="button" className="settings-backup-action" onClick={handleBackupExportJson}>
+            Λήψη JSON
           </Button>
         </div>
       </div>
@@ -208,9 +202,14 @@ export function BackupPanel() {
         <div className="settings-backup-copy">
           <h3>Επαναφορά από backup</h3>
           <p>
-            Εισαγωγή προηγούμενου backup. Τα δεδομένα εφαρμόζονται στον{' '}
-            <strong>τρέχοντα σύλλογο</strong> (ακόμα κι αν το backup έγινε από άλλο
-            browser / localhost).
+            Εφαρμόζει τα δεδομένα στον ενεργό σύλλογο
+            {club ? (
+              <>
+                {' '}
+                (<strong>{club.name}</strong>)
+              </>
+            ) : null}
+            . Δεν αλλάζει τους λογαριασμούς σύνδεσης.
           </p>
         </div>
         <div className="settings-backup-panel">
@@ -220,16 +219,21 @@ export function BackupPanel() {
             accept="application/zip,.zip,application/json,.json"
             hidden
             onChange={handleFileChange}
+            disabled={restoring}
           />
           <button
             type="button"
             className="settings-backup-file-btn"
+            disabled={restoring || !clubId}
             onClick={() => fileRef.current?.click()}
           >
-            Επιλογή αρχείου
+            {restoring ? 'Επαναφορά…' : 'Επιλογή αρχείου'}
           </button>
           <span className="settings-backup-file-name">{fileLabel}</span>
-          <p className="settings-hint">Επιλέξτε αρχείο .zip (ή παλιό .json) από προηγούμενο backup.</p>
+          <p className="settings-hint">
+            Προτίμησε .json από localhost αν το ZIP αποτύχει. Login στον σύλλογο-στόχο πριν την
+            επαναφορά.
+          </p>
         </div>
       </div>
 
@@ -237,9 +241,7 @@ export function BackupPanel() {
         <div className="settings-backup-copy">
           <h3>Cloud mirror (πειραματικό)</h3>
           <p>
-            Push / Pull δεδομένων συλλόγου μέσω `/api/sync/mirror`. Με Upstash Redis
-            (`UPSTASH_REDIS_REST_*` ή `KV_REST_API_*`) η αποθήκευση είναι μόνιμη· αλλιώς
-            memory ανά instance. Το Pull αντικαθιστά τα τοπικά δεδομένα.
+            Push / Pull μέσω `/api/sync/mirror` (Upstash Redis αν έχει ρυθμιστεί).
           </p>
         </div>
         <div className="settings-backup-panel" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -266,10 +268,7 @@ export function BackupPanel() {
         <div className="settings-backup-block">
           <div className="settings-backup-copy">
             <h3>Δεδομένα παρουσίασης DEMO</h3>
-            <p>
-              Επαναφορτώνει πλήρες δείγμα (αθλητές, τμήματα, οικονομικά, αποθήκη, ανακοινώσεις
-              κ.λπ.) για επίδειξη της εφαρμογής.
-            </p>
+            <p>Επαναφορτώνει το ενσωματωμένο δείγμα παρουσίασης.</p>
           </div>
           <div className="settings-backup-panel">
             <Button type="button" className="settings-backup-action" onClick={handleReseedDemo}>

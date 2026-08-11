@@ -2,6 +2,7 @@ import { getSession, isPlatformAdmin } from '../auth/auth';
 import { getClubs } from '../auth/clubs';
 import { getPreviewClubId } from '../platform/platformConfig';
 import type { AppData } from '../types';
+import { isQuotaError, stripHeavyMedia } from './mediaStrip';
 import { seedData } from './seed';
 
 const LEGACY_KEY = 'academyhub-data-v12';
@@ -46,6 +47,35 @@ function loadClubMap(): ClubDataMap {
 
 function saveClubMap(map: ClubDataMap): void {
   localStorage.setItem(BY_CLUB_KEY, JSON.stringify(map));
+}
+
+function saveClubMapSafe(map: ClubDataMap, priorityClubId?: string): void {
+  try {
+    saveClubMap(map);
+    return;
+  } catch (err) {
+    if (!isQuotaError(err)) throw err;
+  }
+
+  const stripped: ClubDataMap = {};
+  for (const [id, data] of Object.entries(map)) {
+    stripped[id] = stripHeavyMedia(data);
+  }
+  try {
+    saveClubMap(stripped);
+    return;
+  } catch (err) {
+    if (!isQuotaError(err)) throw err;
+  }
+
+  if (priorityClubId && stripped[priorityClubId]) {
+    saveClubMap({ [priorityClubId]: stripped[priorityClubId] });
+    return;
+  }
+
+  throw new Error(
+    'Ο χώρος του browser γέμισε. Καθαρίστε δεδομένα ιστότοπου (localStorage) και ξαναδοκιμάστε.',
+  );
 }
 
 function emptyClubData(): AppData {
@@ -131,21 +161,36 @@ export function saveStore(data: AppData): void {
   const clubId = resolveActiveClubId();
   const map = loadClubMap();
   map[clubId] = data;
-  saveClubMap(map);
+  saveClubMapSafe(map, clubId);
 }
 
 /** Create or replace a club bucket with empty seed data (new registrations). */
 export function resetClubStore(clubId: string): void {
   const map = loadClubMap();
   map[clubId] = emptyClubData();
-  saveClubMap(map);
+  saveClubMapSafe(map, clubId);
 }
 
 /** Write AppData into a specific club bucket (cross-device restore). */
 export function writeClubStore(clubId: string, data: AppData): void {
   const map = loadClubMap();
   map[clubId] = data;
-  saveClubMap(map);
+  saveClubMapSafe(map, clubId);
+}
+
+/**
+ * Restore into one club and drop other club buckets if needed for quota.
+ * Used when moving a club backup from localhost → Vercel.
+ */
+export function writeClubStoreExclusive(clubId: string, data: AppData): void {
+  try {
+    writeClubStore(clubId, data);
+  } catch (err) {
+    if (!isQuotaError(err) && !(err instanceof Error && /χώρος του browser/.test(err.message))) {
+      throw err;
+    }
+    saveClubMapSafe({ [clubId]: stripHeavyMedia(data) }, clubId);
+  }
 }
 
 /** Ensure a club bucket exists without copying another club's data. */
@@ -172,7 +217,7 @@ export function loadAllClubStores(): ClubDataMap {
 }
 
 export function replaceAllClubStores(map: ClubDataMap): void {
-  saveClubMap(map);
+  saveClubMapSafe(map);
 }
 
 export function createId(prefix: string): string {
