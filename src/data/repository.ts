@@ -1,4 +1,11 @@
+import { getClubById, getClubs, saveClubs } from '../auth/clubs';
 import { notifyAppDataChanged } from './appDataEvents';
+import {
+  buildDemoShowcaseData,
+  isDemoClubName,
+  isDemoShowcaseApplied,
+  markDemoShowcaseApplied,
+} from './demoShowcase';
 import { seedData } from './seed';
 import {
   createId,
@@ -59,6 +66,41 @@ function purgeMirroredAthletePaymentRevenues(data: AppData): boolean {
   return data.revenues.length !== before;
 }
 
+function syncDemoLicenseUsage(clubId: string, data: AppData): void {
+  const activeAthletes = data.students.filter((s) => s.status === 'active').length;
+  const clubs = getClubs();
+  const index = clubs.findIndex((c) => c.id === clubId);
+  if (index < 0) return;
+  const limit = Math.max(clubs[index].athleteLicenseLimit, Math.max(20, activeAthletes));
+  const used = Math.min(limit, activeAthletes);
+  if (
+    clubs[index].athleteLicenseUsed === used &&
+    clubs[index].athleteLicenseLimit === limit
+  ) {
+    return;
+  }
+  clubs[index] = {
+    ...clubs[index],
+    athleteLicenseLimit: limit,
+    athleteLicenseUsed: used,
+  };
+  saveClubs(clubs);
+}
+
+/** Fill club named DEMO with full presentation dataset (once per showcase version). */
+function maybeApplyDemoShowcase(clubId: string): AppData | null {
+  const club = getClubById(clubId);
+  if (!club || !isDemoClubName(club.name)) return null;
+  if (isDemoShowcaseApplied(clubId)) return null;
+
+  const showcase = buildDemoShowcaseData();
+  ensureCollections(showcase);
+  saveStore(showcase);
+  markDemoShowcaseApplied(clubId);
+  syncDemoLicenseUsage(clubId, showcase);
+  return showcase;
+}
+
 /** Drop in-memory cache so the next getData() loads the active club bucket. */
 export function clearDataCache(): void {
   cache = null;
@@ -68,6 +110,13 @@ export function clearDataCache(): void {
 export function getData(): AppData {
   const clubId = resolveActiveClubId();
   if (!cache || cacheClubId !== clubId) {
+    const seeded = maybeApplyDemoShowcase(clubId);
+    if (seeded) {
+      cache = seeded;
+      cacheClubId = clubId;
+      return cache;
+    }
+
     const stored = loadStore();
     cache = stored ?? structuredClone(seedData);
     cacheClubId = clubId;
@@ -121,6 +170,22 @@ export function replaceAllClubsData(map: Record<string, AppData>): void {
 
 export function exportAllClubsData(): Record<string, AppData> {
   return loadAllClubStores();
+}
+
+/** Force-reload DEMO presentation data (e.g. after empty reset). */
+export function reseedDemoShowcase(clubId: string): AppData | null {
+  const club = getClubById(clubId);
+  if (!club || !isDemoClubName(club.name)) return null;
+  try {
+    const raw = localStorage.getItem('academyhub-demo-showcase-applied-v1');
+    const map = (raw ? JSON.parse(raw) : {}) as Record<string, number>;
+    delete map[clubId];
+    localStorage.setItem('academyhub-demo-showcase-applied-v1', JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+  clearDataCache();
+  return getData();
 }
 
 export { createId, resolveActiveClubId };

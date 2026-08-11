@@ -1,6 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getSession, isAuthenticated, login } from '../auth/auth';
+import { clearDataCache } from '../data/repository';
 import { endPreview, getAppLogoUrl, getAppName } from '../platform/platformConfig';
 
 function homeForRole(role?: string) {
@@ -31,8 +32,10 @@ export function LoginPage() {
       setError(result.error ?? 'Αποτυχία σύνδεσης');
       return;
     }
+    endPreview();
+    clearDataCache();
+    window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
     if (result.data?.role === 'platform_admin') {
-      endPreview();
       navigate('/platform', { replace: true });
       return;
     }

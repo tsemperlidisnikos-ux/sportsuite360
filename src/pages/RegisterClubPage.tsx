@@ -2,6 +2,9 @@ import { type FormEvent, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../auth/auth';
 import { registerClub } from '../auth/clubs';
+import { clearDataCache } from '../data/repository';
+import { resetClubStore } from '../data/store';
+import { endPreview } from '../platform/platformConfig';
 
 export function RegisterClubPage() {
   const navigate = useNavigate();
@@ -38,6 +41,13 @@ export function RegisterClubPage() {
         setError(result.error ?? 'Αποτυχία εγγραφής');
         return;
       }
+      const clubId = result.data?.club.id;
+      if (clubId) {
+        resetClubStore(clubId);
+      }
+      endPreview();
+      clearDataCache();
+      window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
       navigate('/', { replace: true });
     })();
   }

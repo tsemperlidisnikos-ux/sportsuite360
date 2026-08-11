@@ -1,9 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import * as backendSyncService from '../api/services/backendSyncService';
 import { getSession, saveUsers } from '../auth/auth';
-import { saveClubs } from '../auth/clubs';
+import { getClubById, saveClubs } from '../auth/clubs';
 import { Button } from './ui/Button';
-import { replaceAllClubsData, replaceData } from '../data/repository';
+import { replaceAllClubsData, replaceData, reseedDemoShowcase } from '../data/repository';
+import { isDemoClubName } from '../data/demoShowcase';
 import { getPreviewClubId, savePlatformConfig } from '../platform/platformConfig';
 import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
 
@@ -15,6 +16,8 @@ export function BackupPanel() {
   const [syncing, setSyncing] = useState<'push' | 'pull' | null>(null);
 
   const clubId = getPreviewClubId() ?? getSession()?.clubId ?? null;
+  const club = clubId ? getClubById(clubId) : null;
+  const isDemoClub = isDemoClubName(club?.name);
 
   function flash(ok: string) {
     setError('');
@@ -72,6 +75,23 @@ export function BackupPanel() {
     window.setTimeout(() => {
       window.location.reload();
     }, 600);
+  }
+
+  function handleReseedDemo() {
+    if (!clubId || !isDemoClub) return;
+    const confirmed = window.confirm(
+      'Θα επαναφορτωθούν τα πλήρη δεδομένα παρουσίασης DEMO (αντικαθιστά τα τρέχοντα). Συνέχεια;',
+    );
+    if (!confirmed) return;
+    const result = reseedDemoShowcase(clubId);
+    if (!result) {
+      setError('Αποτυχία επαναφόρτωσης DEMO δεδομένων.');
+      return;
+    }
+    flash('Τα DEMO δεδομένα παρουσίασης φορτώθηκαν. Ανανέωση σελίδας…');
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 500);
   }
 
   async function applyBackupFile(file: File) {
@@ -182,6 +202,23 @@ export function BackupPanel() {
           </Button>
         </div>
       </div>
+
+      {isDemoClub ? (
+        <div className="settings-backup-block">
+          <div className="settings-backup-copy">
+            <h3>Δεδομένα παρουσίασης DEMO</h3>
+            <p>
+              Επαναφορτώνει πλήρες δείγμα (αθλητές, τμήματα, οικονομικά, αποθήκη, ανακοινώσεις
+              κ.λπ.) για επίδειξη της εφαρμογής.
+            </p>
+          </div>
+          <div className="settings-backup-panel">
+            <Button type="button" className="settings-backup-action" onClick={handleReseedDemo}>
+              Επαναφόρτωση DEMO δεδομένων
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {error ? <p className="form-error">{error}</p> : null}
       {message ? <p className="settings-success">{message}</p> : null}

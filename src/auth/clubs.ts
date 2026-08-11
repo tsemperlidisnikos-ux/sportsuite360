@@ -138,6 +138,7 @@ export async function registerClub(
 
   saveUsers([...users, user]);
   saveClubs([...clubs, club]);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
 
   const sessionResult = await login(email, data.password);
   if (!sessionResult.success) {

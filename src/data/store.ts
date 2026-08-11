@@ -1,23 +1,36 @@
-import { getSession } from '../auth/auth';
+import { getSession, isPlatformAdmin } from '../auth/auth';
 import { getClubs } from '../auth/clubs';
 import { getPreviewClubId } from '../platform/platformConfig';
 import type { AppData } from '../types';
+import { seedData } from './seed';
 
 const LEGACY_KEY = 'academyhub-data-v12';
 const BY_CLUB_KEY = 'academyhub-data-by-club-v1';
+const LEGACY_MIGRATED_FLAG = 'academyhub-legacy-migrated-v1';
+const ISOLATION_DEDUPE_FLAG = 'academyhub-isolation-dedupe-v1';
 
 export const APP_DATA_STORAGE_KEYS = [LEGACY_KEY, BY_CLUB_KEY] as const;
 
 type ClubDataMap = Record<string, AppData>;
 
-/** Active club for domain data: preview → session → first club → default bucket. */
+/**
+ * Active club for domain data.
+ * Preview applies only for platform admins. Club users always use session.clubId.
+ */
 export function resolveActiveClubId(): string {
-  const preview = getPreviewClubId();
-  if (preview) return preview;
+  if (isPlatformAdmin()) {
+    const preview = getPreviewClubId();
+    if (preview) return preview;
+  }
+
   const sessionClub = getSession()?.clubId;
   if (sessionClub) return sessionClub;
-  const clubs = getClubs();
-  if (clubs[0]?.id) return clubs[0].id;
+
+  if (!getSession()) {
+    const clubs = getClubs();
+    if (clubs[0]?.id) return clubs[0].id;
+  }
+
   return '_default';
 }
 
@@ -35,25 +48,82 @@ function saveClubMap(map: ClubDataMap): void {
   localStorage.setItem(BY_CLUB_KEY, JSON.stringify(map));
 }
 
-/** Migrate legacy single-blob store into the active club bucket once. */
+function emptyClubData(): AppData {
+  return structuredClone(seedData);
+}
+
+/**
+ * One-time: copy legacy single-blob into the first active club only when the
+ * by-club map is still empty. Never clone legacy into later clubs.
+ */
 function migrateLegacyIfNeeded(map: ClubDataMap, clubId: string): ClubDataMap {
-  if (map[clubId]) return map;
+  if (Object.keys(map).length > 0) return map;
+  if (localStorage.getItem(LEGACY_MIGRATED_FLAG)) return map;
+
   try {
     const legacy = localStorage.getItem(LEGACY_KEY);
-    if (!legacy) return map;
+    if (!legacy) {
+      localStorage.setItem(LEGACY_MIGRATED_FLAG, '1');
+      return map;
+    }
     const parsed = JSON.parse(legacy) as AppData;
     const next = { ...map, [clubId]: parsed };
     saveClubMap(next);
+    localStorage.setItem(LEGACY_MIGRATED_FLAG, '1');
     return next;
   } catch {
+    localStorage.setItem(LEGACY_MIGRATED_FLAG, '1');
     return map;
   }
+}
+
+/**
+ * One-time: if a newer club's athlete IDs exactly match an older club's,
+ * treat it as a leaked legacy clone and reset the newer club to empty.
+ */
+function purgeDuplicatedClubBuckets(map: ClubDataMap): ClubDataMap {
+  if (localStorage.getItem(ISOLATION_DEDUPE_FLAG)) return map;
+
+  const clubs = getClubs()
+    .slice()
+    .sort((a, b) => {
+      const byDate = (a.createdAt || '').localeCompare(b.createdAt || '');
+      if (byDate !== 0) return byDate;
+      return a.id.localeCompare(b.id);
+    });
+
+  const next = { ...map };
+  let changed = false;
+  const fingerprintOwner = new Map<string, string>();
+
+  for (const club of clubs) {
+    const data = next[club.id];
+    const students = data?.students ?? [];
+    if (students.length === 0) continue;
+
+    const fingerprint = students
+      .map((s) => s.id)
+      .sort()
+      .join(',');
+    const owner = fingerprintOwner.get(fingerprint);
+    if (owner && owner !== club.id) {
+      next[club.id] = emptyClubData();
+      changed = true;
+      continue;
+    }
+    if (!owner) fingerprintOwner.set(fingerprint, club.id);
+  }
+
+  if (changed) saveClubMap(next);
+  localStorage.setItem(ISOLATION_DEDUPE_FLAG, '1');
+  return next;
 }
 
 export function loadStore(): AppData | null {
   const clubId = resolveActiveClubId();
   let map = loadClubMap();
   map = migrateLegacyIfNeeded(map, clubId);
+  map = purgeDuplicatedClubBuckets(map);
   return map[clubId] ?? null;
 }
 
@@ -62,8 +132,21 @@ export function saveStore(data: AppData): void {
   const map = loadClubMap();
   map[clubId] = data;
   saveClubMap(map);
-  // Keep legacy key in sync for older backup tools / same-browser reads.
-  localStorage.setItem(LEGACY_KEY, JSON.stringify(data));
+}
+
+/** Create or replace a club bucket with empty seed data (new registrations). */
+export function resetClubStore(clubId: string): void {
+  const map = loadClubMap();
+  map[clubId] = emptyClubData();
+  saveClubMap(map);
+}
+
+/** Ensure a club bucket exists without copying another club's data. */
+export function ensureClubStore(clubId: string): void {
+  const map = loadClubMap();
+  if (map[clubId]) return;
+  map[clubId] = emptyClubData();
+  saveClubMap(map);
 }
 
 /** All club datasets (for full platform backup). */
@@ -83,10 +166,6 @@ export function loadAllClubStores(): ClubDataMap {
 
 export function replaceAllClubStores(map: ClubDataMap): void {
   saveClubMap(map);
-  const clubId = resolveActiveClubId();
-  if (map[clubId]) {
-    localStorage.setItem(LEGACY_KEY, JSON.stringify(map[clubId]));
-  }
 }
 
 export function createId(prefix: string): string {
