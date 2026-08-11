@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getSession, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
-import { createId, getData, mutateData, replaceData, resetData } from '../data/repository';
+import { createId, getData, mutateData, replaceAllClubsData, replaceData, resetData } from '../data/repository';
+import { downloadBackupZip, formatBackupError, readBackupFile } from '../utils/backupArchive';
 import {
   ACADEMY_MODULES,
   CLUB_PERMISSION_LABELS,
@@ -24,7 +25,6 @@ import {
   type ClubRole,
   type PlatformConfig,
 } from '../platform/platformConfig';
-import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
 
 function AdminRow({
   title,
@@ -300,7 +300,11 @@ export function PlatformAdminPage() {
   async function applyBackupFile(file: File) {
     try {
       const parsed = await readBackupFile(file);
-      if (parsed.appData) replaceData(parsed.appData);
+      if (parsed.appDataByClub && Object.keys(parsed.appDataByClub).length > 0) {
+        replaceAllClubsData(parsed.appDataByClub);
+      } else if (parsed.appData) {
+        replaceData(parsed.appData);
+      }
       if (parsed.platformConfig) {
         persist(parsed.platformConfig);
       }
@@ -312,7 +316,7 @@ export function PlatformAdminPage() {
         window.location.reload();
       }, 600);
     } catch (err) {
-      flash(err instanceof Error ? err.message : 'Μη έγκυρο αρχείο backup.');
+      flash(formatBackupError(err));
     }
   }
 

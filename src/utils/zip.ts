@@ -116,7 +116,104 @@ function readU32(view: DataView, offset: number): number {
   return view.getUint32(offset, true);
 }
 
-/** Extract entries from a ZIP created with store method (and most simple ZIPs). */
+async function inflateRaw(raw: Uint8Array): Promise<Uint8Array> {
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('Ο browser δεν υποστηρίζει αποσυμπίεση ZIP.');
+  }
+  const copy = new Uint8Array(raw.byteLength);
+  copy.set(raw);
+  const stream = new Blob([copy]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/**
+ * Extract ZIP entries (store + deflate). Supports data descriptors (bit 3)
+ * used by some OS compress tools.
+ */
+export async function extractZipAsync(buffer: ArrayBuffer): Promise<ZipEntry[]> {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const decoder = new TextDecoder();
+  const entries: ZipEntry[] = [];
+  let offset = 0;
+
+  while (offset + 30 <= bytes.length) {
+    const signature = readU32(view, offset);
+    if (signature !== 0x04034b50) break;
+
+    const flags = readU16(view, offset + 6);
+    const compression = readU16(view, offset + 8);
+    let compressedSize = readU32(view, offset + 18);
+    const nameLen = readU16(view, offset + 26);
+    const extraLen = readU16(view, offset + 28);
+    const nameStart = offset + 30;
+    const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLen));
+    const dataStart = nameStart + nameLen + extraLen;
+    const hasDataDescriptor = (flags & 0x8) !== 0;
+
+    let raw: Uint8Array;
+    let dataEnd: number;
+
+    if (hasDataDescriptor && compressedSize === 0) {
+      // Scan for data descriptor signature after compressed payload.
+      let scan = dataStart;
+      let found = -1;
+      while (scan + 16 <= bytes.length) {
+        const sig = readU32(view, scan);
+        if (sig === 0x08074b50) {
+          found = scan;
+          break;
+        }
+        // Heuristic: next local/central header without descriptor sig (some writers omit it)
+        if (sig === 0x04034b50 || sig === 0x02014b50) {
+          found = scan;
+          break;
+        }
+        scan += 1;
+      }
+      if (found < 0) {
+        throw new Error('Αδυναμία ανάγνωσης ZIP (data descriptor).');
+      }
+      raw = bytes.subarray(dataStart, found);
+      dataEnd = found;
+      if (readU32(view, found) === 0x08074b50) {
+        dataEnd = found + 16; // sig + crc + sizes
+      }
+    } else {
+      dataEnd = dataStart + compressedSize;
+      if (dataEnd > bytes.length) {
+        throw new Error('Το ZIP φαίνεται κατεστραμμένο ή ημιτελές.');
+      }
+      raw = bytes.subarray(dataStart, dataEnd);
+      if (hasDataDescriptor) {
+        // Optional descriptor after data
+        if (dataEnd + 16 <= bytes.length && readU32(view, dataEnd) === 0x08074b50) {
+          dataEnd += 16;
+        } else if (dataEnd + 12 <= bytes.length) {
+          dataEnd += 12;
+        }
+      }
+    }
+
+    if (compression === 0) {
+      entries.push({ name, data: raw });
+    } else if (compression === 8) {
+      entries.push({ name, data: await inflateRaw(raw) });
+    } else {
+      throw new Error('Το ZIP χρησιμοποιεί μη υποστηριζόμενη συμπίεση.');
+    }
+
+    offset = dataEnd;
+  }
+
+  if (entries.length === 0) {
+    throw new Error('Το ZIP δεν περιέχει αρχεία ή δεν αναγνωρίζεται.');
+  }
+
+  return entries;
+}
+
+/** @deprecated Prefer extractZipAsync — sync path only supports store method. */
 export function extractZip(buffer: ArrayBuffer): ZipEntry[] {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
@@ -140,57 +237,8 @@ export function extractZip(buffer: ArrayBuffer): ZipEntry[] {
 
     if (compression === 0) {
       entries.push({ name, data: bytes.subarray(dataStart, dataEnd) });
-    } else if (compression === 8 && typeof DecompressionStream !== 'undefined') {
-      // Deflate — handled async by caller if needed; skip sync path
-      throw new Error('Το ZIP χρησιμοποιεί συμπίεση που δεν υποστηρίζεται ακόμα.');
-    } else if (compression !== 0) {
-      throw new Error('Το ZIP χρησιμοποιεί μη υποστηριζόμενη συμπίεση.');
-    }
-
-    offset = dataEnd;
-  }
-
-  if (entries.length === 0) {
-    throw new Error('Το ZIP δεν περιέχει αρχεία.');
-  }
-
-  return entries;
-}
-
-export async function extractZipAsync(buffer: ArrayBuffer): Promise<ZipEntry[]> {
-  const bytes = new Uint8Array(buffer);
-  const view = new DataView(buffer);
-  const decoder = new TextDecoder();
-  const entries: ZipEntry[] = [];
-  let offset = 0;
-
-  while (offset + 30 <= bytes.length) {
-    const signature = readU32(view, offset);
-    if (signature !== 0x04034b50) break;
-
-    const compression = readU16(view, offset + 8);
-    const compressedSize = readU32(view, offset + 18);
-    const nameLen = readU16(view, offset + 26);
-    const extraLen = readU16(view, offset + 28);
-    const nameStart = offset + 30;
-    const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLen));
-    const dataStart = nameStart + nameLen + extraLen;
-    const dataEnd = dataStart + compressedSize;
-    if (dataEnd > bytes.length) break;
-
-    const raw = bytes.subarray(dataStart, dataEnd);
-    if (compression === 0) {
-      entries.push({ name, data: raw });
-    } else if (compression === 8) {
-      const copy = new Uint8Array(raw.byteLength);
-      copy.set(raw);
-      const stream = new Blob([copy])
-        .stream()
-        .pipeThrough(new DecompressionStream('deflate-raw'));
-      const inflated = new Uint8Array(await new Response(stream).arrayBuffer());
-      entries.push({ name, data: inflated });
     } else {
-      throw new Error('Το ZIP χρησιμοποιεί μη υποστηριζόμενη συμπίεση.');
+      throw new Error('Χρησιμοποιήστε extractZipAsync για συμπιεσμένα ZIP.');
     }
 
     offset = dataEnd;

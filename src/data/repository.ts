@@ -14,6 +14,7 @@ import {
   replaceAllClubStores,
   resolveActiveClubId,
   saveStore,
+  writeClubStore,
 } from './store';
 import type { AppData } from '../types';
 
@@ -159,6 +160,21 @@ export function replaceData(next: AppData): AppData {
   saveStore(cache);
   notifyAppDataChanged();
   return cache;
+}
+
+/** Write AppData into a specific club (e.g. restore from another device). */
+export function replaceClubData(clubId: string, next: AppData): AppData {
+  const data = structuredClone(next);
+  ensureCollections(data);
+  writeClubStore(clubId, data);
+  if (resolveActiveClubId() === clubId) {
+    cache = data;
+    cacheClubId = clubId;
+  } else {
+    clearDataCache();
+  }
+  notifyAppDataChanged();
+  return data;
 }
 
 /** Restore multi-club map from backup (optional). */

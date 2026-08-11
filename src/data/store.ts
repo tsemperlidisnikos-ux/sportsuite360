@@ -141,6 +141,13 @@ export function resetClubStore(clubId: string): void {
   saveClubMap(map);
 }
 
+/** Write AppData into a specific club bucket (cross-device restore). */
+export function writeClubStore(clubId: string, data: AppData): void {
+  const map = loadClubMap();
+  map[clubId] = data;
+  saveClubMap(map);
+}
+
 /** Ensure a club bucket exists without copying another club's data. */
 export function ensureClubStore(clubId: string): void {
   const map = loadClubMap();

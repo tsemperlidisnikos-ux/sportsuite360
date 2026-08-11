@@ -3,10 +3,23 @@ import * as backendSyncService from '../api/services/backendSyncService';
 import { getSession, saveUsers } from '../auth/auth';
 import { getClubById, saveClubs } from '../auth/clubs';
 import { Button } from './ui/Button';
-import { replaceAllClubsData, replaceData, reseedDemoShowcase } from '../data/repository';
+import {
+  clearDataCache,
+  replaceAllClubsData,
+  replaceClubData,
+  replaceData,
+  reseedDemoShowcase,
+} from '../data/repository';
 import { isDemoClubName } from '../data/demoShowcase';
 import { getPreviewClubId, savePlatformConfig } from '../platform/platformConfig';
-import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
+import {
+  downloadBackupZip,
+  formatBackupError,
+  isQuotaError,
+  pickAppDataForRestore,
+  readBackupFile,
+  stripHeavyMedia,
+} from '../utils/backupArchive';
 
 export function BackupPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -94,26 +107,66 @@ export function BackupPanel() {
     }, 500);
   }
 
+  function persistAppData(data: ReturnType<typeof pickAppDataForRestore>, stripped: boolean) {
+    if (!data) throw new Error('Το backup δεν περιέχει δεδομένα συλλόγου.');
+    const payload = stripped ? stripHeavyMedia(data) : data;
+    if (clubId) {
+      replaceClubData(clubId, payload);
+    } else {
+      replaceData(payload);
+    }
+  }
+
   async function applyBackupFile(file: File) {
     try {
       const parsed = await readBackupFile(file);
+      const clubData = pickAppDataForRestore(parsed, clubId);
 
-      if (parsed.appDataByClub && Object.keys(parsed.appDataByClub).length > 0) {
-        replaceAllClubsData(parsed.appDataByClub);
-      } else if (parsed.appData) {
-        replaceData(parsed.appData);
+      try {
+        persistAppData(clubData, false);
+      } catch (err) {
+        if (isQuotaError(err)) {
+          persistAppData(clubData, true);
+          flash(
+            'Η επαναφορά ολοκληρώθηκε χωρίς βαριές φωτογραφίες (όριο χώρου browser). Ανανέωση…',
+          );
+          clearDataCache();
+          window.setTimeout(() => window.location.reload(), 700);
+          return;
+        }
+        throw err;
       }
-      if (parsed.platformConfig) savePlatformConfig(parsed.platformConfig);
-      if (parsed.users?.length) saveUsers(parsed.users);
-      if (parsed.clubs?.length) saveClubs(parsed.clubs);
+
+      // Club restore: do NOT overwrite all users/clubs from another device by default
+      // (that would break the current Vercel login). Platform config is optional.
+      const restoreAccounts = window.confirm(
+        'Να εισαχθούν επίσης χρήστες & κατάλογος συλλόγων από το backup;\n\n' +
+          'Επιλέξτε OK μόνο αν θέλετε πλήρη αντικατάσταση λογαριασμών.\n' +
+          'Συνήθως για μεταφορά δεδομένων σε άλλο browser πατήστε Άκυρο ' +
+          '(κρατάτε την τρέχουσα σύνδεση, φορτώνονται μόνο τα δεδομένα συλλόγου).',
+      );
+
+      if (restoreAccounts) {
+        if (parsed.platformConfig) savePlatformConfig(parsed.platformConfig);
+        if (parsed.users?.length) saveUsers(parsed.users);
+        if (parsed.clubs?.length) saveClubs(parsed.clubs);
+        if (parsed.appDataByClub && Object.keys(parsed.appDataByClub).length > 1) {
+          try {
+            replaceAllClubsData(parsed.appDataByClub);
+          } catch {
+            /* already wrote current club */
+          }
+        }
+      }
 
       flash('Η επαναφορά ολοκληρώθηκε. Ανανέωση σελίδας…');
+      clearDataCache();
       window.setTimeout(() => {
         window.location.reload();
       }, 600);
     } catch (err) {
       setMessage('');
-      setError(err instanceof Error ? err.message : 'Μη έγκυρο αρχείο backup.');
+      setError(formatBackupError(err));
     }
   }
 
@@ -125,6 +178,8 @@ export function BackupPanel() {
     }
     setFileLabel(file.name);
     void applyBackupFile(file);
+    // allow re-selecting the same file
+    event.target.value = '';
   }
 
   return (
@@ -152,7 +207,11 @@ export function BackupPanel() {
       <div className="settings-backup-block">
         <div className="settings-backup-copy">
           <h3>Επαναφορά από backup</h3>
-          <p>Εισαγωγή προηγούμενου backup συλλόγου. Αντικαθιστά τα υπάρχοντα δεδομένα.</p>
+          <p>
+            Εισαγωγή προηγούμενου backup. Τα δεδομένα εφαρμόζονται στον{' '}
+            <strong>τρέχοντα σύλλογο</strong> (ακόμα κι αν το backup έγινε από άλλο
+            browser / localhost).
+          </p>
         </div>
         <div className="settings-backup-panel">
           <input
