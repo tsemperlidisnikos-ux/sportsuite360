@@ -3,6 +3,7 @@ export type UserRole =
   | 'admin'
   | 'coach'
   | 'secretariat'
+  | 'staff'
   | 'athlete'
   | 'parent';
 
@@ -179,6 +180,7 @@ export const roleLabels: Record<UserRole, string> = {
   admin: 'Διαχειριστής συλλόγου',
   coach: 'Προπονητής',
   secretariat: 'Γραμματεία',
+  staff: 'Προσωπικό',
   athlete: 'Αθλητής',
   parent: 'Γονέας',
 };
@@ -230,6 +232,38 @@ export function updateUserEmail(
   email: string,
 ): { success: boolean; data?: AppUser; error?: string } {
   return updateUser(userId, { email });
+}
+
+export function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}): { success: boolean; error?: string } {
+  const session = getSession();
+  if (!session) return { success: false, error: 'Δεν υπάρχει ενεργή σύνδεση' };
+
+  const current = input.currentPassword.trim();
+  const next = input.newPassword.trim();
+  const confirm = input.confirmPassword.trim();
+
+  if (!current) return { success: false, error: 'Συμπληρώστε τον τρέχοντα κωδικό' };
+  if (next.length < 6) {
+    return { success: false, error: 'Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες' };
+  }
+  if (next !== confirm) return { success: false, error: 'Η επιβεβαίωση κωδικού δεν ταιριάζει' };
+
+  const user = getUserById(session.id);
+  if (!user) return { success: false, error: 'Ο χρήστης δεν βρέθηκε' };
+  if (user.password !== current) {
+    return { success: false, error: 'Ο τρέχων κωδικός είναι λάθος' };
+  }
+  if (user.password === next) {
+    return { success: false, error: 'Ο νέος κωδικός πρέπει να είναι διαφορετικός' };
+  }
+
+  const result = updateUser(user.id, { password: next });
+  if (!result.success) return { success: false, error: result.error ?? 'Σφάλμα ενημέρωσης' };
+  return { success: true };
 }
 
 export function deleteUser(

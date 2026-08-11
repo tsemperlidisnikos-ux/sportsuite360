@@ -1,3 +1,4 @@
+import { notifyAppDataChanged } from './appDataEvents';
 import { seedData } from './seed';
 import { createId, loadStore, saveStore } from './store';
 import type { AppData } from '../types';
@@ -17,6 +18,10 @@ function ensureCollections(data: AppData): void {
   if (!data.products) data.products = structuredClone(seedData.products);
   if (!data.partnerBusinesses) data.partnerBusinesses = structuredClone(seedData.partnerBusinesses);
   if (!data.partnerOffers) data.partnerOffers = structuredClone(seedData.partnerOffers);
+  if (!data.feeChargeTemplates) data.feeChargeTemplates = structuredClone(seedData.feeChargeTemplates);
+  if (!data.feeReminderLogs) data.feeReminderLogs = structuredClone(seedData.feeReminderLogs);
+  if (!data.photos) data.photos = structuredClone(seedData.photos);
+  if (!data.parentLinks) data.parentLinks = structuredClone(seedData.parentLinks);
   if (!data.sizeChart) data.sizeChart = structuredClone(seedData.sizeChart);
   if (data.termsOfUseHtml === undefined) data.termsOfUseHtml = seedData.termsOfUseHtml ?? '';
 }
@@ -64,12 +69,14 @@ export function mutateData(updater: (data: AppData) => void): AppData {
   updater(data);
   cache = data;
   saveStore(data);
+  notifyAppDataChanged();
   return data;
 }
 
 export function resetData(): AppData {
   cache = structuredClone(seedData);
   saveStore(cache);
+  notifyAppDataChanged();
   return cache;
 }
 
@@ -78,6 +85,7 @@ export function replaceData(next: AppData): AppData {
   cache = structuredClone(next);
   ensureCollections(cache);
   saveStore(cache);
+  notifyAppDataChanged();
   return cache;
 }
 

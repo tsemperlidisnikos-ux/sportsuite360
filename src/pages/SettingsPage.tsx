@@ -1,9 +1,12 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import {
   Building2,
+  CreditCard,
   Database,
   FileText,
   ImagePlus,
+  KeyRound,
+  Mail,
   Ruler,
   Trash2,
   Trophy,
@@ -12,7 +15,10 @@ import {
 import { getSession } from '../auth/auth';
 import { getClubById, updateClubLogo } from '../auth/clubs';
 import { BackupPanel } from '../components/BackupPanel';
+import { ChangePasswordPanel } from '../components/ChangePasswordPanel';
+import { ClubEmailPanel } from '../components/ClubEmailPanel';
 import { ClubUsersPanel } from '../components/ClubUsersPanel';
+import { ClubVivaPanel } from '../components/ClubVivaPanel';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SizeChartPanel } from '../components/SizeChartPanel';
@@ -26,9 +32,12 @@ const MAX_LOGO_BYTES = 500_000;
 type SettingsTab =
   | 'appearance'
   | 'users'
+  | 'password'
   | 'associations'
   | 'sports'
   | 'sizes'
+  | 'email'
+  | 'viva'
   | 'terms'
   | 'backup';
 
@@ -102,7 +111,7 @@ export function SettingsPage() {
     <div className="stack-lg">
       <PageHeader
         title="Ρυθμίσεις"
-        subtitle="Εμφάνιση συλλόγου, χρήστες, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
+        subtitle="Εμφάνιση συλλόγου, χρήστες, κωδικός, email, Viva, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
       />
 
       <div className="tabs">
@@ -122,6 +131,27 @@ export function SettingsPage() {
             <Users size={15} /> Χρήστες
           </button>
         ) : null}
+        <button
+          type="button"
+          className={`tab ${tab === 'password' ? 'active' : ''}`}
+          onClick={() => setTab('password')}
+        >
+          <KeyRound size={15} /> Αλλαγή κωδικού
+        </button>
+        <button
+          type="button"
+          className={`tab ${tab === 'email' ? 'active' : ''}`}
+          onClick={() => setTab('email')}
+        >
+          <Mail size={15} /> Email συλλόγου
+        </button>
+        <button
+          type="button"
+          className={`tab ${tab === 'viva' ? 'active' : ''}`}
+          onClick={() => setTab('viva')}
+        >
+          <CreditCard size={15} /> Viva Wallet
+        </button>
         <button
           type="button"
           className={`tab ${tab === 'associations' ? 'active' : ''}`}
@@ -214,6 +244,21 @@ export function SettingsPage() {
       ) : null}
 
       {tab === 'users' && clubId ? <ClubUsersPanel clubId={clubId} /> : null}
+      {tab === 'password' ? <ChangePasswordPanel /> : null}
+      {tab === 'email' ? (
+        !clubId ? (
+          <p className="form-error">Δεν βρέθηκε σύλλογος για τον λογαριασμό.</p>
+        ) : (
+          <ClubEmailPanel clubId={clubId} />
+        )
+      ) : null}
+      {tab === 'viva' ? (
+        !clubId ? (
+          <p className="form-error">Δεν βρέθηκε σύλλογος για τον λογαριασμό.</p>
+        ) : (
+          <ClubVivaPanel clubId={clubId} />
+        )
+      ) : null}
       {tab === 'associations' ? <AssociationsPage /> : null}
       {tab === 'sports' ? <SportsPage /> : null}
       {tab === 'sizes' ? <SizeChartPanel /> : null}

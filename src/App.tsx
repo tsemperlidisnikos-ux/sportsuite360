@@ -10,6 +10,7 @@ import { AttendancePage } from './pages/AttendancePage';
 import { ClassesPage } from './pages/ClassesPage';
 import { CoachesPage } from './pages/CoachesPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { FeesPage } from './pages/FeesPage';
 import { FinancePage } from './pages/FinancePage';
 import { LicensePackagesPage } from './pages/LicensePackagesPage';
@@ -27,6 +28,8 @@ import { TrainingsPage } from './pages/TrainingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { PartnerBusinessesPage } from './pages/PartnerBusinessesPage';
+import { PhotosPage } from './pages/PhotosPage';
+import { ParentsPage } from './pages/ParentsPage';
 import { getPreviewClubId } from './platform/platformConfig';
 
 function HomeRoute() {
@@ -52,12 +55,14 @@ export default function App() {
 
           <Route element={<AppLayout />}>
             <Route index element={<HomeRoute />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="athletes" element={<StudentsPage />} />
             <Route path="athletes/:athleteId" element={<AthleteProfilePage />} />
             <Route path="students" element={<Navigate to="/athletes" replace />} />
             <Route path="staff" element={<StaffPage />} />
             <Route path="coaches" element={<CoachesPage />} />
             <Route path="classes" element={<ClassesPage />} />
+            <Route path="parents" element={<ParentsPage />} />
             <Route path="trainings" element={<TrainingsPage />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="attendance" element={<AttendancePage />} />
@@ -65,6 +70,7 @@ export default function App() {
             <Route path="sports" element={<SportsPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="prints" element={<PrintsPage />} />
+            <Route path="photos" element={<PhotosPage />} />
             <Route path="warehouse" element={<WarehousePage />} />
             <Route path="fees" element={<FeesPage />} />
             <Route path="transactions" element={<TransactionsPage />} />

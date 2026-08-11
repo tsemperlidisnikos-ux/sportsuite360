@@ -17,10 +17,12 @@ export type ScfModuleId = (typeof SCF_MODULES)[number]['id'];
 
 export const ACADEMY_MODULES = [
   { id: 'dashboard', label: 'Επισκόπηση', path: '/' },
+  { id: 'calendar', label: 'Ημερολόγιο', path: '/calendar' },
   { id: 'athletes', label: 'Αθλητές', path: '/athletes' },
   { id: 'staff', label: 'Προσωπικό', path: '/staff' },
   { id: 'coaches', label: 'Προπονητές', path: '/coaches' },
   { id: 'classes', label: 'Τμήματα', path: '/classes' },
+  { id: 'parents', label: 'Γονείς', path: '/parents' },
   { id: 'trainings', label: 'Προπονήσεις', path: '/trainings' },
   { id: 'schedule', label: 'Πρόγραμμα', path: '/schedule' },
   { id: 'attendance', label: 'Παρουσίες', path: '/attendance' },
@@ -28,6 +30,7 @@ export const ACADEMY_MODULES = [
   { id: 'sports', label: 'Άθλημα', path: '/sports' },
   { id: 'announcements', label: 'Ανακοινώσεις', path: '/announcements' },
   { id: 'prints', label: 'Εκτυπώσεις', path: '/prints' },
+  { id: 'photos', label: 'Φωτογραφίες', path: '/photos' },
   { id: 'warehouse', label: 'Αποθήκη', path: '/warehouse' },
   { id: 'fees', label: 'Συνδρομές / Πληρωμές', path: '/fees' },
   { id: 'transactions', label: 'Συναλλαγές', path: '/transactions' },
@@ -42,28 +45,32 @@ export type AcademyModuleId = (typeof ACADEMY_MODULES)[number]['id'];
 /* Δικαιώματα ρόλων συλλόγου                                                  */
 /* -------------------------------------------------------------------------- */
 
-export const CLUB_ROLES = ['admin', 'secretariat', 'coach', 'athlete', 'parent'] as const;
+export const CLUB_ROLES = ['admin', 'secretariat', 'coach', 'staff', 'athlete', 'parent'] as const;
 export type ClubRole = (typeof CLUB_ROLES)[number];
 
 export const CLUB_ROLE_LABELS: Record<ClubRole, string> = {
   admin: 'Διαχειριστής συλλόγου',
   coach: 'Προπονητής',
   secretariat: 'Γραμματεία',
+  staff: 'Προσωπικό',
   athlete: 'Αθλητής',
   parent: 'Γονέας',
 };
 
 /** Δικαιώματα = πρόσβαση σε καρτέλες μενού (χωρίς dashboard). */
 export const CLUB_PERMISSIONS = [
+  'calendar',
   'athletes',
   'staff',
   'coaches',
   'classes',
+  'parents',
   'trainings',
   'schedule',
   'attendance',
   'announcements',
   'prints',
+  'photos',
   'warehouse',
   'fees',
   'transactions',
@@ -75,15 +82,18 @@ export const CLUB_PERMISSIONS = [
 export type ClubPermission = (typeof CLUB_PERMISSIONS)[number];
 
 export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
+  calendar: 'Ημερολόγιο',
   athletes: 'Αθλητές',
   staff: 'Προσωπικό',
   coaches: 'Προπονητές',
   classes: 'Τμήματα',
+  parents: 'Γονείς',
   trainings: 'Προπονήσεις',
   schedule: 'Πρόγραμμα',
   attendance: 'Παρουσίες',
   announcements: 'Ανακοινώσεις',
   prints: 'Εκτυπώσεις',
+  photos: 'Φωτογραφίες',
   warehouse: 'Αποθήκη',
   fees: 'Συνδρομές / Πληρωμές',
   transactions: 'Συναλλαγές',
@@ -95,6 +105,7 @@ export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
 export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> = {
   admin: [...CLUB_PERMISSIONS],
   coach: [
+    'calendar',
     'athletes',
     'classes',
     'trainings',
@@ -103,12 +114,15 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
     'announcements',
   ],
   secretariat: [
+    'calendar',
     'athletes',
     'staff',
     'coaches',
     'classes',
+    'parents',
     'announcements',
     'prints',
+    'photos',
     'warehouse',
     'fees',
     'transactions',
@@ -116,6 +130,7 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
     'settings',
     'finance',
   ],
+  staff: ['calendar'],
   athlete: [],
   parent: [],
 };
@@ -225,6 +240,21 @@ function sanitizeClubRolePermissions(
     if (result[role].includes('settings') && !result[role].includes('partnerBusinesses')) {
       const settingsIndex = result[role].indexOf('settings');
       result[role].splice(settingsIndex, 0, 'partnerBusinesses');
+    }
+    if (result[role].includes('prints') && !result[role].includes('photos')) {
+      const printsIndex = result[role].indexOf('prints');
+      result[role].splice(printsIndex + 1, 0, 'photos');
+    }
+    if (result[role].includes('classes') && !result[role].includes('parents')) {
+      const classesIndex = result[role].indexOf('classes');
+      result[role].splice(classesIndex + 1, 0, 'parents');
+    }
+    if (!result[role].includes('calendar')) {
+      const hasRelated =
+        result[role].includes('schedule') ||
+        result[role].includes('trainings') ||
+        result[role].includes('settings');
+      if (hasRelated) result[role] = ['calendar', ...result[role]];
     }
   }
   return result;
@@ -461,7 +491,7 @@ export function getAcademyModulesForClub(clubId: string): AcademyModuleId[] {
   const allowed = new Set(allIds);
   const filtered = stored.filter((id): id is AcademyModuleId => allowed.has(id as AcademyModuleId));
   // Newer modules (e.g. warehouse) appear even if older club configs omit them
-  for (const id of ['warehouse', 'partnerBusinesses', 'settings'] as const) {
+  for (const id of ['calendar', 'parents', 'photos', 'warehouse', 'partnerBusinesses', 'settings'] as const) {
     if (!filtered.includes(id)) filtered.push(id);
   }
   return filtered.length > 0 ? filtered : allIds;

@@ -290,6 +290,49 @@ export interface SizeChart {
   women: string[];
 }
 
+/** Πρότυπο χρεώσεων συνδρομών (Συνδρομές / Πληρωμές). */
+export interface FeeChargeTemplate {
+  id: string;
+  season: string;
+  sport: string;
+  typeLabel: string;
+  monthlyAmount: number;
+  /** Academio-style: σε ποιους αθλητές ισχύει η χρέωση. */
+  appliesTo: 'all' | 'monthly' | 'registration' | 'seasonTicket' | 'class';
+  classId?: string | null;
+  months: number[];
+  reminderDays: number;
+  registrationFee: number;
+  seasonTicketAmount: number;
+  seasonTicketMonths: number[];
+  createdAt: string;
+}
+
+export interface FeeReminderLog {
+  id: string;
+  athleteId: string;
+  templateId?: string;
+  amount: number;
+  note: string;
+  createdAt: string;
+}
+
+export interface GalleryPhoto {
+  id: string;
+  imageUrl: string;
+  caption: string;
+  fileName: string;
+  createdAt: string;
+}
+
+/** Σύνδεση λογαριασμού γονέα με αθλητή. */
+export interface ParentAthleteLink {
+  id: string;
+  parentUserId: string;
+  athleteId: string;
+  createdAt: string;
+}
+
 export interface AppData {
   students: Student[];
   coaches: Coach[];
@@ -308,6 +351,10 @@ export interface AppData {
   products: WarehouseProduct[];
   partnerBusinesses: PartnerBusiness[];
   partnerOffers: PartnerOffer[];
+  feeChargeTemplates: FeeChargeTemplate[];
+  feeReminderLogs: FeeReminderLog[];
+  photos: GalleryPhoto[];
+  parentLinks: ParentAthleteLink[];
   sizeChart: SizeChart;
   /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
   termsOfUseHtml?: string;

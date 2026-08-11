@@ -24,6 +24,7 @@ type PlatformRole =
   | 'admin'
   | 'secretariat'
   | 'coach'
+  | 'staff'
   | 'athlete'
   | 'parent';
 
@@ -51,6 +52,7 @@ const ROLE_CARDS: Array<{
   { role: 'admin', title: 'Διαχειριστές συλλόγων', accent: 'blue' },
   { role: 'secretariat', title: 'Γραμματεία', accent: 'cyan' },
   { role: 'coach', title: 'Προπονητές', accent: 'orange' },
+  { role: 'staff', title: 'Προσωπικό', accent: 'slate' },
   { role: 'athlete', title: 'Αθλητές', accent: 'teal' },
   { role: 'parent', title: 'Γονείς', accent: 'pink' },
 ];
@@ -68,7 +70,7 @@ function buildRows(): PlatformUserRow[] {
 
   const fromUsers: PlatformUserRow[] = users
     .filter((u) =>
-      (['platform_admin', 'admin', 'secretariat', 'coach', 'athlete', 'parent'] as UserRole[]).includes(
+      (['platform_admin', 'admin', 'secretariat', 'coach', 'staff', 'athlete', 'parent'] as UserRole[]).includes(
         u.role,
       ),
     )
@@ -80,6 +82,7 @@ function buildRows(): PlatformUserRow[] {
       else if (u.role === 'athlete') roleLabel = clubName ? `${clubName} Αθλητής` : 'Αθλητής';
       else if (u.role === 'coach') roleLabel = clubName ? `${clubName} Προπονητής` : 'Προπονητής';
       else if (u.role === 'secretariat') roleLabel = clubName ? `${clubName} Γραμματεία` : 'Γραμματεία';
+      else if (u.role === 'staff') roleLabel = clubName ? `${clubName} Προσωπικό` : 'Προσωπικό';
       else if (u.role === 'parent') roleLabel = clubName ? `${clubName} Γονέας` : 'Γονέας';
 
       return {
@@ -138,6 +141,7 @@ export function PlatformUsersPage() {
     admin: '',
     secretariat: '',
     coach: '',
+    staff: '',
     athlete: '',
     parent: '',
   });

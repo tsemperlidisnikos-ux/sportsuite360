@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Calendar,
   UserCog,
   Layers,
   CalendarDays,
@@ -13,6 +14,8 @@ import {
   X,
   LogOut,
   Printer,
+  Images,
+  Users,
   Megaphone,
   Package,
   Building2,
@@ -54,15 +57,18 @@ const academyItems: Array<{
   end?: boolean;
 }> = [
   { id: 'dashboard', to: '/', label: 'Επισκόπηση', icon: LayoutDashboard, end: true },
+  { id: 'calendar', to: '/calendar', label: 'Ημερολόγιο', icon: Calendar },
   { id: 'athletes', to: '/athletes', label: 'Αθλητές', icon: AthletesIcon },
   { id: 'staff', to: '/staff', label: 'Προσωπικό', icon: UsersRound },
   { id: 'coaches', to: '/coaches', label: 'Προπονητές', icon: UserCog },
   { id: 'classes', to: '/classes', label: 'Τμήματα', icon: Layers },
+  { id: 'parents', to: '/parents', label: 'Γονείς', icon: Users },
   { id: 'trainings', to: '/trainings', label: 'Προπονήσεις', icon: TrainingsIcon },
   { id: 'schedule', to: '/schedule', label: 'Πρόγραμμα', icon: CalendarDays },
   { id: 'attendance', to: '/attendance', label: 'Παρουσίες', icon: ClipboardCheck },
   { id: 'announcements', to: '/announcements', label: 'Ανακοινώσεις', icon: Megaphone },
   { id: 'prints', to: '/prints', label: 'Εκτυπώσεις', icon: Printer },
+  { id: 'photos', to: '/photos', label: 'Φωτογραφίες', icon: Images },
   { id: 'warehouse', to: '/warehouse', label: 'Αποθήκη', icon: Package },
   { id: 'fees', to: '/fees', label: 'Συνδρομές / Πληρωμές', icon: CreditCard },
   { id: 'transactions', to: '/transactions', label: 'Συναλλαγές', icon: ArrowLeftRight },

@@ -253,3 +253,29 @@ export const partnerOfferSchema = z.object({
 });
 
 export type PartnerOfferInput = z.infer<typeof partnerOfferSchema>;
+
+export const feeChargeTemplateSchema = z.object({
+  season: z.string().min(1, 'Επιλέξτε σεζόν'),
+  sport: z.string().optional().default(''),
+  typeLabel: z.string().min(1, 'Συμπληρώστε τύπο').default('Συνδρομή'),
+  monthlyAmount: z.coerce.number().min(0, 'Το ποσό πρέπει να είναι ≥ 0'),
+  appliesTo: z
+    .enum(['all', 'monthly', 'registration', 'seasonTicket', 'class'])
+    .default('all'),
+  classId: z.string().nullable().optional().default(null),
+  months: z.array(z.coerce.number().int().min(1).max(12)).default([]),
+  reminderDays: z.coerce.number().int().min(0).default(7),
+  registrationFee: z.coerce.number().min(0).optional().default(0),
+  seasonTicketAmount: z.coerce.number().min(0).optional().default(0),
+  seasonTicketMonths: z.array(z.coerce.number().int().min(1).max(12)).default([]),
+});
+
+export type FeeChargeTemplateInput = z.infer<typeof feeChargeTemplateSchema>;
+
+export const galleryPhotoSchema = z.object({
+  imageUrl: z.string().min(1, 'Επιλέξτε φωτογραφία'),
+  caption: z.string().optional().default(''),
+  fileName: z.string().optional().default(''),
+});
+
+export type GalleryPhotoInput = z.infer<typeof galleryPhotoSchema>;
