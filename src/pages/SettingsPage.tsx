@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { getSession } from '../auth/auth';
-import { getClubById, updateClubLogo } from '../auth/clubs';
+import { ensureSessionClub, getClubById, updateClubLogo } from '../auth/clubs';
 import { BackupPanel } from '../components/BackupPanel';
 import { ChangePasswordPanel } from '../components/ChangePasswordPanel';
 import { ClubEmailPanel } from '../components/ClubEmailPanel';
@@ -44,7 +44,7 @@ type SettingsTab =
 export function SettingsPage() {
   const session = getSession();
   const clubId = getPreviewClubId() ?? session?.clubId ?? null;
-  const [club, setClub] = useState(() => getClubById(clubId));
+  const [club, setClub] = useState(() => ensureSessionClub(session) ?? getClubById(clubId));
   const [tab, setTab] = useState<SettingsTab>('appearance');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -53,7 +53,7 @@ export function SettingsPage() {
   const canManageUsers = session?.role === 'admin' || session?.role === 'platform_admin';
 
   function refreshClub() {
-    setClub(getClubById(clubId));
+    setClub(ensureSessionClub(getSession()) ?? getClubById(clubId));
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {

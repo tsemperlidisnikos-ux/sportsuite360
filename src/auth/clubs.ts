@@ -90,6 +90,47 @@ export function getClubById(clubId: string | null | undefined): Club | null {
   return getClubs().find((c) => c.id === clubId) ?? null;
 }
 
+/**
+ * If the session points to a clubId that is missing from the clubs list
+ * (e.g. after a bad backup restore of users/clubs), recreate a stub club
+ * so Settings and data keep working.
+ */
+export function ensureSessionClub(
+  session?: {
+    id?: string;
+    clubId?: string | null;
+    email?: string;
+    fullName?: string;
+  } | null,
+): Club | null {
+  const clubId = session?.clubId ?? null;
+  if (!clubId) return null;
+
+  const existing = getClubById(clubId);
+  if (existing) return existing;
+
+  const email = (session?.email ?? '').toLowerCase();
+  const isDemo =
+    clubId === 'club_demo_showcase' ||
+    email === 'demo@sportsuite360.app' ||
+    email.startsWith('demo@');
+
+  const stub: Club = {
+    id: clubId,
+    name: isDemo ? 'DEMO' : 'Σύλλογος',
+    city: isDemo ? 'Αθήνα' : '',
+    phone: '',
+    adminUserId: session?.id ?? '',
+    createdAt: localDateIso(),
+    athleteLicenseLimit: isDemo ? 50 : 10,
+    athleteLicenseUsed: 0,
+  };
+
+  saveClubs([...getClubs(), stub]);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+  return stub;
+}
+
 export async function registerClub(
   input: ClubRegistrationInput,
 ): Promise<ApiResult<{ club: Club; user: AppUser }>> {

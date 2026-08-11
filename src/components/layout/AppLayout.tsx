@@ -32,7 +32,7 @@ import {
   type SVGProps,
 } from 'react';
 import { getSession, getUserById, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
-import { getClubById } from '../../auth/clubs';
+import { getClubById, ensureSessionClub } from '../../auth/clubs';
 import { AthletesIcon } from '../icons/AthletesIcon';
 import { TrainingsIcon } from '../icons/TrainingsIcon';
 import {
@@ -101,7 +101,10 @@ export function AppLayout() {
   const session = getSession();
   const previewClubId = getPreviewClubId();
   const clubId = previewClubId ?? session?.clubId ?? null;
-  const club = useMemo(() => getClubById(clubId), [clubId, clubTick]);
+  const club = useMemo(() => {
+    if (previewClubId) return getClubById(previewClubId);
+    return ensureSessionClub(session) ?? getClubById(clubId);
+  }, [clubId, clubTick, previewClubId, session?.clubId, session?.id, session?.email]);
   const appName = useMemo(() => getAppName(), [platformTick]);
   const appLogoUrl = useMemo(() => getAppLogoUrl(), [platformTick]);
   const appLogoInputRef = useRef<HTMLInputElement>(null);
