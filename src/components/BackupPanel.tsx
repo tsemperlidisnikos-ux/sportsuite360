@@ -1,9 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { saveUsers } from '../auth/auth';
+import * as backendSyncService from '../api/services/backendSyncService';
+import { getSession, saveUsers } from '../auth/auth';
 import { saveClubs } from '../auth/clubs';
 import { Button } from './ui/Button';
 import { replaceAllClubsData, replaceData } from '../data/repository';
-import { savePlatformConfig } from '../platform/platformConfig';
+import { getPreviewClubId, savePlatformConfig } from '../platform/platformConfig';
 import { downloadBackupZip, readBackupFile } from '../utils/backupArchive';
 
 export function BackupPanel() {
@@ -11,6 +12,9 @@ export function BackupPanel() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [fileLabel, setFileLabel] = useState('Δεν επιλέχθηκε κανένα αρχείο.');
+  const [syncing, setSyncing] = useState(false);
+
+  const clubId = getPreviewClubId() ?? getSession()?.clubId ?? null;
 
   function flash(ok: string) {
     setError('');
@@ -20,6 +24,24 @@ export function BackupPanel() {
   function handleBackupExport() {
     downloadBackupZip();
     flash('Το backup ZIP κατέβηκε.');
+  }
+
+  async function handlePushMirror() {
+    if (!clubId) {
+      setError('Δεν βρέθηκε σύλλογος για συγχρονισμό.');
+      return;
+    }
+    setSyncing(true);
+    setError('');
+    const result = await backendSyncService.pushClubMirror(clubId);
+    setSyncing(false);
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία push');
+      return;
+    }
+    flash(
+      `Cloud mirror ενημερώθηκε${result.data?.updatedAt ? ` · ${result.data.updatedAt}` : ''}.`,
+    );
   }
 
   async function applyBackupFile(file: File) {
@@ -71,18 +93,6 @@ export function BackupPanel() {
           <p>Κατεβάζει αρχείο ZIP με όλα τα δεδομένα του συλλόγου.</p>
         </div>
         <div className="settings-backup-panel">
-          <div className="ta-table">
-            <div className="ta-row ta-header" aria-hidden="true">
-              <div className="ta-title">Τίτλος</div>
-              <div className="ta-analysis">Ανάλυση</div>
-            </div>
-            <div className="ta-row">
-              <div className="ta-title">Περιεχόμενο</div>
-              <div className="ta-analysis">
-                ομάδες · αθλήματα · κινήσεις · μητρώο · προϋπολογισμοί · ενεργές καρτέλες
-              </div>
-            </div>
-          </div>
           <Button type="button" className="settings-backup-action" onClick={handleBackupExport}>
             Λήψη backup συλλόγου (ZIP)
           </Button>
@@ -95,33 +105,42 @@ export function BackupPanel() {
           <p>Εισαγωγή προηγούμενου backup συλλόγου. Αντικαθιστά τα υπάρχοντα δεδομένα.</p>
         </div>
         <div className="settings-backup-panel">
-          <div className="ta-table">
-            <div className="ta-row ta-header" aria-hidden="true">
-              <div className="ta-title">Τίτλος</div>
-              <div className="ta-analysis">Ανάλυση</div>
-            </div>
-            <div className="ta-row">
-              <div className="ta-title">Αρχείο</div>
-              <div className="ta-analysis settings-backup-file-cell">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="application/zip,.zip,application/json,.json"
-                  hidden
-                  onChange={handleFileChange}
-                />
-                <button
-                  type="button"
-                  className="settings-backup-file-btn"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  Επιλογή αρχείου
-                </button>
-                <span className="settings-backup-file-name">{fileLabel}</span>
-              </div>
-            </div>
-          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/zip,.zip,application/json,.json"
+            hidden
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            className="settings-backup-file-btn"
+            onClick={() => fileRef.current?.click()}
+          >
+            Επιλογή αρχείου
+          </button>
+          <span className="settings-backup-file-name">{fileLabel}</span>
           <p className="settings-hint">Επιλέξτε αρχείο .zip (ή παλιό .json) από προηγούμενο backup.</p>
+        </div>
+      </div>
+
+      <div className="settings-backup-block">
+        <div className="settings-backup-copy">
+          <h3>Cloud mirror (πειραματικό)</h3>
+          <p>
+            Push δεδομένων συλλόγου στο `/api/sync/mirror` (βάση για μελλοντικό backend). Προσωρινή
+            αποθήκευση ανά instance Vercel μέχρι DB/KV.
+          </p>
+        </div>
+        <div className="settings-backup-panel">
+          <Button
+            type="button"
+            className="settings-backup-action"
+            disabled={syncing || !clubId}
+            onClick={() => void handlePushMirror()}
+          >
+            {syncing ? 'Συγχρονισμός…' : 'Push mirror συλλόγου'}
+          </Button>
         </div>
       </div>
 

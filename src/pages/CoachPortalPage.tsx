@@ -11,9 +11,12 @@ export function CoachPortalPage() {
   const session = getSession();
 
   const coach = useMemo(() => {
+    if (session?.coachId) {
+      return (data.coaches ?? []).find((c) => c.id === session.coachId && c.active) ?? null;
+    }
     const email = session?.email?.toLowerCase() ?? '';
     return (data.coaches ?? []).find((c) => c.email.toLowerCase() === email && c.active) ?? null;
-  }, [data.coaches, session?.email]);
+  }, [data.coaches, session?.coachId, session?.email]);
 
   const classIds = useMemo(() => {
     if (!coach) return new Set<string>();

@@ -25,7 +25,7 @@ function generatePassword(): string {
 export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
   const session = getSession();
   const navigate = useNavigate();
-  const { refresh: refreshAppData } = useAppData();
+  const { data: appData, refresh: refreshAppData } = useAppData();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [directory, setDirectory] = useState<clubUsersService.ClubDirectoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +41,8 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState(() => generatePassword());
   const [role, setRole] = useState<ClubRole>('coach');
+  const [athleteId, setAthleteId] = useState('');
+  const [coachId, setCoachId] = useState('');
   const [permissions, setPermissions] = useState<ClubPermission[]>(() =>
     clubUsersService.defaultPermissionsForRole('coach'),
   );
@@ -101,9 +103,31 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
     void refresh();
   }, [clubId]);
 
+  const athleteOptions = useMemo(
+    () =>
+      [...(appData.students ?? [])]
+        .filter((s) => s.status !== 'inactive')
+        .sort((a, b) =>
+          `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
+        ),
+    [appData.students],
+  );
+
+  const coachOptions = useMemo(
+    () =>
+      [...(appData.coaches ?? [])]
+        .filter((c) => c.active)
+        .sort((a, b) =>
+          `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
+        ),
+    [appData.coaches],
+  );
+
   function applyRoleDefaults(nextRole: ClubRole) {
     setRole(nextRole);
     setPermissions(clubUsersService.defaultPermissionsForRole(nextRole));
+    if (nextRole !== 'athlete') setAthleteId('');
+    if (nextRole !== 'coach') setCoachId('');
   }
 
   function togglePermission(permission: ClubPermission) {
@@ -119,6 +143,8 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
     setFullName('');
     setEmail('');
     setPassword(generatePassword());
+    setAthleteId('');
+    setCoachId('');
     applyRoleDefaults('coach');
   }
 
@@ -131,6 +157,8 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
       ? (user.role as ClubRole)
       : 'coach';
     setRole(nextRole);
+    setAthleteId(user.athleteId ?? '');
+    setCoachId(user.coachId ?? '');
     setPermissions(
       user.permissions
         ? (user.permissions.filter((p) =>
@@ -153,6 +181,8 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
         role,
         permissions,
         password: password.trim() ? password : undefined,
+        athleteId: role === 'athlete' ? athleteId || null : null,
+        coachId: role === 'coach' ? coachId || null : null,
       });
       if (!result.success) {
         setError(result.error ?? 'Αποτυχία ενημέρωσης');
@@ -171,6 +201,8 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
       password,
       role,
       permissions,
+      athleteId: role === 'athlete' ? athleteId || null : null,
+      coachId: role === 'coach' ? coachId || null : null,
     });
     if (!result.success) {
       setError(result.error ?? 'Αποτυχία πρόσκλησης');
@@ -297,6 +329,32 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
               ))}
             </select>
           </label>
+          {role === 'athlete' ? (
+            <label className="field">
+              <span>Σύνδεση με αθλητή</span>
+              <select value={athleteId} onChange={(e) => setAthleteId(e.target.value)}>
+                <option value="">— χωρίς σύνδεση —</option>
+                {athleteOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.lastName} {s.firstName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {role === 'coach' ? (
+            <label className="field">
+              <span>Σύνδεση με προπονητή</span>
+              <select value={coachId} onChange={(e) => setCoachId(e.target.value)}>
+                <option value="">— χωρίς σύνδεση —</option>
+                {coachOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.lastName} {c.firstName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
 
         <div className="club-users-permissions">

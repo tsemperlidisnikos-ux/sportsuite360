@@ -18,6 +18,7 @@ export interface AppUser {
   active: boolean;
   clubId?: string | null;
   athleteId?: string | null;
+  coachId?: string | null;
   /** Προσαρμοσμένα δικαιώματα από τον σύλλογο· αν λείπει → defaults ρόλου από Platform Admin. */
   permissions?: string[] | null;
 }
@@ -64,6 +65,7 @@ function setSessionFromUser(user: AppUser): void {
       role: user.role,
       clubId: user.clubId ?? null,
       athleteId: user.athleteId ?? null,
+      coachId: user.coachId ?? null,
     }),
   );
 }
@@ -192,6 +194,7 @@ export function getSession(): {
   role: UserRole;
   clubId?: string | null;
   athleteId?: string | null;
+  coachId?: string | null;
 } | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
@@ -227,7 +230,17 @@ export function getUserById(userId: string): AppUser | null {
 export function updateUser(
   userId: string,
   patch: Partial<
-    Pick<AppUser, 'fullName' | 'email' | 'password' | 'role' | 'active' | 'permissions'>
+    Pick<
+      AppUser,
+      | 'fullName'
+      | 'email'
+      | 'password'
+      | 'role'
+      | 'active'
+      | 'permissions'
+      | 'athleteId'
+      | 'coachId'
+    >
   >,
 ): { success: boolean; data?: AppUser; error?: string } {
   const users = getUsers();

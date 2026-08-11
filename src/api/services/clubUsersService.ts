@@ -43,6 +43,8 @@ export type InviteClubUserInput = {
   password: string;
   role: ClubRole;
   permissions: ClubPermission[];
+  athleteId?: string | null;
+  coachId?: string | null;
 };
 
 function canManageClubUsers(clubId: string): boolean {
@@ -310,6 +312,8 @@ export async function inviteClubUser(input: InviteClubUserInput) {
       active: true,
       clubId: input.clubId,
       permissions,
+      athleteId: input.role === 'athlete' ? input.athleteId || null : null,
+      coachId: input.role === 'coach' ? input.coachId || null : null,
     };
 
     saveUsers([...users, user]);
@@ -326,6 +330,8 @@ export async function updateClubUser(
     permissions?: ClubPermission[];
     password?: string;
     active?: boolean;
+    athleteId?: string | null;
+    coachId?: string | null;
   },
 ) {
   return apiClient(async () => {
@@ -355,6 +361,16 @@ export async function updateClubUser(
       nextPatch.password = await prepareStoredPassword(patch.password.trim());
     }
     if (patch.active !== undefined) nextPatch.active = patch.active;
+
+    const nextRole = patch.role ?? (target.role as ClubRole);
+    if (patch.athleteId !== undefined || patch.role !== undefined) {
+      nextPatch.athleteId =
+        nextRole === 'athlete' ? patch.athleteId ?? target.athleteId ?? null : null;
+    }
+    if (patch.coachId !== undefined || patch.role !== undefined) {
+      nextPatch.coachId =
+        nextRole === 'coach' ? patch.coachId ?? target.coachId ?? null : null;
+    }
 
     const result = updateUser(userId, nextPatch);
     if (!result.success) throw new Error(result.error ?? 'Αποτυχία ενημέρωσης');

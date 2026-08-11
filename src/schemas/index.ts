@@ -232,9 +232,19 @@ export const warehouseProductSchema = z.object({
   size: z.string().optional().default(''),
   sizeGroup: z.enum(['kids', 'adult', '']).optional().default(''),
   notes: z.string().optional().default(''),
+  stockQty: z.coerce.number().int().min(0).optional().default(0),
 });
 
 export type WarehouseProductInput = z.infer<typeof warehouseProductSchema>;
+
+export const stockMovementSchema = z.object({
+  productId: z.string().min(1),
+  type: z.enum(['in', 'out', 'adjust']),
+  quantity: z.coerce.number().int().positive('Η ποσότητα πρέπει να είναι θετική'),
+  note: z.string().optional().default(''),
+});
+
+export type StockMovementInput = z.infer<typeof stockMovementSchema>;
 
 export const partnerBusinessSchema = z.object({
   name: z.string().min(1, 'Το όνομα είναι υποχρεωτικό'),

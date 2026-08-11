@@ -55,6 +55,21 @@ export function FeesPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   useEffect(() => {
+    if (!clubId) return;
+    let cancelled = false;
+    void (async () => {
+      const { pollVivaSettlements } = await import('../api/services/vivaSettlementsService');
+      const result = await pollVivaSettlements(clubId);
+      if (cancelled || !result.success || !result.data?.applied) return;
+      setMessage(result.data.messages[0] ?? `Καταχωρήθηκαν ${result.data.applied} πληρωμές Viva.`);
+      refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, refresh]);
+
+  useEffect(() => {
     const txnId = searchParams.get('t');
     const orderCode = searchParams.get('s');
     if (!txnId && !orderCode) return;

@@ -275,8 +275,7 @@ export function getClubSmtpSendLog(clubId: string | null | undefined): ClubSmtpS
   return getClubById(clubId)?.smtpSendLog ?? [];
 }
 
-export const VIVA_WEBHOOK_URL =
-  'https://backend-three-kappa-56.vercel.app/billing/viva-webhook';
+export const VIVA_WEBHOOK_URL = '/api/viva/webhook';
 
 export const clubVivaSchema = z.object({
   enabled: z.boolean(),

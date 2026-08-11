@@ -257,7 +257,21 @@ export interface WarehouseProduct {
   /** Παιδικό ή Ανδρικό/Γυναικείο — για εμφάνιση στην αποθήκη. */
   sizeGroup?: ProductSizeGroup | '';
   notes: string;
+  /** Τρέχον απόθεμα τεμαχίων. */
+  stockQty: number;
   createdAt: string;
+}
+
+export type StockMovementType = 'in' | 'out' | 'adjust';
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: StockMovementType;
+  quantity: number;
+  note: string;
+  createdAt: string;
+  createdByName: string;
 }
 
 export type PartnerStatus = 'active' | 'inactive';
@@ -361,6 +375,7 @@ export interface AppData {
   announcements: Announcement[];
   budgets: BudgetLine[];
   products: WarehouseProduct[];
+  stockMovements: StockMovement[];
   partnerBusinesses: PartnerBusiness[];
   partnerOffers: PartnerOffer[];
   feeChargeTemplates: FeeChargeTemplate[];

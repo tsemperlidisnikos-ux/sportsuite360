@@ -16,6 +16,7 @@ export const seedData: AppData = {
   announcements: [],
   budgets: [],
   products: [],
+  stockMovements: [],
   partnerBusinesses: [],
   partnerOffers: [],
   feeChargeTemplates: [],

@@ -25,6 +25,12 @@ export function ClubVivaPanel({ clubId }: Props) {
     return `${origin}/fees`;
   }, []);
 
+  const webhookUrlHint = useMemo(() => {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://your-domain';
+    return `${origin}${VIVA_WEBHOOK_URL}`;
+  }, []);
+
   useEffect(() => {
     setForm(getClubViva(clubId));
     setMessage('');
@@ -59,7 +65,7 @@ export function ClubVivaPanel({ clubId }: Props) {
             πληρωμές (Smart Checkout) του συλλόγου «{club?.name ?? '—'}».
           </p>
           <p className="club-email-banner club-viva-info">
-            Webhook URL: <code>{VIVA_WEBHOOK_URL}</code>
+            Webhook URL: <code>{webhookUrlHint}</code>
           </p>
           <p className="club-email-banner club-viva-info">
             Στο Viva payment source, ορίστε Success URL:{' '}

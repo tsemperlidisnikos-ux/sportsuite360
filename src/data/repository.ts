@@ -24,6 +24,12 @@ function ensureCollections(data: AppData): void {
   if (!data.announcements) data.announcements = structuredClone(seedData.announcements);
   if (!data.budgets) data.budgets = structuredClone(seedData.budgets);
   if (!data.products) data.products = structuredClone(seedData.products);
+  if (!data.stockMovements) data.stockMovements = structuredClone(seedData.stockMovements ?? []);
+  for (const product of data.products) {
+    if (typeof product.stockQty !== 'number' || Number.isNaN(product.stockQty)) {
+      product.stockQty = 0;
+    }
+  }
   if (!data.partnerBusinesses) data.partnerBusinesses = structuredClone(seedData.partnerBusinesses);
   if (!data.partnerOffers) data.partnerOffers = structuredClone(seedData.partnerOffers);
   if (!data.feeChargeTemplates) data.feeChargeTemplates = structuredClone(seedData.feeChargeTemplates);

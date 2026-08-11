@@ -22,6 +22,7 @@ const emptyForm: WarehouseProductInput = {
   size: '',
   sizeGroup: '',
   notes: '',
+  stockQty: 0,
 };
 
 function encodeSizeValue(group: SizeChartGroupId, size: string): string {
@@ -120,9 +121,44 @@ export function WarehousePage() {
       size: product.size ?? '',
       sizeGroup: product.sizeGroup ?? '',
       notes: product.notes ?? '',
+      stockQty: product.stockQty ?? 0,
     });
     setError('');
     setOpen(true);
+  }
+
+  const [stockProduct, setStockProduct] = useState<WarehouseProduct | null>(null);
+  const [stockType, setStockType] = useState<'in' | 'out' | 'adjust'>('in');
+  const [stockQty, setStockQty] = useState(1);
+  const [stockNote, setStockNote] = useState('');
+  const [stockError, setStockError] = useState('');
+  const [stockSaving, setStockSaving] = useState(false);
+
+  function openStock(product: WarehouseProduct) {
+    setStockProduct(product);
+    setStockType('in');
+    setStockQty(1);
+    setStockNote('');
+    setStockError('');
+  }
+
+  async function handleStockSave() {
+    if (!stockProduct) return;
+    setStockSaving(true);
+    setStockError('');
+    const result = await productsService.recordStockMovement({
+      productId: stockProduct.id,
+      type: stockType,
+      quantity: stockQty,
+      note: stockNote,
+    });
+    setStockSaving(false);
+    if (!result.success) {
+      setStockError(result.error ?? 'Σφάλμα κίνησης');
+      return;
+    }
+    setStockProduct(null);
+    refresh();
   }
 
   function closeModal() {
@@ -181,6 +217,7 @@ export function WarehousePage() {
                 <th>Κατηγορία</th>
                 <th>SKU</th>
                 <th>Μέγεθος</th>
+                <th>Απόθεμα</th>
                 <th>Τιμή πώλησης</th>
                 <th></th>
               </tr>
@@ -197,8 +234,19 @@ export function WarehousePage() {
                   <td>{item.category || '—'}</td>
                   <td>{item.sku || '—'}</td>
                   <td>{formatProductSize(item.size, item.sizeGroup)}</td>
+                  <td>
+                    <strong>{item.stockQty ?? 0}</strong>
+                  </td>
                   <td>{formatCurrency(item.salePrice)}</td>
                   <td className="row-actions">
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => openStock(item)}
+                      aria-label="Κίνηση αποθέματος"
+                    >
+                      Stock
+                    </button>
                     <button
                       type="button"
                       className="btn btn-ghost"
@@ -296,6 +344,17 @@ export function WarehousePage() {
               />
             </label>
             <label className="field">
+              <span className="field-label">Αρχικό απόθεμα</span>
+              <input
+                className="field-input"
+                type="number"
+                min={0}
+                step="1"
+                value={form.stockQty ?? 0}
+                onChange={(e) => setForm({ ...form, stockQty: Number(e.target.value) || 0 })}
+              />
+            </label>
+            <label className="field">
               <span className="field-label">Μέγεθος</span>
               <select
                 className="field-input"
@@ -337,6 +396,59 @@ export function WarehousePage() {
           </label>
 
           {error ? <p className="form-error">{error}</p> : null}
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(stockProduct)}
+        title={stockProduct ? `Απόθεμα — ${stockProduct.name}` : 'Απόθεμα'}
+        onClose={() => setStockProduct(null)}
+        footer={
+          <>
+            <Button variant="secondary" type="button" onClick={() => setStockProduct(null)}>
+              Άκυρο
+            </Button>
+            <Button type="button" disabled={stockSaving} onClick={() => void handleStockSave()}>
+              Καταχώρηση
+            </Button>
+          </>
+        }
+      >
+        <div className="stack-md">
+          <p className="muted">Τρέχον απόθεμα: {stockProduct?.stockQty ?? 0}</p>
+          <label className="field">
+            <span className="field-label">Τύπος κίνησης</span>
+            <select
+              className="field-input"
+              value={stockType}
+              onChange={(e) => setStockType(e.target.value as 'in' | 'out' | 'adjust')}
+            >
+              <option value="in">Εισαγωγή (+)</option>
+              <option value="out">Εξαγωγή / πώληση (−)</option>
+              <option value="adjust">Απογραφή (ορισμός ποσότητας)</option>
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Ποσότητα</span>
+            <input
+              className="field-input"
+              type="number"
+              min={1}
+              step={1}
+              value={stockQty}
+              onChange={(e) => setStockQty(Math.max(1, Number(e.target.value) || 1))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Σημείωση</span>
+            <input
+              className="field-input"
+              value={stockNote}
+              onChange={(e) => setStockNote(e.target.value)}
+              placeholder="π.χ. παραλαβή / πώληση αθλητή"
+            />
+          </label>
+          {stockError ? <p className="form-error">{stockError}</p> : null}
         </div>
       </Modal>
     </div>
