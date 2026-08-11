@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { addSettlement } from '../lib/serverStore.js';
+import { addSettlement, isDurableStoreEnabled } from '../lib/serverStore.js';
 
 /**
  * Viva Wallet webhook receiver.
@@ -7,7 +7,11 @@ import { addSettlement } from '../lib/serverStore.js';
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
-    return res.status(200).json({ ok: true, service: 'viva-webhook' });
+    return res.status(200).json({
+      ok: true,
+      service: 'viva-webhook',
+      durable: isDurableStoreEnabled(),
+    });
   }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
@@ -31,12 +35,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, ignored: true });
     }
 
-    // Status F = finished/paid in Viva
     if (status && status !== 'F' && status !== 'Finished' && status !== 'paid') {
       return res.status(200).json({ ok: true, ignored: true, status });
     }
 
-    const settlement = addSettlement({
+    const settlement = await addSettlement({
       orderCode: orderCode || transactionId,
       transactionId: transactionId || orderCode,
       amountCents: amountCents > 0 ? amountCents : 0,
@@ -44,7 +47,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       clubHint: String(eventData.MerchantTrns ?? eventData.CustomerTrns ?? ''),
     });
 
-    return res.status(200).json({ ok: true, settlementId: settlement.id });
+    return res.status(200).json({
+      ok: true,
+      settlementId: settlement.id,
+      durable: isDurableStoreEnabled(),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Webhook error';
     return res.status(500).json({ ok: false, error: message });

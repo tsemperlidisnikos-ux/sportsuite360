@@ -12,7 +12,7 @@ export function BackupPanel() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [fileLabel, setFileLabel] = useState('Δεν επιλέχθηκε κανένα αρχείο.');
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState<'push' | 'pull' | null>(null);
 
   const clubId = getPreviewClubId() ?? getSession()?.clubId ?? null;
 
@@ -31,10 +31,10 @@ export function BackupPanel() {
       setError('Δεν βρέθηκε σύλλογος για συγχρονισμό.');
       return;
     }
-    setSyncing(true);
+    setSyncing('push');
     setError('');
     const result = await backendSyncService.pushClubMirror(clubId);
-    setSyncing(false);
+    setSyncing(null);
     if (!result.success) {
       setError(result.error ?? 'Αποτυχία push');
       return;
@@ -42,6 +42,36 @@ export function BackupPanel() {
     flash(
       `Cloud mirror ενημερώθηκε${result.data?.updatedAt ? ` · ${result.data.updatedAt}` : ''}.`,
     );
+  }
+
+  async function handlePullMirror() {
+    if (!clubId) {
+      setError('Δεν βρέθηκε σύλλογος για συγχρονισμό.');
+      return;
+    }
+    const confirmed = window.confirm(
+      'Θα αντικατασταθούν τα τοπικά δεδομένα του συλλόγου από το cloud mirror. Συνέχεια;',
+    );
+    if (!confirmed) return;
+
+    setSyncing('pull');
+    setError('');
+    const result = await backendSyncService.pullClubMirror(clubId);
+    setSyncing(null);
+    if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία pull');
+      return;
+    }
+
+    replaceData(result.data.payload);
+    flash(
+      `Επαναφορά από mirror ολοκληρώθηκε${
+        result.data.updatedAt ? ` · ${result.data.updatedAt}` : ''
+      }. Ανανέωση σελίδας…`,
+    );
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 600);
   }
 
   async function applyBackupFile(file: File) {
@@ -128,18 +158,27 @@ export function BackupPanel() {
         <div className="settings-backup-copy">
           <h3>Cloud mirror (πειραματικό)</h3>
           <p>
-            Push δεδομένων συλλόγου στο `/api/sync/mirror` (βάση για μελλοντικό backend). Προσωρινή
-            αποθήκευση ανά instance Vercel μέχρι DB/KV.
+            Push / Pull δεδομένων συλλόγου μέσω `/api/sync/mirror`. Με Upstash Redis
+            (`UPSTASH_REDIS_REST_*` ή `KV_REST_API_*`) η αποθήκευση είναι μόνιμη· αλλιώς
+            memory ανά instance. Το Pull αντικαθιστά τα τοπικά δεδομένα.
           </p>
         </div>
-        <div className="settings-backup-panel">
+        <div className="settings-backup-panel" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Button
             type="button"
             className="settings-backup-action"
-            disabled={syncing || !clubId}
+            disabled={syncing !== null || !clubId}
             onClick={() => void handlePushMirror()}
           >
-            {syncing ? 'Συγχρονισμός…' : 'Push mirror συλλόγου'}
+            {syncing === 'push' ? 'Push…' : 'Push mirror συλλόγου'}
+          </Button>
+          <Button
+            type="button"
+            className="settings-backup-action"
+            disabled={syncing !== null || !clubId}
+            onClick={() => void handlePullMirror()}
+          >
+            {syncing === 'pull' ? 'Pull…' : 'Pull / επαναφορά από mirror'}
           </Button>
         </div>
       </div>

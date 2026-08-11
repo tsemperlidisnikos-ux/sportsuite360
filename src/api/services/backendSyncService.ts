@@ -1,5 +1,12 @@
 import { apiClient } from '../apiClient';
 import { getData } from '../../data/repository';
+import type { AppData } from '../../types';
+
+function isAppDataPayload(value: unknown): value is AppData {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as Record<string, unknown>;
+  return Array.isArray(data.students) && Array.isArray(data.classes);
+}
 
 export async function pushClubMirror(clubId: string) {
   return apiClient(async () => {
@@ -32,10 +39,25 @@ export async function pullClubMirror(clubId: string) {
       error?: string;
       updatedAt?: string;
       payload?: unknown;
+      durable?: boolean;
     };
+    if (response.status === 404) {
+      throw new Error(
+        json.error === 'No mirror for club'
+          ? 'Δεν υπάρχει αποθηκευμένο mirror για αυτόν τον σύλλογο. Κάντε πρώτα Push.'
+          : 'Το sync API είναι διαθέσιμο μόνο στο production (Vercel).',
+      );
+    }
     if (!response.ok || !json.ok) {
       throw new Error(json.error || `Pull HTTP ${response.status}`);
     }
-    return { updatedAt: json.updatedAt ?? null, payload: json.payload };
+    if (!isAppDataPayload(json.payload)) {
+      throw new Error('Το mirror δεν περιέχει έγκυρα δεδομένα συλλόγου.');
+    }
+    return {
+      updatedAt: json.updatedAt ?? null,
+      durable: Boolean(json.durable),
+      payload: json.payload,
+    };
   });
 }

@@ -444,6 +444,7 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
                       {row.fullName} · {row.email}
                       {row.hasLogin ? ' · λογαριασμός' : ' · μητρώο'}
                       {row.customPermissions ? ' · προσαρμοσμένα δικαιώματα' : ''}
+                      {row.linkedLabel ? ` · ${row.linkedLabel}` : ''}
                       {' · '}
                       <span className={row.active ? 'badge badge-active' : 'badge badge-inactive'}>
                         {row.active ? 'Ενεργός' : 'Ανενεργός'}

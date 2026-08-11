@@ -1,11 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { consumeSettlement, listOpenSettlements } from '../lib/serverStore.js';
+import {
+  consumeSettlement,
+  isDurableStoreEnabled,
+  listOpenSettlements,
+} from '../lib/serverStore.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
+    const settlements = await listOpenSettlements();
     return res.status(200).json({
       ok: true,
-      settlements: listOpenSettlements().map((s) => ({
+      durable: isDurableStoreEnabled(),
+      settlements: settlements.map((s) => ({
         orderCode: s.orderCode,
         transactionId: s.transactionId,
         amountCents: s.amountCents,
@@ -21,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!orderCode) {
       return res.status(400).json({ ok: false, error: 'orderCode required' });
     }
-    const consumed = consumeSettlement(orderCode);
+    const consumed = await consumeSettlement(orderCode);
     return res.status(200).json({ ok: true, consumed: Boolean(consumed) });
   }
 

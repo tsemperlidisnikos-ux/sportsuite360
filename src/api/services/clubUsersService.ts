@@ -34,6 +34,8 @@ export type ClubDirectoryRow = {
   userId?: string;
   entityId?: string;
   customPermissions: boolean;
+  /** π.χ. «Συνδεδεμένος: Παπαδόπουλος Γιάννης» */
+  linkedLabel?: string;
 };
 
 export type InviteClubUserInput = {
@@ -96,6 +98,8 @@ export async function listClubDirectory(clubId: string) {
       let roleLabel =
         CLUB_ROLE_LABELS[user.role as ClubRole] ?? roleFallback(user.role);
 
+      let linkedLabel: string | undefined;
+
       if (user.role === 'athlete' || user.athleteId) {
         const student =
           data.students.find((s) => s.id === user.athleteId) ??
@@ -106,20 +110,29 @@ export async function listClubDirectory(clubId: string) {
           claimedAthleteIds.add(student.id);
           active = student.status !== 'inactive' && user.active;
           roleLabel = 'Αθλητής';
+          linkedLabel = `Συνδεδεμένος αθλητής: ${student.lastName} ${student.firstName}`.trim();
         } else if (user.role === 'athlete') {
           kind = 'athlete';
           roleLabel = 'Αθλητής';
+          linkedLabel = user.athleteId
+            ? 'Σύνδεση αθλητή: εκκρεμεί (μη έγκυρο id)'
+            : 'Χωρίς σύνδεση αθλητή';
         }
       } else if (user.role === 'coach') {
-        const coach = data.coaches.find(
-          (c) => normalizeEmail(c.email) === email && email,
-        );
+        const coach =
+          data.coaches.find((c) => c.id === user.coachId) ??
+          data.coaches.find((c) => normalizeEmail(c.email) === email && email);
         if (coach) {
           kind = 'coach';
           entityId = coach.id;
           claimedCoachIds.add(coach.id);
           active = coach.active && user.active;
           roleLabel = 'Προπονητής';
+          linkedLabel = `Συνδεδεμένος προπονητής: ${coach.lastName} ${coach.firstName}`.trim();
+        } else {
+          linkedLabel = user.coachId
+            ? 'Σύνδεση προπονητή: εκκρεμεί (μη έγκυρο id)'
+            : 'Χωρίς σύνδεση προπονητή';
         }
       } else if (user.role === 'secretariat' || user.role === 'admin') {
         const staff = (data.staff ?? []).find(
@@ -150,6 +163,7 @@ export async function listClubDirectory(clubId: string) {
         userId: user.id,
         entityId,
         customPermissions: Boolean(user.permissions),
+        linkedLabel,
       });
     }
 

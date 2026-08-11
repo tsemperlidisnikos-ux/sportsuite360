@@ -11,12 +11,9 @@ export function CoachPortalPage() {
   const session = getSession();
 
   const coach = useMemo(() => {
-    if (session?.coachId) {
-      return (data.coaches ?? []).find((c) => c.id === session.coachId && c.active) ?? null;
-    }
-    const email = session?.email?.toLowerCase() ?? '';
-    return (data.coaches ?? []).find((c) => c.email.toLowerCase() === email && c.active) ?? null;
-  }, [data.coaches, session?.coachId, session?.email]);
+    if (!session?.coachId) return null;
+    return (data.coaches ?? []).find((c) => c.id === session.coachId && c.active) ?? null;
+  }, [data.coaches, session?.coachId]);
 
   const classIds = useMemo(() => {
     if (!coach) return new Set<string>();
@@ -24,6 +21,9 @@ export function CoachPortalPage() {
       (data.classes ?? []).filter((c) => c.coachId === coach.id).map((c) => c.id),
     );
   }, [data.classes, coach]);
+
+  const linkMissing = Boolean(session && !session.coachId);
+  const linkBroken = Boolean(session?.coachId && !coach);
 
   const myClasses = useMemo(
     () => (data.classes ?? []).filter((c) => classIds.has(c.id)),
@@ -93,6 +93,25 @@ export function CoachPortalPage() {
         }`}
       />
 
+      {linkMissing ? (
+        <section className="panel">
+          <p className="form-error">
+            Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα προπονητή. Ζητήστε από τον
+            διαχειριστή (Ρυθμίσεις → Χρήστες) να ορίσει «Σύνδεση με προπονητή».
+          </p>
+        </section>
+      ) : null}
+
+      {linkBroken ? (
+        <section className="panel">
+          <p className="form-error">
+            Η σύνδεση προπονητή δεν είναι έγκυρη (η καρτέλα δεν βρέθηκε ή είναι ανενεργή).
+          </p>
+        </section>
+      ) : null}
+
+      {!linkMissing && !linkBroken ? (
+        <>
       <section className="panel parent-portal-section">
         <h2>
           <Users size={18} /> Τμήματα
@@ -188,6 +207,8 @@ export function CoachPortalPage() {
           </ul>
         )}
       </section>
+        </>
+      ) : null}
     </div>
   );
 }
