@@ -1,7 +1,7 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useId, useMemo, useState, type ChangeEvent } from 'react';
 import * as backendSyncService from '../api/services/backendSyncService';
 import { getSession } from '../auth/auth';
-import { getClubById } from '../auth/clubs';
+import { ensureSessionClub, getClubById } from '../auth/clubs';
 import { Button } from './ui/Button';
 import {
   clearDataCache,
@@ -20,15 +20,24 @@ import {
   readBackupFile,
 } from '../utils/backupArchive';
 
+function resolveTargetClubId(): string | null {
+  const preview = getPreviewClubId();
+  if (preview) return preview;
+  const session = getSession();
+  const ensured = ensureSessionClub(session);
+  return ensured?.id ?? session?.clubId ?? null;
+}
+
 export function BackupPanel() {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileInputId = useId();
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [fileLabel, setFileLabel] = useState('Δεν επιλέχθηκε κανένα αρχείο.');
   const [syncing, setSyncing] = useState<'push' | 'pull' | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [clubTick, setClubTick] = useState(0);
 
-  const clubId = getPreviewClubId() ?? getSession()?.clubId ?? null;
+  const clubId = useMemo(() => resolveTargetClubId(), [clubTick]);
   const club = clubId ? getClubById(clubId) : null;
   const isDemoClub = isDemoClubName(club?.name);
 
@@ -48,13 +57,15 @@ export function BackupPanel() {
   }
 
   async function handlePushMirror() {
-    if (!clubId) {
-      setError('Δεν βρέθηκε σύλλογος για συγχρονισμό.');
+    const activeClubId = resolveTargetClubId();
+    setClubTick((n) => n + 1);
+    if (!activeClubId) {
+      setError('Δεν βρέθηκε σύλλογος για συγχρονισμό. Κάντε login και ξαναδοκιμάστε.');
       return;
     }
     setSyncing('push');
     setError('');
-    const result = await backendSyncService.pushClubMirror(clubId);
+    const result = await backendSyncService.pushClubMirror(activeClubId);
     setSyncing(null);
     if (!result.success) {
       setError(result.error ?? 'Αποτυχία push');
@@ -66,8 +77,10 @@ export function BackupPanel() {
   }
 
   async function handlePullMirror() {
-    if (!clubId) {
-      setError('Δεν βρέθηκε σύλλογος για συγχρονισμό.');
+    const activeClubId = resolveTargetClubId();
+    setClubTick((n) => n + 1);
+    if (!activeClubId) {
+      setError('Δεν βρέθηκε σύλλογος για συγχρονισμό. Κάντε login και ξαναδοκιμάστε.');
       return;
     }
     const confirmed = window.confirm(
@@ -77,7 +90,7 @@ export function BackupPanel() {
 
     setSyncing('pull');
     setError('');
-    const result = await backendSyncService.pullClubMirror(clubId);
+    const result = await backendSyncService.pullClubMirror(activeClubId);
     setSyncing(null);
     if (!result.success || !result.data) {
       setError(result.error ?? 'Αποτυχία pull');
@@ -96,12 +109,13 @@ export function BackupPanel() {
   }
 
   function handleReseedDemo() {
-    if (!clubId || !isDemoClub) return;
+    const activeClubId = resolveTargetClubId();
+    if (!activeClubId || !isDemoClubName(getClubById(activeClubId)?.name)) return;
     const confirmed = window.confirm(
       'Θα επαναφορτωθούν τα πλήρη δεδομένα παρουσίασης DEMO (αντικαθιστά τα τρέχοντα). Συνέχεια;',
     );
     if (!confirmed) return;
-    const result = reseedDemoShowcase(clubId);
+    const result = reseedDemoShowcase(activeClubId);
     if (!result) {
       setError('Αποτυχία επαναφόρτωσης DEMO δεδομένων.');
       return;
@@ -117,22 +131,25 @@ export function BackupPanel() {
     setError('');
     setMessage('');
     try {
-      if (!clubId) {
-        throw new Error('Δεν βρέθηκε ενεργός σύλλογος. Κάντε login και ξαναδοκιμάστε.');
+      const activeClubId = resolveTargetClubId();
+      setClubTick((n) => n + 1);
+      if (!activeClubId) {
+        throw new Error(
+          'Δεν βρέθηκε ενεργός σύλλογος. Αποσύνδεση → «Είσοδος DEMO παρουσίασης» και ξαναδοκιμάστε.',
+        );
       }
 
       const parsed = await readBackupFile(file);
-      const clubData = pickAppDataForRestore(parsed, clubId);
+      const clubData = pickAppDataForRestore(parsed, activeClubId);
       if (!clubData) {
         throw new Error('Το backup δεν περιέχει δεδομένα συλλόγου.');
       }
 
       const expectedStudents = clubData.students?.length ?? 0;
-      replaceClubData(clubId, clubData);
+      replaceClubData(activeClubId, clubData);
 
-      // Prevent DEMO showcase auto-seed from overwriting a manual restore.
-      if (isDemoClubName(getClubById(clubId)?.name)) {
-        markDemoShowcaseApplied(clubId);
+      if (isDemoClubName(getClubById(activeClubId)?.name)) {
+        markDemoShowcaseApplied(activeClubId);
       }
 
       clearDataCache();
@@ -146,7 +163,7 @@ export function BackupPanel() {
       }
 
       flash(
-        `Επαναφορά OK στον σύλλογο «${getClubById(clubId)?.name ?? clubId}»: ` +
+        `Επαναφορά OK στον σύλλογο «${getClubById(activeClubId)?.name ?? activeClubId}»: ` +
           `${gotStudents} αθλητές, ${verify.classes?.length ?? 0} τμήματα. Ανανέωση…`,
       );
       window.setTimeout(() => {
@@ -208,31 +225,37 @@ export function BackupPanel() {
                 {' '}
                 (<strong>{club.name}</strong>)
               </>
-            ) : null}
+            ) : (
+              ' (θα χρησιμοποιηθεί ο σύλλογος του λογαριασμού σας)'
+            )}
             . Δεν αλλάζει τους λογαριασμούς σύνδεσης.
           </p>
         </div>
         <div className="settings-backup-panel">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/zip,.zip,application/json,.json"
-            hidden
-            onChange={handleFileChange}
-            disabled={restoring}
-          />
-          <button
-            type="button"
-            className="settings-backup-file-btn"
-            disabled={restoring || !clubId}
-            onClick={() => fileRef.current?.click()}
+          <label
+            htmlFor={fileInputId}
+            className={`settings-backup-file-btn${restoring ? ' is-disabled' : ''}`}
+            aria-disabled={restoring}
+            onClick={() => {
+              // Ensure club exists before picker opens
+              resolveTargetClubId();
+              setClubTick((n) => n + 1);
+            }}
           >
             {restoring ? 'Επαναφορά…' : 'Επιλογή αρχείου'}
-          </button>
+          </label>
+          <input
+            id={fileInputId}
+            type="file"
+            accept=".zip,.json,application/zip,application/json,text/json"
+            className="settings-backup-file-input"
+            disabled={restoring}
+            onChange={handleFileChange}
+          />
           <span className="settings-backup-file-name">{fileLabel}</span>
           <p className="settings-hint">
-            Προτίμησε .json από localhost αν το ZIP αποτύχει. Login στον σύλλογο-στόχο πριν την
-            επαναφορά.
+            Προτίμησε .json από localhost. Αν το κουμπί φαίνεται ανενεργό, κάνε login με DEMO και
+            Ctrl+F5.
           </p>
         </div>
       </div>
@@ -240,15 +263,13 @@ export function BackupPanel() {
       <div className="settings-backup-block">
         <div className="settings-backup-copy">
           <h3>Cloud mirror (πειραματικό)</h3>
-          <p>
-            Push / Pull μέσω `/api/sync/mirror` (Upstash Redis αν έχει ρυθμιστεί).
-          </p>
+          <p>Push / Pull μέσω `/api/sync/mirror` (Upstash Redis αν έχει ρυθμιστεί).</p>
         </div>
         <div className="settings-backup-panel" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Button
             type="button"
             className="settings-backup-action"
-            disabled={syncing !== null || !clubId}
+            disabled={syncing !== null}
             onClick={() => void handlePushMirror()}
           >
             {syncing === 'push' ? 'Push…' : 'Push mirror συλλόγου'}
@@ -256,7 +277,7 @@ export function BackupPanel() {
           <Button
             type="button"
             className="settings-backup-action"
-            disabled={syncing !== null || !clubId}
+            disabled={syncing !== null}
             onClick={() => void handlePullMirror()}
           >
             {syncing === 'pull' ? 'Pull…' : 'Pull / επαναφορά από mirror'}

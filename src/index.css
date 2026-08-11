@@ -1593,6 +1593,8 @@ th {
 }
 
 .settings-backup-file-btn {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f7faf8;
@@ -1604,6 +1606,24 @@ th {
 
 .settings-backup-file-btn:hover {
   background: #eef5f1;
+}
+
+.settings-backup-file-btn.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: wait;
+}
+
+.settings-backup-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .settings-backup-file-name {
