@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,6 +8,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { ensureLegacyPaymentsMatched } from '../api/services/paymentMatchingService';
 import * as transactionsService from '../api/services/transactionsService';
 import { useAppData } from '../hooks/useAppData';
 import type { TransactionInput } from '../schemas';
@@ -121,6 +122,11 @@ export function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    ensureLegacyPaymentsMatched();
+    refresh();
+  }, [refresh]);
 
   const selected = data.students.find((s) => s.id === selectedId) ?? null;
 

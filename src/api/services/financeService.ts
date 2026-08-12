@@ -10,9 +10,11 @@ import type { Expense, Revenue } from '../../types';
 import { paymentMethodLabel } from '../../shared/paymentMethods';
 import { ensureAthletePaymentRevenuesSynced } from './athletePaymentRevenueBridge';
 import { assertFinanceMonthOpen } from './financePeriodService';
+import { ensureLegacyPaymentsMatched } from './paymentMatchingService';
 
 export async function getRevenues() {
   return apiClient(() => {
+    ensureLegacyPaymentsMatched();
     ensureAthletePaymentRevenuesSynced();
     return getData().revenues;
   });
@@ -108,6 +110,7 @@ export async function deleteExpense(id: string) {
 
 export async function getFinanceSummary() {
   return apiClient(() => {
+    ensureLegacyPaymentsMatched();
     ensureAthletePaymentRevenuesSynced();
     const { revenues, expenses, students, coaches, classes, cashAccounts } = getData();
     const paidRevenues = revenues.filter((r) => r.paymentStatus === 'paid');

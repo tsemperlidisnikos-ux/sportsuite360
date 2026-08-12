@@ -56,6 +56,13 @@ export function FeesPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   useEffect(() => {
+    void import('../api/services/paymentMatchingService').then(({ ensureLegacyPaymentsMatched }) => {
+      ensureLegacyPaymentsMatched();
+      refresh();
+    });
+  }, [refresh]);
+
+  useEffect(() => {
     if (!clubId) return;
     let cancelled = false;
     void (async () => {

@@ -4,6 +4,7 @@ import {
   ATHLETE_INCOME_SUBCATEGORY,
   ensureAthletePaymentRevenuesSynced,
 } from '../api/services/athletePaymentRevenueBridge';
+import { ensureLegacyPaymentsMatched } from '../api/services/paymentMatchingService';
 import * as financeService from '../api/services/financeService';
 import { Button } from './ui/Button';
 import { useAppData } from '../hooks/useAppData';
@@ -77,6 +78,7 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
+    ensureLegacyPaymentsMatched();
     ensureAthletePaymentRevenuesSynced();
     refresh();
   }, [refresh]);
