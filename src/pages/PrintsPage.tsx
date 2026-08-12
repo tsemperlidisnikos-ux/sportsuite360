@@ -976,12 +976,55 @@ function TrainingAttendanceSheetSection() {
 }
 
 function RegistrationApplicationsSection() {
+  const { data } = useAppData();
   const [fromDate, setFromDate] = useState('');
   const [untilDate, setUntilDate] = useState(todayIso);
   const [category, setCategory] = useState('pending');
   const [appType, setAppType] = useState('');
   const [teamId, setTeamId] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+
+  function kindLabel(kind: string): string {
+    if (kind === 'trial') return 'Δοκιμαστική';
+    if (kind === 'waitlist') return 'Λίστα αναμονής';
+    return 'Πλήρης εγγραφή';
+  }
+
+  function statusLabel(status: string): string {
+    if (status === 'approved') return 'Εγκεκριμένη';
+    if (status === 'rejected') return 'Απορριφθείσα';
+    return 'Εκκρεμής';
+  }
+
+  function runSearch() {
+    const apps = data.registrationApplications ?? [];
+    const filtered = apps.filter((app) => {
+      const day = (app.createdAt || '').slice(0, 10);
+      if (fromDate && day && day < fromDate) return false;
+      if (untilDate && day && day > untilDate) return false;
+      if (teamId && app.classId !== teamId) return false;
+      if (appType && app.kind !== appType) return false;
+      if (category === 'pending' && app.status !== 'pending') return false;
+      if (category === 'trial' && app.kind !== 'trial') return false;
+      if (category === 'waitlist' && app.kind !== 'waitlist') return false;
+      return true;
+    });
+
+    setRows(
+      filtered.map((app, index) => ({
+        index: String(index + 1),
+        name: `${app.lastName} ${app.firstName}`.trim(),
+        guardian: app.guardianName || '—',
+        phone: app.guardianPhone || '—',
+        team: data.classes.find((c) => c.id === app.classId)?.name ?? '—',
+        kind: kindLabel(app.kind),
+        status: statusLabel(app.status),
+        date: (app.createdAt || '').slice(0, 10) || '—',
+      })),
+    );
+    setShowResults(true);
+  }
 
   return (
     <SectionShell
@@ -1029,26 +1072,32 @@ function RegistrationApplicationsSection() {
           <option value="">Όλα</option>
           <option value="full">Πλήρης εγγραφή</option>
           <option value="trial">Δοκιμαστική προπόνηση</option>
+          <option value="waitlist">Λίστα αναμονής</option>
         </select>
       </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="app-team">
         <TeamSelect id="app-team" value={teamId} onChange={setTeamId} />
       </FilterRow>
       <div className="prints-filter-actions">
-        <Button type="button" onClick={() => setShowResults(true)}>
+        <Button type="button" onClick={runSearch}>
           Αναζήτηση
         </Button>
       </div>
       <ResultsModal
         open={showResults}
         title="Αιτήσεις εγγραφής"
-        count={0}
+        count={rows.length}
         columns={[
           { key: 'index', label: '#' },
           { key: 'name', label: 'Όνομα' },
+          { key: 'guardian', label: 'Κηδεμόνας' },
+          { key: 'phone', label: 'Τηλέφωνο' },
+          { key: 'team', label: 'Τμήμα' },
+          { key: 'kind', label: 'Τύπος' },
           { key: 'status', label: 'Κατάσταση' },
+          { key: 'date', label: 'Ημ/νία' },
         ]}
-        rows={[]}
+        rows={rows}
         onClose={() => setShowResults(false)}
       />
     </SectionShell>
