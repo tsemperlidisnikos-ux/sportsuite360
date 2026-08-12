@@ -63,6 +63,8 @@ function toForm(student: Student): StudentInput {
     sport: student.sport ?? '',
     healthCardStatus: student.healthCardStatus ?? '',
     healthCard: student.healthCard ?? student.healthCardStatus === 'Έγκυρη',
+    healthCardExpires: student.healthCardExpires ?? '',
+    consentExpires: student.consentExpires ?? '',
     uniformReceived: student.uniformReceived ?? false,
     uniformSize: student.uniformSize ?? '',
     registrationFee: student.registrationFee ?? 0,
