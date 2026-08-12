@@ -1473,6 +1473,8 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
 
     parentLinks: [],
 
+    registrationApplications: [],
+
     sizeChart: {
       kids: ['XS', 'S', 'M', 'L', 'XL'],
       men: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],

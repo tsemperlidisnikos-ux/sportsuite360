@@ -359,6 +359,25 @@ export interface ProgressReport {
   createdAt: string;
 }
 
+export type RegistrationApplicationKind = 'full' | 'trial' | 'waitlist';
+export type RegistrationApplicationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface RegistrationApplication {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  gender: Gender;
+  guardianName: string;
+  guardianPhone: string;
+  email: string;
+  classId: string | null;
+  kind: RegistrationApplicationKind;
+  status: RegistrationApplicationStatus;
+  notes: string;
+  createdAt: string;
+}
+
 export interface AppData {
   students: Student[];
   coaches: Coach[];
@@ -383,6 +402,7 @@ export interface AppData {
   photos: GalleryPhoto[];
   parentLinks: ParentAthleteLink[];
   progressReports: ProgressReport[];
+  registrationApplications: RegistrationApplication[];
   sizeChart: SizeChart;
   /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
   termsOfUseHtml?: string;

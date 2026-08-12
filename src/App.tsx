@@ -13,6 +13,9 @@ const LoginPage = lazy(() =>
 const RegisterClubPage = lazy(() =>
   import('./pages/RegisterClubPage').then((m) => ({ default: m.RegisterClubPage })),
 );
+const PublicJoinPage = lazy(() =>
+  import('./pages/PublicJoinPage').then((m) => ({ default: m.PublicJoinPage })),
+);
 const PlatformAdminPage = lazy(() =>
   import('./pages/PlatformAdminPage').then((m) => ({ default: m.PlatformAdminPage })),
 );
@@ -124,6 +127,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterClubPage />} />
+          <Route path="/join/:slug" element={<PublicJoinPage />} />
 
           <Route element={<RequireAuth />}>
             <Route path="platform" element={<RequirePlatformAdmin />}>

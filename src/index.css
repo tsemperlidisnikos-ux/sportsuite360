@@ -3723,3 +3723,224 @@ th {
     grid-column: 2;
   }
 }
+
+/* —— Public athlete registration settings + join page —— */
+.public-reg-panel h3 {
+  margin: 0 0 0.85rem;
+}
+
+.public-reg-info {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin: 0.75rem 0 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  background: #eef7f2;
+  border: 1px solid rgba(26, 62, 56, 0.08);
+}
+
+.public-reg-info p {
+  margin: 0;
+  color: #35584f;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.public-reg-info code {
+  font-size: 0.85em;
+}
+
+.public-reg-info-icon {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: #1a3e38;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  margin-top: 0.15rem;
+}
+
+.public-reg-check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0.45rem 0;
+  font-size: 0.95rem;
+}
+
+.public-reg-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.public-reg-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  background: #f4f6f5;
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+}
+
+.public-reg-photo {
+  margin: 1.25rem 0 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.public-reg-photo h4 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.public-reg-photo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.public-reg-photo-preview {
+  width: min(100%, 280px);
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #f3f6f4;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.public-reg-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.public-reg-photo-actions {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.public-join-page {
+  min-height: 100vh;
+  padding: 1.5rem 1rem 2.5rem;
+  background:
+    radial-gradient(circle at top left, rgba(26, 62, 56, 0.08), transparent 40%),
+    linear-gradient(180deg, #f4f7f5 0%, #e9efec 100%);
+}
+
+.public-join-shell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.public-join-hero {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #12332e;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(18, 51, 46, 0.18);
+}
+
+.public-join-hero-img {
+  width: 100%;
+  height: clamp(160px, 28vw, 240px);
+  object-fit: cover;
+  display: block;
+}
+
+.public-join-hero-fallback {
+  height: clamp(140px, 24vw, 200px);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1a3e38, #2f6b5f);
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.public-join-hero-copy {
+  padding: 1rem 1.2rem 1.15rem;
+}
+
+.public-join-eyebrow {
+  margin: 0 0 0.25rem;
+  opacity: 0.8;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.public-join-hero-copy h1 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.public-join-hero-copy .muted {
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0.35rem 0 0;
+}
+
+.public-join-card {
+  background: #fff;
+  border: 1px solid rgba(26, 62, 56, 0.1);
+  border-radius: 16px;
+  padding: 1.25rem 1.2rem 1.4rem;
+  box-shadow: 0 8px 24px rgba(18, 51, 46, 0.06);
+}
+
+.public-join-card h1,
+.public-join-card h2 {
+  margin: 0 0 0.4rem;
+}
+
+.public-join-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.public-join-kind {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.public-join-kind legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.public-join-kind label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .public-join-grid {
+    grid-template-columns: 1fr;
+  }
+}

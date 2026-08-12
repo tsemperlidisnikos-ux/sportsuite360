@@ -10,6 +10,7 @@ import {
   Ruler,
   Trash2,
   Trophy,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import { getSession } from '../auth/auth';
@@ -17,6 +18,7 @@ import { ensureSessionClub, getClubById, updateClubLogo } from '../auth/clubs';
 import { BackupPanel } from '../components/BackupPanel';
 import { ChangePasswordPanel } from '../components/ChangePasswordPanel';
 import { ClubEmailPanel } from '../components/ClubEmailPanel';
+import { ClubPublicRegistrationPanel } from '../components/ClubPublicRegistrationPanel';
 import { ClubUsersPanel } from '../components/ClubUsersPanel';
 import { ClubVivaPanel } from '../components/ClubVivaPanel';
 import { Button } from '../components/ui/Button';
@@ -38,6 +40,7 @@ type SettingsTab =
   | 'sizes'
   | 'email'
   | 'viva'
+  | 'publicRegistration'
   | 'terms'
   | 'backup';
 
@@ -175,6 +178,13 @@ export function SettingsPage() {
         </button>
         <button
           type="button"
+          className={`tab ${tab === 'publicRegistration' ? 'active' : ''}`}
+          onClick={() => setTab('publicRegistration')}
+        >
+          <UserPlus size={15} /> Δημόσια εγγραφή
+        </button>
+        <button
+          type="button"
           className={`tab ${tab === 'terms' ? 'active' : ''}`}
           onClick={() => setTab('terms')}
         >
@@ -257,6 +267,13 @@ export function SettingsPage() {
           <p className="form-error">Δεν βρέθηκε σύλλογος για τον λογαριασμό.</p>
         ) : (
           <ClubVivaPanel clubId={clubId} />
+        )
+      ) : null}
+      {tab === 'publicRegistration' ? (
+        !clubId ? (
+          <p className="form-error">Δεν βρέθηκε σύλλογος για τον λογαριασμό.</p>
+        ) : (
+          <ClubPublicRegistrationPanel clubId={clubId} />
         )
       ) : null}
       {tab === 'associations' ? <AssociationsPage /> : null}

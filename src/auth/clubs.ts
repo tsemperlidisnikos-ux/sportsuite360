@@ -30,6 +30,17 @@ export interface ClubVivaSettings {
   environment: 'demo' | 'live';
 }
 
+export interface ClubPublicRegistrationSettings {
+  enabled: boolean;
+  /** Άμεση εμφάνιση στη λίστα αθλητών (χωρίς έγκριση). */
+  autoApprove: boolean;
+  allowTrial: boolean;
+  allowWaitlist: boolean;
+  slug: string;
+  /** Φωτογραφία κεφαλίδας φόρμας /join (fallback: logo συλλόγου). */
+  heroImageUrl?: string | null;
+}
+
 export interface Club {
   id: string;
   name: string;
@@ -43,6 +54,7 @@ export interface Club {
   smtp?: ClubSmtpSettings;
   smtpSendLog?: ClubSmtpSendLog[];
   viva?: ClubVivaSettings;
+  publicRegistration?: ClubPublicRegistrationSettings;
 }
 
 const CLUBS_KEY = 'academyhub-clubs-v1';
@@ -381,6 +393,108 @@ export function updateClubViva(
   };
 
   clubs[index] = { ...clubs[index], viva };
+  saveClubs(clubs);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+  return ok(clubs[index]);
+}
+
+export function slugifyClubName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'club';
+}
+
+export function getDefaultPublicRegistration(
+  clubName = '',
+): ClubPublicRegistrationSettings {
+  return {
+    enabled: false,
+    autoApprove: false,
+    allowTrial: true,
+    allowWaitlist: true,
+    slug: slugifyClubName(clubName),
+    heroImageUrl: null,
+  };
+}
+
+export function getClubPublicRegistration(
+  clubId: string | null | undefined,
+): ClubPublicRegistrationSettings {
+  const club = getClubById(clubId);
+  const defaults = getDefaultPublicRegistration(club?.name ?? '');
+  return {
+    ...defaults,
+    ...(club?.publicRegistration ?? {}),
+    slug: (club?.publicRegistration?.slug || defaults.slug).trim(),
+  };
+}
+
+export const clubPublicRegistrationSchema = z.object({
+  enabled: z.boolean(),
+  autoApprove: z.boolean(),
+  allowTrial: z.boolean(),
+  allowWaitlist: z.boolean(),
+  slug: z.string().optional().default(''),
+  heroImageUrl: z.string().nullable().optional(),
+});
+
+export type ClubPublicRegistrationInput = z.infer<typeof clubPublicRegistrationSchema>;
+
+export function getClubByJoinSlug(slug: string): Club | null {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return null;
+  return (
+    getClubs().find((c) => {
+      const s = (c.publicRegistration?.slug || slugifyClubName(c.name)).toLowerCase();
+      return s === normalized && Boolean(c.publicRegistration?.enabled);
+    }) ?? null
+  );
+}
+
+export function updateClubPublicRegistration(
+  clubId: string,
+  input: ClubPublicRegistrationInput,
+): ApiResult<Club> {
+  const parsed = clubPublicRegistrationSchema.safeParse(input);
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? 'Μη έγκυρες ρυθμίσεις');
+  }
+
+  const clubs = getClubs();
+  const index = clubs.findIndex((c) => c.id === clubId);
+  if (index < 0) return fail('Ο σύλλογος δεν βρέθηκε');
+
+  const club = clubs[index];
+  let slug = (parsed.data.slug || '').trim().toLowerCase();
+  if (!slug) slug = slugifyClubName(club.name);
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return fail('Το slug επιτρέπει μόνο λατινικά πεζά, αριθμούς και παύλες.');
+  }
+
+  const conflict = clubs.find(
+    (c) =>
+      c.id !== clubId &&
+      (c.publicRegistration?.slug || slugifyClubName(c.name)).toLowerCase() === slug,
+  );
+  if (conflict) return fail('Το slug χρησιμοποιείται ήδη από άλλο σύλλογο.');
+
+  const publicRegistration: ClubPublicRegistrationSettings = {
+    enabled: parsed.data.enabled,
+    autoApprove: parsed.data.autoApprove,
+    allowTrial: parsed.data.allowTrial,
+    allowWaitlist: parsed.data.allowWaitlist,
+    slug,
+    heroImageUrl:
+      parsed.data.heroImageUrl === undefined
+        ? club.publicRegistration?.heroImageUrl ?? null
+        : parsed.data.heroImageUrl,
+  };
+
+  clubs[index] = { ...club, publicRegistration };
   saveClubs(clubs);
   window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
   return ok(clubs[index]);

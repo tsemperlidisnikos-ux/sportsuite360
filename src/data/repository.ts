@@ -45,6 +45,9 @@ function ensureCollections(data: AppData): void {
   if (!data.photos) data.photos = structuredClone(seedData.photos);
   if (!data.parentLinks) data.parentLinks = structuredClone(seedData.parentLinks);
   if (!data.progressReports) data.progressReports = structuredClone(seedData.progressReports ?? []);
+  if (!data.registrationApplications) {
+    data.registrationApplications = structuredClone(seedData.registrationApplications ?? []);
+  }
   if (!data.sizeChart) data.sizeChart = structuredClone(seedData.sizeChart);
   if (data.termsOfUseHtml === undefined) data.termsOfUseHtml = seedData.termsOfUseHtml ?? '';
 }
@@ -141,6 +144,29 @@ export function mutateData(updater: (data: AppData) => void): AppData {
   cache = data;
   cacheClubId = resolveActiveClubId();
   saveStore(data);
+  notifyAppDataChanged();
+  return data;
+}
+
+/** Read AppData for a specific club (public join / cross-club). */
+export function getClubData(clubId: string): AppData {
+  const map = loadAllClubStores();
+  const data = structuredClone(map[clubId] ?? seedData);
+  ensureCollections(data);
+  return data;
+}
+
+/** Mutate AppData for a specific clubId (works without session). */
+export function mutateClubData(clubId: string, updater: (data: AppData) => void): AppData {
+  const data = getClubData(clubId);
+  updater(data);
+  writeClubStoreExclusive(clubId, data);
+  if (resolveActiveClubId() === clubId) {
+    cache = structuredClone(data);
+    cacheClubId = clubId;
+  } else {
+    clearDataCache();
+  }
   notifyAppDataChanged();
   return data;
 }
