@@ -8,6 +8,7 @@ import {
   KeyRound,
   Mail,
   Ruler,
+  Send,
   Trash2,
   Trophy,
   UserPlus,
@@ -35,6 +36,7 @@ const MAX_LOGO_BYTES = 500_000;
 type SettingsTab =
   | 'appearance'
   | 'users'
+  | 'invitations'
   | 'password'
   | 'associations'
   | 'sports'
@@ -115,7 +117,7 @@ export function SettingsPage() {
     <div className="stack-lg settings-page">
       <PageHeader
         title="Ρυθμίσεις"
-        subtitle="Εμφάνιση συλλόγου, χρήστες, κωδικός, email, Viva, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
+        subtitle="Εμφάνιση συλλόγου, χρήστες, προσκλήσεις, κωδικός, email, Viva, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
       />
 
       <div className="settings-layout">
@@ -128,13 +130,22 @@ export function SettingsPage() {
             Logo συλλόγου
           </button>
           {canManageUsers ? (
-            <button
-              type="button"
-              className={`settings-nav-item ${tab === 'users' ? 'active' : ''}`}
-              onClick={() => setTab('users')}
-            >
-              <Users size={15} /> Χρήστες
-            </button>
+            <>
+              <button
+                type="button"
+                className={`settings-nav-item ${tab === 'users' ? 'active' : ''}`}
+                onClick={() => setTab('users')}
+              >
+                <Users size={15} /> Χρήστες
+              </button>
+              <button
+                type="button"
+                className={`settings-nav-item ${tab === 'invitations' ? 'active' : ''}`}
+                onClick={() => setTab('invitations')}
+              >
+                <Send size={15} /> Προσκλήσεις
+              </button>
+            </>
           ) : null}
           <button
             type="button"
@@ -261,7 +272,10 @@ export function SettingsPage() {
             )
           ) : null}
 
-          {tab === 'users' && clubId ? <ClubUsersPanel clubId={clubId} /> : null}
+          {tab === 'users' && clubId ? <ClubUsersPanel clubId={clubId} mode="users" /> : null}
+          {tab === 'invitations' && clubId ? (
+            <ClubUsersPanel clubId={clubId} mode="invitations" />
+          ) : null}
           {tab === 'password' ? <ChangePasswordPanel /> : null}
           {tab === 'email' ? (
             !clubId ? (

@@ -1260,7 +1260,8 @@ th {
   font-size: 0.9rem;
 }
 
-.club-users-permissions .admin-check-list {
+.club-users-permissions .admin-check-list,
+.club-users-permissions-grid {
   max-height: none;
   overflow: visible;
   display: grid;
@@ -1269,9 +1270,20 @@ th {
 }
 
 @media (max-width: 640px) {
-  .club-users-permissions .admin-check-list {
+  .club-users-permissions .admin-check-list,
+  .club-users-permissions-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.club-users-form.settings-form {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.club-users-list .settings-form {
+  margin-bottom: 0.85rem;
 }
 
 .club-users-list {

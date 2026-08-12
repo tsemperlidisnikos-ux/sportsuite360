@@ -5,6 +5,7 @@ import * as clubUsersService from '../api/services/clubUsersService';
 import { getSession, type AppUser } from '../auth/auth';
 import { useAppData } from '../hooks/useAppData';
 import { Button } from './ui/Button';
+import { SettingsFormRow } from './ui/SettingsFormRow';
 import {
   CLUB_PERMISSION_LABELS,
   CLUB_PERMISSIONS,
@@ -16,16 +17,18 @@ import {
 
 type ClubUsersPanelProps = {
   clubId: string;
+  mode?: 'users' | 'invitations';
 };
 
 function generatePassword(): string {
   return `ss${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
+export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) {
   const session = getSession();
   const navigate = useNavigate();
   const { data: appData, refresh: refreshAppData } = useAppData();
+  const isInvitations = mode === 'invitations';
   const [users, setUsers] = useState<AppUser[]>([]);
   const [directory, setDirectory] = useState<clubUsersService.ClubDirectoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +54,8 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
     () => users.find((u) => u.id === editingId) ?? null,
     [users, editingId],
   );
+
+  const showForm = isInvitations || Boolean(editingUser);
 
   const roleOptions = useMemo(() => {
     const labels = new Set(directory.map((row) => row.roleLabel));
@@ -102,6 +107,15 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
   useEffect(() => {
     void refresh();
   }, [clubId]);
+
+  useEffect(() => {
+    if (isInvitations) {
+      resetForm();
+      setError('');
+      setMessage('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when switching to invitations tab
+  }, [isInvitations]);
 
   const athleteOptions = useMemo(
     () =>
@@ -278,47 +292,58 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
 
   return (
     <section className="panel settings-panel club-users-panel">
-      <h3>Χρήστες / προσκλήσεις</h3>
+      <h3>{isInvitations ? 'Προσκλήσεις' : 'Χρήστες'}</h3>
       <p className="lede">
-        Προσκαλέστε μέλη στον σύλλογο και ορίστε ρόλο + δικαιώματα πρόσβασης. Στο μητρώο φαίνονται
-        όλοι οι εγγεγραμμένοι (αθλητές, προπονητές, προσωπικό, λογαριασμοί). Ανενεργά μέλη δεν
-        εμφανίζονται στις αντίστοιχες λίστες της εφαρμογής.
+        {isInvitations
+          ? 'Προσκαλέστε μέλη στον σύλλογο και ορίστε ρόλο + δικαιώματα πρόσβασης.'
+          : 'Στο μητρώο φαίνονται όλοι οι εγγεγραμμένοι (αθλητές, προπονητές, προσωπικό, λογαριασμοί). Ανενεργά μέλη δεν εμφανίζονται στις αντίστοιχες λίστες της εφαρμογής.'}
       </p>
 
-      <form className="entry-form club-users-form" onSubmit={handleSubmit}>
-        <h4>{editingUser ? 'Επεξεργασία χρήστη' : 'Νέα πρόσκληση'}</h4>
-        <div className="club-users-grid">
-          <label className="field">
-            <span>Ονοματεπώνυμο</span>
+      {showForm ? (
+        <form className="entry-form club-users-form settings-form" onSubmit={handleSubmit}>
+          <h4>{editingUser ? 'Επεξεργασία χρήστη' : 'Νέα πρόσκληση'}</h4>
+
+          <SettingsFormRow label="Ονοματεπώνυμο" htmlFor="club-user-fullname">
             <input
+              id="club-user-fullname"
+              className="field-input"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
             />
-          </label>
-          <label className="field">
-            <span>Email</span>
+          </SettingsFormRow>
+
+          <SettingsFormRow label="Email" htmlFor="club-user-email">
             <input
+              id="club-user-email"
+              className="field-input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={Boolean(editingId)}
             />
-          </label>
-          <label className="field">
-            <span>{editingId ? 'Νέος κωδικός (προαιρετικό)' : 'Κωδικός εισόδου'}</span>
+          </SettingsFormRow>
+
+          <SettingsFormRow
+            label={editingId ? 'Νέος κωδικός (προαιρετικό)' : 'Κωδικός εισόδου'}
+            htmlFor="club-user-password"
+          >
             <input
+              id="club-user-password"
+              className="field-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required={!editingId}
               minLength={editingId ? undefined : 6}
               placeholder={editingId ? 'Αφήστε κενό για να μην αλλάξει' : ''}
             />
-          </label>
-          <label className="field">
-            <span>Ρόλος</span>
+          </SettingsFormRow>
+
+          <SettingsFormRow label="Ρόλος" htmlFor="club-user-role">
             <select
+              id="club-user-role"
+              className="field-input"
               value={role}
               onChange={(e) => applyRoleDefaults(e.target.value as ClubRole)}
             >
@@ -328,11 +353,16 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
                 </option>
               ))}
             </select>
-          </label>
+          </SettingsFormRow>
+
           {role === 'athlete' ? (
-            <label className="field">
-              <span>Σύνδεση με αθλητή</span>
-              <select value={athleteId} onChange={(e) => setAthleteId(e.target.value)}>
+            <SettingsFormRow label="Σύνδεση με αθλητή" htmlFor="club-user-athlete">
+              <select
+                id="club-user-athlete"
+                className="field-input"
+                value={athleteId}
+                onChange={(e) => setAthleteId(e.target.value)}
+              >
                 <option value="">— χωρίς σύνδεση —</option>
                 {athleteOptions.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -340,12 +370,17 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
                   </option>
                 ))}
               </select>
-            </label>
+            </SettingsFormRow>
           ) : null}
+
           {role === 'coach' ? (
-            <label className="field">
-              <span>Σύνδεση με προπονητή</span>
-              <select value={coachId} onChange={(e) => setCoachId(e.target.value)}>
+            <SettingsFormRow label="Σύνδεση με προπονητή" htmlFor="club-user-coach">
+              <select
+                id="club-user-coach"
+                className="field-input"
+                value={coachId}
+                onChange={(e) => setCoachId(e.target.value)}
+              >
                 <option value="">— χωρίς σύνδεση —</option>
                 {coachOptions.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -353,89 +388,95 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
                   </option>
                 ))}
               </select>
-            </label>
+            </SettingsFormRow>
           ) : null}
-        </div>
 
-        <div className="club-users-permissions">
-          <strong>Δικαιώματα πρόσβασης</strong>
-          <div className="admin-check-list">
-            {CLUB_PERMISSIONS.map((permission) => (
-              <label key={permission} className="admin-check">
-                <span>{CLUB_PERMISSION_LABELS[permission]}</span>
-                <input
-                  type="checkbox"
-                  checked={permissions.includes(permission)}
-                  onChange={() => togglePermission(permission)}
-                />
-              </label>
-            ))}
+          <SettingsFormRow label="Δικαιώματα πρόσβασης">
+            <div className="club-users-permissions-grid admin-check-list">
+              {CLUB_PERMISSIONS.map((permission) => (
+                <label key={permission} className="admin-check">
+                  <span>{CLUB_PERMISSION_LABELS[permission]}</span>
+                  <input
+                    type="checkbox"
+                    checked={permissions.includes(permission)}
+                    onChange={() => togglePermission(permission)}
+                  />
+                </label>
+              ))}
+            </div>
+          </SettingsFormRow>
+
+          <div className="settings-form-actions admin-entry-actions">
+            <Button type="submit">
+              <UserPlus size={16} /> {editingId ? 'Αποθήκευση' : 'Πρόσκληση'}
+            </Button>
+            {editingId ? (
+              <Button type="button" variant="secondary" onClick={resetForm}>
+                Άκυρο
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setPassword(generatePassword())}
+              >
+                Νέος κωδικός
+              </Button>
+            )}
           </div>
-        </div>
-
-        <div className="admin-entry-actions">
-          <Button type="submit">
-            <UserPlus size={16} /> {editingId ? 'Αποθήκευση' : 'Πρόσκληση'}
-          </Button>
-          {editingId ? (
-            <Button type="button" variant="secondary" onClick={resetForm}>
-              Άκυρο
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setPassword(generatePassword())}
-            >
-              Νέος κωδικός
-            </Button>
-          )}
-        </div>
-      </form>
+        </form>
+      ) : null}
 
       {error ? <p className="form-error">{error}</p> : null}
       {message ? <p className="settings-success">{message}</p> : null}
 
-      <div className="club-users-list">
-        <h4>Εγγεγραμμένοι στην εφαρμογή</h4>
-        <div className="club-users-search">
-          <label className="field">
-            <span>Επώνυμο</span>
-            <input
-              value={searchLastName}
-              onChange={(e) => setSearchLastName(e.target.value)}
-              placeholder="Αναζήτηση επωνύμου"
-            />
-          </label>
-          <label className="field">
-            <span>Όνομα</span>
-            <input
-              value={searchFirstName}
-              onChange={(e) => setSearchFirstName(e.target.value)}
-              placeholder="Αναζήτηση ονόματος"
-            />
-          </label>
-          <label className="field">
-            <span>Ρόλος</span>
-            <select value={searchRole} onChange={(e) => setSearchRole(e.target.value)}>
-              <option value="">Όλοι οι ρόλοι</option>
-              {roleOptions.map((label) => (
-                <option key={label} value={label}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {loading ? <p className="lede">Φόρτωση…</p> : null}
-        {!loading && directory.length === 0 ? (
-          <p className="lede">Δεν υπάρχουν ακόμα εγγεγραμμένα μέλη.</p>
-        ) : null}
-        {!loading && directory.length > 0 && filteredDirectory.length === 0 ? (
-          <p className="lede">Δεν βρέθηκαν αποτελέσματα για την αναζήτηση.</p>
-        ) : null}
-        <div className="ta-table">
-          {filteredDirectory.map((row) => (
+      {!isInvitations ? (
+        <div className="club-users-list">
+          <h4>Εγγεγραμμένοι στην εφαρμογή</h4>
+          <div className="club-users-search settings-form">
+            <SettingsFormRow label="Επώνυμο" htmlFor="club-user-search-last">
+              <input
+                id="club-user-search-last"
+                className="field-input"
+                value={searchLastName}
+                onChange={(e) => setSearchLastName(e.target.value)}
+                placeholder="Αναζήτηση επωνύμου"
+              />
+            </SettingsFormRow>
+            <SettingsFormRow label="Όνομα" htmlFor="club-user-search-first">
+              <input
+                id="club-user-search-first"
+                className="field-input"
+                value={searchFirstName}
+                onChange={(e) => setSearchFirstName(e.target.value)}
+                placeholder="Αναζήτηση ονόματος"
+              />
+            </SettingsFormRow>
+            <SettingsFormRow label="Ρόλος" htmlFor="club-user-search-role">
+              <select
+                id="club-user-search-role"
+                className="field-input"
+                value={searchRole}
+                onChange={(e) => setSearchRole(e.target.value)}
+              >
+                <option value="">Όλοι οι ρόλοι</option>
+                {roleOptions.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </SettingsFormRow>
+          </div>
+          {loading ? <p className="lede">Φόρτωση…</p> : null}
+          {!loading && directory.length === 0 ? (
+            <p className="lede">Δεν υπάρχουν ακόμα εγγεγραμμένα μέλη.</p>
+          ) : null}
+          {!loading && directory.length > 0 && filteredDirectory.length === 0 ? (
+            <p className="lede">Δεν βρέθηκαν αποτελέσματα για την αναζήτηση.</p>
+          ) : null}
+          <div className="ta-table">
+            {filteredDirectory.map((row) => (
               <div key={row.id} className="ta-row">
                 <div className="ta-title">{row.roleLabel}</div>
                 <div className="ta-analysis">
@@ -479,9 +520,10 @@ export function ClubUsersPanel({ clubId }: ClubUsersPanelProps) {
                   </div>
                 </div>
               </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }
