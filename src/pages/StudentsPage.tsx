@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import type { StudentInput } from '../schemas';
-import type { RegistrationApplication } from '../types';
+import type { RegistrationApplication, RegistrationApplicationKind } from '../types';
 import { studentStatusLabels } from '../utils/labels';
 
 const draftAthlete: StudentInput = {
@@ -50,10 +50,34 @@ const draftAthlete: StudentInput = {
   gdprConsent: 'pending',
 };
 
+type EditDraft = {
+  firstName: string;
+  lastName: string;
+  guardianName: string;
+  guardianPhone: string;
+  email: string;
+  classId: string;
+  kind: RegistrationApplicationKind;
+  notes: string;
+};
+
 function applicationKindLabel(kind: RegistrationApplication['kind']): string {
   if (kind === 'trial') return 'Δοκιμαστική';
   if (kind === 'waitlist') return 'Λίστα αναμονής';
   return 'Πλήρης εγγραφή';
+}
+
+function toEditDraft(app: RegistrationApplication): EditDraft {
+  return {
+    firstName: app.firstName,
+    lastName: app.lastName,
+    guardianName: app.guardianName,
+    guardianPhone: app.guardianPhone,
+    email: app.email || '',
+    classId: app.classId || '',
+    kind: app.kind,
+    notes: app.notes || '',
+  };
 }
 
 export function StudentsPage() {
@@ -62,6 +86,8 @@ export function StudentsPage() {
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [busyAppId, setBusyAppId] = useState<string | null>(null);
+  const [editingAppId, setEditingAppId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [appMessage, setAppMessage] = useState('');
   const [appError, setAppError] = useState('');
 
@@ -100,18 +126,66 @@ export function StudentsPage() {
     refresh();
   }
 
-  async function handleApprove(appId: string) {
+  function startEdit(app: RegistrationApplication) {
+    setEditingAppId(app.id);
+    setEditDraft(toEditDraft(app));
+    setAppError('');
+    setAppMessage('');
+  }
+
+  function cancelEdit() {
+    setEditingAppId(null);
+    setEditDraft(null);
+  }
+
+  async function handleSaveEdit(appId: string) {
+    if (!editDraft || busyAppId) return;
+    setBusyAppId(appId);
+    setAppError('');
+    setAppMessage('');
+    const result = await registrationApplicationsService.updateRegistrationApplication(appId, {
+      firstName: editDraft.firstName,
+      lastName: editDraft.lastName,
+      guardianName: editDraft.guardianName,
+      guardianPhone: editDraft.guardianPhone,
+      email: editDraft.email,
+      classId: editDraft.classId || null,
+      kind: editDraft.kind,
+      notes: editDraft.notes,
+    });
+    setBusyAppId(null);
+    if (!result.success) {
+      setAppError(result.error ?? 'Αποτυχία αποθήκευσης αίτησης');
+      return;
+    }
+    refresh();
+    cancelEdit();
+    setAppMessage('Η αίτηση ενημερώθηκε.');
+  }
+
+  async function handleApprove(appId: string, force = false) {
     if (busyAppId) return;
     setBusyAppId(appId);
     setAppError('');
     setAppMessage('');
-    const result = await registrationApplicationsService.approveRegistrationApplication(appId);
+    const result = await registrationApplicationsService.approveRegistrationApplication(appId, {
+      force,
+    });
     setBusyAppId(null);
     if (!result.success || !result.data) {
-      setAppError(result.error ?? 'Αποτυχία έγκρισης');
+      const err = result.error ?? 'Αποτυχία έγκρισης';
+      if (!force && err.includes('διπλότυπο')) {
+        const ok = window.confirm(`${err}\n\nΘέλετε να συνεχίσετε την έγκριση;`);
+        if (ok) {
+          await handleApprove(appId, true);
+          return;
+        }
+      }
+      setAppError(err);
       return;
     }
     refresh();
+    cancelEdit();
     const athleteId = result.data.athleteId;
     setAppMessage('Η αίτηση εγκρίθηκε και καταχωρήθηκε στους αθλητές.');
     if (athleteId) {
@@ -132,6 +206,7 @@ export function StudentsPage() {
       return;
     }
     refresh();
+    cancelEdit();
     setAppMessage('Η αίτηση απορρίφθηκε.');
   }
 
@@ -154,43 +229,169 @@ export function StudentsPage() {
             <span className="badge badge-pending">{pendingApplications.length}</span>
           </div>
           <p className="lede">
-            Από δημόσια φόρμα. Έγκριση = καταχώρηση αθλητή. Απόρριψη = κλείσιμο αίτησης.
+            Από δημόσια φόρμα. Μπορείτε να επεξεργαστείτε τμήμα/τύπο πριν την έγκριση.
           </p>
           {appError ? <p className="form-error">{appError}</p> : null}
           {appMessage ? <p className="settings-success">{appMessage}</p> : null}
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Αθλητής</th>
-                  <th>Κηδεμόνας</th>
-                  <th>Τμήμα</th>
-                  <th>Τύπος</th>
-                  <th>Ημ/νία</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingApplications.map((app) => {
-                  const cls = data.classes.find((c) => c.id === app.classId);
-                  const busy = busyAppId === app.id;
-                  return (
-                    <tr key={app.id}>
-                      <td>
-                        <strong>
-                          {app.lastName} {app.firstName}
-                        </strong>
-                        {app.email ? <div className="muted">{app.email}</div> : null}
-                        {app.notes ? <div className="muted">{app.notes}</div> : null}
-                      </td>
-                      <td>
-                        {app.guardianName}
-                        <div className="muted">{app.guardianPhone}</div>
-                      </td>
-                      <td>{cls?.name ?? '—'}</td>
-                      <td>{applicationKindLabel(app.kind)}</td>
-                      <td>{(app.createdAt || '').slice(0, 10) || '—'}</td>
-                      <td className="row-actions">
+          <div className="registration-apps-list">
+            {pendingApplications.map((app) => {
+              const cls = data.classes.find((c) => c.id === app.classId);
+              const busy = busyAppId === app.id;
+              const editing = editingAppId === app.id && editDraft;
+              return (
+                <article key={app.id} className="registration-app-card">
+                  {editing ? (
+                    <div className="registration-app-edit">
+                      <div className="public-join-grid">
+                        <label className="field">
+                          <span className="field-label">Όνομα</span>
+                          <input
+                            className="field-input"
+                            value={editDraft.firstName}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, firstName: e.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Επώνυμο</span>
+                          <input
+                            className="field-input"
+                            value={editDraft.lastName}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, lastName: e.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Κηδεμόνας</span>
+                          <input
+                            className="field-input"
+                            value={editDraft.guardianName}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, guardianName: e.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Τηλέφωνο</span>
+                          <input
+                            className="field-input"
+                            value={editDraft.guardianPhone}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, guardianPhone: e.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Email</span>
+                          <input
+                            className="field-input"
+                            value={editDraft.email}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, email: e.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Τμήμα</span>
+                          <select
+                            className="field-input"
+                            value={editDraft.classId}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, classId: e.target.value })
+                            }
+                          >
+                            <option value="">—</option>
+                            {data.classes.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Τύπος</span>
+                          <select
+                            className="field-input"
+                            value={editDraft.kind}
+                            onChange={(e) =>
+                              setEditDraft({
+                                ...editDraft,
+                                kind: e.target.value as RegistrationApplicationKind,
+                              })
+                            }
+                          >
+                            <option value="full">Πλήρης εγγραφή</option>
+                            <option value="trial">Δοκιμαστική</option>
+                            <option value="waitlist">Λίστα αναμονής</option>
+                          </select>
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Σχόλια</span>
+                          <input
+                            className="field-input"
+                            value={editDraft.notes}
+                            onChange={(e) =>
+                              setEditDraft({ ...editDraft, notes: e.target.value })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="row-actions registration-app-edit-actions">
+                        <Button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void handleSaveEdit(app.id)}
+                        >
+                          Αποθήκευση αλλαγών
+                        </Button>
+                        <Button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void handleApprove(app.id)}
+                        >
+                          <Check size={16} /> Έγκριση
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={cancelEdit}>
+                          Ακύρωση
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="registration-app-card-grid">
+                        <div>
+                          <strong>
+                            {app.lastName} {app.firstName}
+                          </strong>
+                          {app.email ? <div className="muted">{app.email}</div> : null}
+                          {app.notes ? <div className="muted">{app.notes}</div> : null}
+                        </div>
+                        <div>
+                          <span className="muted">Κηδεμόνας</span>
+                          <div>{app.guardianName}</div>
+                          <div className="muted">{app.guardianPhone}</div>
+                        </div>
+                        <div>
+                          <span className="muted">Τμήμα</span>
+                          <div>{cls?.name ?? '—'}</div>
+                        </div>
+                        <div>
+                          <span className="muted">Τύπος / Ημ/νία</span>
+                          <div>{applicationKindLabel(app.kind)}</div>
+                          <div className="muted">{(app.createdAt || '').slice(0, 10) || '—'}</div>
+                        </div>
+                      </div>
+                      <div className="row-actions">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={busy || Boolean(busyAppId)}
+                          onClick={() => startEdit(app)}
+                        >
+                          <Pencil size={16} /> Επεξεργασία
+                        </Button>
                         <Button
                           type="button"
                           disabled={busy || Boolean(busyAppId)}
@@ -206,12 +407,12 @@ export function StudentsPage() {
                         >
                           <X size={16} /> Απόρριψη
                         </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </>
+                  )}
+                </article>
+              );
+            })}
           </div>
         </section>
       ) : null}

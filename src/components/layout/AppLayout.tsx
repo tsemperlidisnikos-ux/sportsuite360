@@ -46,6 +46,7 @@ import {
   updateAppLogo,
   type AcademyModuleId,
 } from '../../platform/platformConfig';
+import { useAppData } from '../../hooks/useAppData';
 
 type NavIcon = LucideIcon | ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
 
@@ -111,6 +112,13 @@ export function AppLayout() {
   const canUploadAppLogo = isPlatformAdmin();
 
   const [usersTick, setUsersTick] = useState(0);
+  const { data: appData } = useAppData();
+  const pendingRegistrationCount = useMemo(
+    () =>
+      (appData.registrationApplications ?? []).filter((app) => app.status === 'pending')
+        .length,
+    [appData.registrationApplications],
+  );
 
   useEffect(() => {
     const onClubsUpdated = () => setClubTick((n) => n + 1);
@@ -286,7 +294,12 @@ export function AppLayout() {
                 onClick={() => setOpen(false)}
               >
                 <item.icon size={18} />
-                {item.label}
+                <span className="nav-link-label">{item.label}</span>
+                {item.id === 'athletes' && pendingRegistrationCount > 0 ? (
+                  <span className="nav-badge" title="Εκκρεμείς αιτήσεις εγγραφής">
+                    {pendingRegistrationCount > 99 ? '99+' : pendingRegistrationCount}
+                  </span>
+                ) : null}
               </NavLink>
             ))}
             {visibleAnalysis.length > 0 ? <p className="nav-section">Ανάλυση</p> : null}

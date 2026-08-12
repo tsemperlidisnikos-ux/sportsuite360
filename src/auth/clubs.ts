@@ -39,6 +39,8 @@ export interface ClubPublicRegistrationSettings {
   slug: string;
   /** Φωτογραφία κεφαλίδας φόρμας /join (fallback: logo συλλόγου). */
   heroImageUrl?: string | null;
+  /** Email ειδοποίησης νέας αίτησης (fallback: admin / SMTP username). */
+  notifyEmail?: string;
 }
 
 export interface Club {
@@ -418,6 +420,7 @@ export function getDefaultPublicRegistration(
     allowWaitlist: true,
     slug: slugifyClubName(clubName),
     heroImageUrl: null,
+    notifyEmail: '',
   };
 }
 
@@ -440,6 +443,7 @@ export const clubPublicRegistrationSchema = z.object({
   allowWaitlist: z.boolean(),
   slug: z.string().optional().default(''),
   heroImageUrl: z.string().nullable().optional(),
+  notifyEmail: z.string().optional().default(''),
 });
 
 export type ClubPublicRegistrationInput = z.infer<typeof clubPublicRegistrationSchema>;
@@ -492,6 +496,7 @@ export function updateClubPublicRegistration(
       parsed.data.heroImageUrl === undefined
         ? club.publicRegistration?.heroImageUrl ?? null
         : parsed.data.heroImageUrl,
+    notifyEmail: (parsed.data.notifyEmail || '').trim(),
   };
 
   clubs[index] = { ...club, publicRegistration };

@@ -24,6 +24,7 @@ export function PublicJoinPage() {
   const settings = club ? getClubPublicRegistration(club.id) : null;
   const data = club ? getClubData(club.id) : null;
   const classes = (data?.classes ?? []).filter((c) => c.name);
+  const termsHtml = data?.termsOfUseHtml?.trim() || '';
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -35,6 +36,7 @@ export function PublicJoinPage() {
   const [classId, setClassId] = useState('');
   const [kind, setKind] = useState<RegistrationApplicationKind>('full');
   const [notes, setNotes] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const [saving, setSaving] = useState(false);
@@ -44,6 +46,10 @@ export function PublicJoinPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!club || !settings?.enabled) return;
+    if (!acceptedTerms) {
+      setError('Πρέπει να αποδεχτείτε τους όρους χρήσης / GDPR.');
+      return;
+    }
     setSaving(true);
     setError('');
     setDone('');
@@ -59,6 +65,7 @@ export function PublicJoinPage() {
       classId: classId || null,
       kind,
       notes,
+      acceptedTerms,
     });
     setSaving(false);
     if (!result.success) {
@@ -76,6 +83,7 @@ export function PublicJoinPage() {
     setClassId('');
     setNotes('');
     setKind('full');
+    setAcceptedTerms(false);
   }
 
   if (!club) {
@@ -255,6 +263,32 @@ export function PublicJoinPage() {
               onChange={(e) => setNotes(e.target.value)}
             />
           </label>
+
+          <div className="public-join-terms">
+            {termsHtml ? (
+              <details className="public-join-terms-details">
+                <summary>Όροι χρήσης / πολιτική απορρήτου</summary>
+                <div
+                  className="public-join-terms-body"
+                  dangerouslySetInnerHTML={{ __html: termsHtml }}
+                />
+              </details>
+            ) : (
+              <p className="muted">
+                Με την υποβολή δηλώνετε ότι συναινείτε στην επεξεργασία των προσωπικών δεδομένων
+                από τον σύλλογο για σκοπούς εγγραφής.
+              </p>
+            )}
+            <label className="public-reg-check">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                required
+              />
+              <span>Αποδέχομαι τους όρους χρήσης και τη συναίνεση GDPR *</span>
+            </label>
+          </div>
 
           {error ? <p className="form-error">{error}</p> : null}
           {done ? <p className="settings-success">{done}</p> : null}

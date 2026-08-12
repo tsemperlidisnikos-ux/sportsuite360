@@ -7,6 +7,7 @@ import type {
   RegistrationApplicationKind,
   Student,
 } from '../../types';
+import { notifyClubNewRegistration } from './registrationApplicationsService';
 
 export type PublicJoinInput = {
   clubId: string;
@@ -20,6 +21,7 @@ export type PublicJoinInput = {
   classId: string | null;
   kind: RegistrationApplicationKind;
   notes?: string;
+  acceptedTerms: boolean;
 };
 
 function classIsFull(classId: string | null, maxStudents: number, activeCount: number): boolean {
@@ -28,11 +30,14 @@ function classIsFull(classId: string | null, maxStudents: number, activeCount: n
 }
 
 export async function submitPublicJoin(input: PublicJoinInput) {
-  return apiClient(() => {
+  return apiClient(async () => {
     const club = getClubById(input.clubId);
     if (!club) throw new Error('Ο σύλλογος δεν βρέθηκε.');
     const settings = getClubPublicRegistration(club.id);
     if (!settings.enabled) throw new Error('Η δημόσια εγγραφή δεν είναι ενεργή.');
+    if (!input.acceptedTerms) {
+      throw new Error('Πρέπει να αποδεχτείτε τους όρους χρήσης / GDPR.');
+    }
 
     const firstName = input.firstName.trim();
     const lastName = input.lastName.trim();
@@ -90,7 +95,7 @@ export async function submitPublicJoin(input: PublicJoinInput) {
           sport: cls?.sport ?? '',
           healthCard: false,
           comments: input.notes?.trim() || 'Δημόσια εγγραφή',
-          gdprConsent: 'pending',
+          gdprConsent: 'full',
         };
         data.students = [athlete, ...data.students];
         createdAthleteId = athlete.id;
@@ -119,10 +124,26 @@ export async function submitPublicJoin(input: PublicJoinInput) {
       ? 'athlete'
       : 'application';
 
+    // Best-effort notify — μην αποτύχει η υποβολή αν λείπει SMTP.
+    let emailSent = false;
+    try {
+      const notify = await notifyClubNewRegistration({
+        clubId: input.clubId,
+        firstName,
+        lastName,
+        kind: resultKind,
+        guardianPhone: input.guardianPhone.trim(),
+      });
+      emailSent = notify.sent;
+    } catch {
+      emailSent = false;
+    }
+
     return {
       mode: resolvedMode,
       kind: resultKind,
       athleteId: createdAthleteId,
+      emailSent,
       message:
         resolvedMode === 'athlete'
           ? 'Η εγγραφή ολοκληρώθηκε.'

@@ -53,7 +53,10 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
     setSaving(true);
     setError('');
     setMessage('');
-    const result = updateClubPublicRegistration(clubId, form);
+    const result = updateClubPublicRegistration(clubId, {
+      ...form,
+      notifyEmail: form.notifyEmail ?? '',
+    });
     setSaving(false);
     if (!result.success) {
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
@@ -187,6 +190,26 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
         <a className="text-link" href={joinPath} target="_blank" rel="noreferrer">
           Προεπισκόπηση →
         </a>
+      </div>
+
+      <label className="field">
+        <span className="field-label">Email ειδοποίησης νέας αίτησης</span>
+        <input
+          className="field-input"
+          type="email"
+          value={form.notifyEmail ?? ''}
+          onChange={(e) => setField('notifyEmail', e.target.value)}
+          placeholder="π.χ. admin@club.gr"
+        />
+      </label>
+      <div className="public-reg-info">
+        <span className="public-reg-info-icon" aria-hidden>
+          i
+        </span>
+        <p>
+          Αν το SMTP είναι ενεργό στις Ρυθμίσεις → Email, στέλνεται ειδοποίηση σε αυτό το address.
+          Αν μείνει κενό, χρησιμοποιείται το email του διαχειριστή ή το SMTP username.
+        </p>
       </div>
 
       <div className="public-reg-photo">
