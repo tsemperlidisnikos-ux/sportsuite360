@@ -180,13 +180,15 @@ export function AthleteProfilePage() {
     if (!student) return [];
     const athleteTx = (data.transactions ?? []).filter((t) => t.athleteId === student.id);
     return months.map((m) => {
-      const monthTx = athleteTx.filter((t) => t.month === m.month && t.year === m.year);
+      const monthTx = athleteTx.filter(
+        (t) => Number(t.month) === m.month && Number(t.year) === m.year,
+      );
       const charge = monthTx
         .filter((t) => t.type === 'charge')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
       const payment = monthTx
         .filter((t) => t.type === 'payment')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
       const attendance = data.attendance.filter(
         (a) => a.studentId === student.id && a.date.startsWith(m.key),
       );

@@ -56,6 +56,12 @@ function ensureCollections(data: AppData): void {
     data.closedFinanceMonths = structuredClone(seedData.closedFinanceMonths ?? []);
   }
   if (!data.matches) data.matches = structuredClone(seedData.matches ?? []);
+  // Αποφυγή bugs `"8" === 8` σε φίλτρα μήνα/έτους/ποσού
+  for (const t of data.transactions ?? []) {
+    t.month = Number(t.month);
+    t.year = Number(t.year);
+    t.amount = Number(t.amount) || 0;
+  }
 }
 
 function purgeRemovedAthletePayment(data: AppData): boolean {

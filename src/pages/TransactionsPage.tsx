@@ -40,14 +40,32 @@ function seasonMonthRows(startYear: number) {
   });
 }
 
-function athleteBalance(athleteId: string, transactions: AthleteTransaction[]) {
-  return transactions
-    .filter((t) => t.athleteId === athleteId)
-    .reduce((sum, t) => sum + (t.type === 'charge' ? t.amount : -t.amount), 0);
+function txMonth(t: AthleteTransaction): number {
+  return Number(t.month);
+}
+
+function txYear(t: AthleteTransaction): number {
+  return Number(t.year);
+}
+
+function txAmount(t: AthleteTransaction): number {
+  return Number(t.amount) || 0;
 }
 
 function seasonStartFromPeriod(month: number, year: number): number {
   return month >= 8 ? year : year - 1;
+}
+
+/** Υπόλοιπο αθλητή για συγκεκριμένη σεζόν (Αύγ→Ιούλ). */
+function athleteSeasonBalance(
+  athleteId: string,
+  transactions: AthleteTransaction[],
+  seasonStart: number,
+) {
+  return transactions
+    .filter((t) => t.athleteId === athleteId)
+    .filter((t) => seasonStartFromPeriod(txMonth(t), txYear(t)) === seasonStart)
+    .reduce((sum, t) => sum + (t.type === 'charge' ? txAmount(t) : -txAmount(t)), 0);
 }
 
 function emptyForm(athleteId = '', seasonStart = 2026): TransactionInput {
@@ -121,10 +139,9 @@ export function TransactionsPage() {
       selected
         ? transactions
             .filter((t) => t.athleteId === selected.id)
-            .filter((t) => {
-              const start = t.month >= 8 ? t.year : t.year - 1;
-              return start === seasonStart;
-            })
+            .filter(
+              (t) => seasonStartFromPeriod(txMonth(t), txYear(t)) === seasonStart,
+            )
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         : [],
     [transactions, selected, seasonStart],
@@ -133,13 +150,15 @@ export function TransactionsPage() {
   const monthRows = useMemo(() => {
     const rows = seasonMonthRows(seasonStart);
     return rows.map((row) => {
-      const monthTx = selectedTx.filter((t) => t.month === row.month && t.year === row.year);
+      const monthTx = selectedTx.filter(
+        (t) => txMonth(t) === row.month && txYear(t) === row.year,
+      );
       const charge = monthTx
         .filter((t) => t.type === 'charge')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + txAmount(t), 0);
       const payment = monthTx
         .filter((t) => t.type === 'payment')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + txAmount(t), 0);
       const attendance = selected
         ? data.attendance.filter(
             (a) =>
@@ -267,7 +286,11 @@ export function TransactionsPage() {
       <div className="tx-grid">
         <div className="tx-left">
           <section className="tx-panel">
-            <PanelHeader title="Αθλητές" />
+            <PanelHeader
+              title={`Αθλητές · ${seasonStart}-${seasonStart + 1}`}
+              onPrev={() => changeSeason(seasonStart - 1)}
+              onNext={() => changeSeason(seasonStart + 1)}
+            />
             <div className="tx-table-wrap tx-table-wrap--athletes">
               <table className="tx-table">
                 <thead>
@@ -278,12 +301,16 @@ export function TransactionsPage() {
                     <th>Όνομα</th>
                     <th>Πατρώνυμο</th>
                     <th>Ημ. Γέννησης</th>
-                    <th>Υπόλοιπο</th>
+                    <th>Υπόλοιπο σεζόν</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAthletes.map((athlete) => {
-                    const balance = athleteBalance(athlete.id, transactions);
+                    const balance = athleteSeasonBalance(
+                      athlete.id,
+                      transactions,
+                      seasonStart,
+                    );
                     return (
                       <tr
                         key={athlete.id}
