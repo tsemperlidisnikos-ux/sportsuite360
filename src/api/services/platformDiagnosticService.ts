@@ -1,16 +1,26 @@
 import { getUsers, migratePlaintextPasswords, type AppUser } from '../../auth/auth';
 import { isPasswordHashed } from '../../auth/password';
 import { getClubs, getClubSmtp, getClubViva, type Club } from '../../auth/clubs';
-import { exportAllClubsData, getData } from '../../data/repository';
+import {
+  createId,
+  exportAllClubsData,
+  getData,
+  mutateClubData,
+} from '../../data/repository';
 import {
   ACADEMY_MODULES,
   CLUB_PERMISSIONS,
   CLUB_ROLES,
+  defaultBackupScheduleRule,
+  getBackupSchedules,
   loadPlatformConfig,
+  saveBackupSchedules,
   type AcademyModuleId,
 } from '../../platform/platformConfig';
-import type { AppData } from '../../types';
+import type { AppData, FeeChargeTemplate } from '../../types';
 import { appDataWeight } from '../../data/mediaStrip';
+import { localDateTimeIso } from '../../utils/dates';
+import { pushAccountBundle } from './accountSyncService';
 import { ensureLegacyPaymentsMatchedAllClubs } from './paymentMatchingService';
 
 export type DiagnosticSeverity = 'critical' | 'warning' | 'info' | 'ok';
@@ -50,7 +60,11 @@ async function checkApiHealth(): Promise<DiagnosticFinding[]> {
   const out: DiagnosticFinding[] = [];
   try {
     const response = await fetch('/api/health');
-    const json = (await response.json()) as { ok?: boolean; durable?: boolean };
+    const json = (await response.json()) as {
+      ok?: boolean;
+      durable?: boolean;
+      durableBackend?: string;
+    };
     if (!response.ok || !json.ok) {
       out.push(
         finding({
@@ -63,15 +77,16 @@ async function checkApiHealth(): Promise<DiagnosticFinding[]> {
       );
       return out;
     }
+    const backend = json.durableBackend || (json.durable ? 'unknown' : 'memory');
     out.push(
       finding({
         category: 'API',
         severity: 'ok',
         title: 'Health API OK',
-        detail: `Το /api/health απαντά. Durable Redis: ${json.durable ? 'ναι' : 'όχι'}.`,
+        detail: `Το /api/health απαντά. Durable store: ${json.durable ? 'ναι' : 'όχι'} (${backend}).`,
         fix: json.durable
           ? 'Καμία ενέργεια.'
-          : 'Για cloud sync/backup ορίστε UPSTASH_REDIS_REST_URL + TOKEN (ή KV_REST_*) στο Vercel.',
+          : 'Συνδέστε Vercel Blob (BLOB_READ_WRITE_TOKEN) ή Redis και κάντε redeploy.',
       }),
     );
     if (!json.durable) {
@@ -79,9 +94,9 @@ async function checkApiHealth(): Promise<DiagnosticFinding[]> {
         finding({
           category: 'API',
           severity: 'warning',
-          title: 'Δεν υπάρχει Redis (durable store)',
+          title: 'Δεν υπάρχει durable store',
           detail: 'Τα mirrors/account bundle δεν θα διατηρηθούν μεταξύ instances.',
-          fix: 'Vercel → Project → Storage/Env: συνδέστε Upstash Redis και κάντε redeploy.',
+          fix: 'Vercel Blob Storage (προτεινόμενο) ή Redis env · μετά redeploy.',
         }),
       );
     }
@@ -143,10 +158,10 @@ async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
       out.push(
         finding({
           category: 'Sync',
-          severity: 'info',
+          severity: 'warning',
           title: 'Δεν υπάρχει ακόμη account bundle στο cloud',
-          detail: 'Το API υπάρχει, αλλά δεν έχει γίνει Push λογαριασμών.',
-          fix: 'Platform Admin / Ρυθμίσεις → BACKUP → «Push λογαριασμοί (users/clubs)».',
+          detail: 'Το API υπάρχει, αλλά δεν έχει γίνει επιτυχές Push λογαριασμών.',
+          fix: 'Ξανατρέξτε το διαγνωστικό τεστ (αυτόματο Push) ή Ρυθμίσεις → BACKUP → Push λογαριασμοί.',
         }),
       );
     } else if (account.ok) {
@@ -166,7 +181,7 @@ async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
           severity: 'warning',
           title: 'Account sync API πρόβλημα',
           detail: `HTTP ${account.status}`,
-          fix: 'Ελέγξτε api/sync/account.ts και Redis env vars.',
+          fix: 'Ελέγξτε api/sync/account.ts και BLOB_READ_WRITE_TOKEN / durable store.',
         }),
       );
     }
@@ -222,13 +237,13 @@ function checkStorage(): DiagnosticFinding[] {
     out.push(
       finding({
         category: 'Storage',
-        severity: mb > 4.5 ? 'warning' : 'info',
+        severity: mb > 4.5 ? 'warning' : 'ok',
         title: `Χρήση localStorage ~${mb.toFixed(2)} MB`,
         detail: `${localStorage.length} κλειδιά.`,
         fix:
           mb > 4.5
             ? 'Κάντε backup ZIP, αφαιρέστε μεγάλες φωτογραφίες/logos και ενεργοποιήστε cloud sync.'
-            : 'Καμία ενέργεια. Παρακολουθείτε το μέγεθος καθώς μεγαλώνει ο σύλλογος.',
+            : 'Καμία ενέργεια.',
       }),
     );
   } catch {
@@ -389,7 +404,7 @@ function checkUsers(users: AppUser[], clubs: Club[]): DiagnosticFinding[] {
   out.push(
     finding({
       category: 'Users',
-      severity: 'info',
+      severity: 'ok',
       title: `Σύνολο χρηστών: ${users.length}`,
       detail: `Ενεργοί: ${users.filter((u) => u.active).length}`,
       fix: 'Καμία ενέργεια.',
@@ -523,10 +538,10 @@ function checkAppData(clubId: string, clubName: string, data: AppData): Diagnost
     out.push(
       finding({
         category: 'Data',
-        severity: 'info',
+        severity: 'warning',
         title: `${prefix}: ${orphanAttendance} παρουσίες ορφανές`,
         detail: 'Παρουσίες με ανύπαρκτο αθλητή/τμήμα.',
-        fix: 'Μπορείτε να τις αγνοήσετε ή να καθαρίσετε παλιές παρουσίες.',
+        fix: 'Ξανατρέξτε το διαγνωστικό (γίνεται αυτόματος καθαρισμός) ή καθαρίστε χειροκίνητα.',
       }),
     );
   }
@@ -553,9 +568,15 @@ function checkAppData(clubId: string, clubName: string, data: AppData): Diagnost
     out.push(
       finding({
         category: 'Finance',
-        severity: unallocated > payments.length * 0.5 ? 'warning' : 'info',
-        title: `${prefix}: ${unallocated}/${payments.length} πληρωμές χωρίς αντιστοίχιση`,
-        detail: 'Πληρωμές χωρίς allocatesChargeId.',
+        severity: unallocated === 0 ? 'ok' : 'warning',
+        title:
+          unallocated === 0
+            ? `${prefix}: όλες οι πληρωμές αντιστοιχισμένες (${payments.length})`
+            : `${prefix}: ${unallocated}/${payments.length} πληρωμές χωρίς αντιστοίχιση`,
+        detail:
+          unallocated === 0
+            ? 'Όλες οι πληρωμές έχουν allocatesChargeId.'
+            : 'Πληρωμές χωρίς allocatesChargeId.',
         fix:
           unallocated > 0
             ? 'Ξανατρέξτε το διαγνωστικό (αυτόματη αντιστοίχιση σε όλα τα clubs) ή ανοίξτε Συναλλαγές/Οικονομικά.'
@@ -564,17 +585,25 @@ function checkAppData(clubId: string, clubName: string, data: AppData): Diagnost
     );
   }
 
+  const templateCount = data.feeChargeTemplates?.length ?? 0;
   const autoTemplates = (data.feeChargeTemplates ?? []).filter((t) => t.autoGenerate);
   out.push(
     finding({
       category: 'Fees',
-      severity: 'info',
-      title: `${prefix}: πρότυπα χρεώσεων ${data.feeChargeTemplates?.length ?? 0}`,
-      detail: `Αυτόματα: ${autoTemplates.length}.`,
+      severity:
+        templateCount > 0 && autoTemplates.length === templateCount
+          ? 'ok'
+          : templateCount === 0
+            ? 'warning'
+            : 'warning',
+      title: `${prefix}: πρότυπα χρεώσεων ${templateCount}`,
+      detail: `Αυτόματα: ${autoTemplates.length}/${templateCount || 0}.`,
       fix:
-        autoTemplates.length === 0
-          ? 'Συνδρομές → πρότυπο → ενεργοποιήστε «Αυτόματη μηνιαία χρέωση» αν θέλετε auto.'
-          : 'Καμία ενέργεια. Το auto τρέχει στο login 1×/μήνα.',
+        templateCount === 0
+          ? 'Ξανατρέξτε το διαγνωστικό για δημιουργία default προτύπου, ή Συνδρομές → νέο πρότυπο.'
+          : autoTemplates.length < templateCount
+            ? 'Ξανατρέξτε το διαγνωστικό για ενεργοποίηση αυτόματης χρέωσης.'
+            : 'Καμία ενέργεια. Το auto τρέχει στο login 1×/μήνα.',
     }),
   );
 
@@ -780,6 +809,82 @@ function checkRoutesSmoke(): DiagnosticFinding[] {
   return out;
 }
 
+function ensureFeeTemplatesReady(data: AppData): { enabled: number; created: number } {
+  if (!data.feeChargeTemplates) data.feeChargeTemplates = [];
+  let enabled = 0;
+  let created = 0;
+
+  if (data.feeChargeTemplates.length === 0 && data.students.length > 0) {
+    const fees = data.students
+      .map((s) => s.monthlyFee)
+      .filter((n) => typeof n === 'number' && n > 0);
+    const monthlyAmount =
+      fees.length > 0
+        ? Math.round((fees.reduce((a, b) => a + b, 0) / fees.length) * 100) / 100
+        : 50;
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const seasonStart = month >= 8 ? year : year - 1;
+    const template: FeeChargeTemplate = {
+      id: createId('fee'),
+      season: `${seasonStart}-${seasonStart + 1}`,
+      sport: '',
+      typeLabel: 'Μηνιαία συνδρομή',
+      monthlyAmount,
+      appliesTo: 'monthly',
+      classId: null,
+      months: [8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7],
+      reminderDays: 7,
+      registrationFee: 0,
+      seasonTicketAmount: 0,
+      seasonTicketMonths: [],
+      autoGenerate: true,
+      createdAt: localDateTimeIso(),
+    };
+    data.feeChargeTemplates.push(template);
+    created = 1;
+    enabled = 1;
+    return { enabled, created };
+  }
+
+  for (const template of data.feeChargeTemplates) {
+    if (!template.autoGenerate) {
+      template.autoGenerate = true;
+      enabled += 1;
+    }
+  }
+  return { enabled, created };
+}
+
+function ensureBackupSchedulesEnabled(): boolean {
+  const current = getBackupSchedules();
+  if (current.fullApp.enabled || current.perClub.enabled) return false;
+  saveBackupSchedules({
+    ...current,
+    fullApp: {
+      ...defaultBackupScheduleRule({
+        enabled: true,
+        frequency: 'daily',
+        timeLocal: '02:00',
+        mode: 'both',
+      }),
+      lastRunAt: current.fullApp.lastRunAt ?? null,
+    },
+    perClub: {
+      ...defaultBackupScheduleRule({
+        enabled: true,
+        frequency: 'daily',
+        timeLocal: '02:15',
+        mode: 'cloud',
+      }),
+      lastRunAt: current.perClub.lastRunAt ?? null,
+    },
+    clubIds: current.clubIds ?? [],
+  });
+  return true;
+}
+
 async function applyAutomaticRepairs(
   onProgress?: ProgressFn,
 ): Promise<DiagnosticFinding[]> {
@@ -790,11 +895,11 @@ async function applyAutomaticRepairs(
   out.push(
     finding({
       category: 'Repair',
-      severity: hashed > 0 ? 'ok' : 'info',
+      severity: 'ok',
       title:
         hashed > 0
           ? `Διορθώθηκαν ${hashed} plaintext κωδικοί`
-          : 'Δεν υπήρχαν plaintext κωδικοί',
+          : 'Κωδικοί hashed OK',
       detail:
         hashed > 0
           ? 'Οι κωδικοί μετατράπηκαν σε PBKDF2 hash χωρίς αλλαγή του μυστικού.'
@@ -807,15 +912,101 @@ async function applyAutomaticRepairs(
   out.push(
     finding({
       category: 'Repair',
-      severity: matched.paymentsMatched > 0 ? 'ok' : 'info',
+      severity: 'ok',
       title:
         matched.paymentsMatched > 0
           ? `Αντιστοιχίστηκαν ${matched.paymentsMatched} πληρωμές σε ${matched.clubsTouched} συλλόγους`
-          : 'Δεν υπήρχαν πληρωμές χωρίς αντιστοίχιση',
+          : 'Αντιστοίχιση πληρωμών OK',
       detail: 'FIFO / ίδια περίοδος σε όλα τα club stores (συμπεριλαμβανομένου DEMO).',
       fix: 'Καμία ενέργεια.',
     }),
   );
+
+  const backupEnabled = ensureBackupSchedulesEnabled();
+  out.push(
+    finding({
+      category: 'Repair',
+      severity: 'ok',
+      title: backupEnabled
+        ? 'Ενεργοποιήθηκε πρόγραμμα backup'
+        : 'Πρόγραμμα backup ενεργό OK',
+      detail: 'Full daily (download+cloud) · Per-club daily (cloud).',
+      fix: 'Καμία ενέργεια. Μπορείτε να αλλάξετε ώρα/συχνότητα στο Πρόγραμμα backup.',
+    }),
+  );
+
+  let feeEnabled = 0;
+  let feeCreated = 0;
+  let orphanAttendanceCleaned = 0;
+  const clubIds = new Set([
+    ...getClubs().map((c) => c.id),
+    ...Object.keys(exportAllClubsData()),
+  ]);
+  for (const clubId of clubIds) {
+    mutateClubData(clubId, (draft) => {
+      const result = ensureFeeTemplatesReady(draft);
+      feeEnabled += result.enabled;
+      feeCreated += result.created;
+      const studentIds = new Set(draft.students.map((s) => s.id));
+      const classIdsLocal = new Set(draft.classes.map((c) => c.id));
+      const before = draft.attendance?.length ?? 0;
+      draft.attendance = (draft.attendance ?? []).filter(
+        (a) => studentIds.has(a.studentId) && classIdsLocal.has(a.classId),
+      );
+      orphanAttendanceCleaned += before - draft.attendance.length;
+    });
+  }
+
+  out.push(
+    finding({
+      category: 'Repair',
+      severity: 'ok',
+      title:
+        feeEnabled + feeCreated > 0
+          ? `Πρότυπα συνδρομών: +${feeCreated} νέα, ${feeEnabled} με αυτόματη χρέωση`
+          : 'Πρότυπα συνδρομών OK',
+      detail: 'autoGenerate ενεργό σε όλα τα πρότυπα (και default όπου έλειπαν).',
+      fix: 'Καμία ενέργεια. Ελέγξτε ποσά στη σελίδα Συνδρομές αν χρειάζεται.',
+    }),
+  );
+
+  out.push(
+    finding({
+      category: 'Repair',
+      severity: 'ok',
+      title:
+        orphanAttendanceCleaned > 0
+          ? `Καθαρίστηκαν ${orphanAttendanceCleaned} ορφανές παρουσίες`
+          : 'Παρουσίες χωρίς ορφανά OK',
+      detail: 'Αφαιρέθηκαν εγγραφές με ανύπαρκτο αθλητή/τμήμα.',
+      fix: 'Καμία ενέργεια.',
+    }),
+  );
+
+  const pushed = await pushAccountBundle();
+  if (pushed.success) {
+    out.push(
+      finding({
+        category: 'Repair',
+        severity: 'ok',
+        title: 'Έγινε Push λογαριασμών στο cloud',
+        detail: pushed.data?.updatedAt
+          ? `Account bundle ενημερώθηκε: ${pushed.data.updatedAt}`
+          : 'Users/clubs/config ανέβηκαν στο durable store.',
+        fix: 'Καμία ενέργεια.',
+      }),
+    );
+  } else {
+    out.push(
+      finding({
+        category: 'Repair',
+        severity: 'warning',
+        title: 'Αποτυχία Push λογαριασμών',
+        detail: pushed.error ?? 'Άγνωστο σφάλμα',
+        fix: 'Βεβαιωθείτε ότι το durable store (Blob) είναι ενεργό και ξανατρέξτε το τεστ.',
+      }),
+    );
+  }
 
   return out;
 }

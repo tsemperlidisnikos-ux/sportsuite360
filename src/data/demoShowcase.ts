@@ -1328,6 +1328,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         registrationFee: 50,
         seasonTicketAmount: 400,
         seasonTicketMonths: [9],
+        autoGenerate: true,
         createdAt: daysFromToday(-110, now),
       },
       {
@@ -1343,6 +1344,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         registrationFee: 60,
         seasonTicketAmount: 450,
         seasonTicketMonths: [9],
+        autoGenerate: true,
         createdAt: daysFromToday(-110, now),
       },
       {
@@ -1358,6 +1360,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         registrationFee: 40,
         seasonTicketAmount: 0,
         seasonTicketMonths: [],
+        autoGenerate: true,
         createdAt: daysFromToday(-100, now),
       },
     ],

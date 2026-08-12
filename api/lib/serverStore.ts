@@ -1,4 +1,10 @@
-import { Redis } from '@upstash/redis';
+import {
+  durableKvBackend,
+  isDurableKvEnabled,
+  kvDel,
+  kvGet,
+  kvSet,
+} from './durableKv.js';
 
 export type VivaSettlement = {
   id: string;
@@ -76,6 +82,7 @@ type GlobalStore = {
   publicClubs: Record<string, PublicClubConfig>;
   notifyConfigs: Record<string, ClubNotifyConfig>;
   pendingApps: Record<string, RemoteRegistrationApplication[]>;
+  accountBundle?: AccountBundle;
 };
 
 const SETTLEMENTS_KEY = 'ss360:settlements';
@@ -84,6 +91,8 @@ const MIRROR_INDEX_KEY = 'ss360:mirror-keys';
 const PUBLIC_CLUB_PREFIX = 'ss360:public-club:';
 const NOTIFY_PREFIX = 'ss360:notify:';
 const PENDING_APPS_PREFIX = 'ss360:pending-apps:';
+const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
+const ACCOUNT_BUNDLE_KEY = 'ss360:account-bundle';
 
 function memory(): GlobalStore {
   const g = globalThis as typeof globalThis & { __ss360?: GlobalStore };
@@ -102,31 +111,26 @@ function memory(): GlobalStore {
   return g.__ss360;
 }
 
-function getRedis(): Redis | null {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return new Redis({ url, token });
+export function isDurableStoreEnabled(): boolean {
+  return isDurableKvEnabled();
 }
 
-export function isDurableStoreEnabled(): boolean {
-  return Boolean(getRedis());
+export function getDurableStoreBackend(): 'redis' | 'blob' | 'memory' {
+  return durableKvBackend();
 }
 
 async function readSettlements(): Promise<VivaSettlement[]> {
-  const redis = getRedis();
-  if (!redis) return memory().settlements;
-  const raw = await redis.get<VivaSettlement[]>(SETTLEMENTS_KEY);
+  if (!isDurableKvEnabled()) return memory().settlements;
+  const raw = await kvGet<VivaSettlement[]>(SETTLEMENTS_KEY);
   return Array.isArray(raw) ? raw : [];
 }
 
 async function writeSettlements(items: VivaSettlement[]): Promise<void> {
-  const redis = getRedis();
-  if (!redis) {
+  if (!isDurableKvEnabled()) {
     memory().settlements = items;
     return;
   }
-  await redis.set(SETTLEMENTS_KEY, items.slice(0, 200));
+  await kvSet(SETTLEMENTS_KEY, items.slice(0, 200));
 }
 
 export async function addSettlement(
@@ -163,33 +167,26 @@ export async function saveMirror(clubId: string, payload: unknown): Promise<void
     updatedAt: new Date().toISOString(),
     payload,
   };
-  const redis = getRedis();
-  if (!redis) {
+  if (!isDurableKvEnabled()) {
     memory().mirrors[clubId] = record;
     return;
   }
-  await redis.set(`${MIRROR_PREFIX}${clubId}`, record);
-  const keys = (await redis.get<string[]>(MIRROR_INDEX_KEY)) ?? [];
+  await kvSet(`${MIRROR_PREFIX}${clubId}`, record);
+  const keys = (await kvGet<string[]>(MIRROR_INDEX_KEY)) ?? [];
   if (!keys.includes(clubId)) {
-    await redis.set(MIRROR_INDEX_KEY, [...keys, clubId]);
+    await kvSet(MIRROR_INDEX_KEY, [...keys, clubId]);
   }
 }
 
 export async function loadMirror(clubId: string): Promise<MirrorRecord | null> {
-  const redis = getRedis();
-  if (!redis) return memory().mirrors[clubId] ?? null;
-  const raw = await redis.get<MirrorRecord>(`${MIRROR_PREFIX}${clubId}`);
-  return raw ?? null;
+  if (!isDurableKvEnabled()) return memory().mirrors[clubId] ?? null;
+  return (await kvGet<MirrorRecord>(`${MIRROR_PREFIX}${clubId}`)) ?? null;
 }
 
 export async function listMirrorKeys(): Promise<string[]> {
-  const redis = getRedis();
-  if (!redis) return Object.keys(memory().mirrors);
-  return (await redis.get<string[]>(MIRROR_INDEX_KEY)) ?? [];
+  if (!isDurableKvEnabled()) return Object.keys(memory().mirrors);
+  return (await kvGet<string[]>(MIRROR_INDEX_KEY)) ?? [];
 }
-
-const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
-const ACCOUNT_BUNDLE_KEY = 'ss360:account-bundle';
 
 export type AccountBundle = {
   users: unknown;
@@ -205,21 +202,19 @@ export async function saveAccountBundle(
     ...bundle,
     updatedAt: new Date().toISOString(),
   };
-  const redis = getRedis();
-  if (!redis) {
-    (memory() as GlobalStore & { accountBundle?: AccountBundle }).accountBundle = record;
+  if (!isDurableKvEnabled()) {
+    memory().accountBundle = record;
     return record;
   }
-  await redis.set(ACCOUNT_BUNDLE_KEY, record);
+  await kvSet(ACCOUNT_BUNDLE_KEY, record);
   return record;
 }
 
 export async function loadAccountBundle(): Promise<AccountBundle | null> {
-  const redis = getRedis();
-  if (!redis) {
-    return (memory() as GlobalStore & { accountBundle?: AccountBundle }).accountBundle ?? null;
+  if (!isDurableKvEnabled()) {
+    return memory().accountBundle ?? null;
   }
-  return (await redis.get<AccountBundle>(ACCOUNT_BUNDLE_KEY)) ?? null;
+  return (await kvGet<AccountBundle>(ACCOUNT_BUNDLE_KEY)) ?? null;
 }
 
 /** Αντίγραφο όλων των club mirrors με ημερομηνία (για scheduled cloud backup). */
@@ -230,7 +225,7 @@ export async function snapshotAllMirrors(): Promise<{
 }> {
   const dateKey = new Date().toISOString().slice(0, 10);
   const keys = await listMirrorKeys();
-  const redis = getRedis();
+  const durable = isDurableKvEnabled();
   const clubs: string[] = [];
 
   for (const clubId of keys) {
@@ -242,32 +237,31 @@ export async function snapshotAllMirrors(): Promise<{
       sourceUpdatedAt: mirror.updatedAt,
       payload: mirror.payload,
     };
-    if (!redis) {
+    if (!durable) {
       memory().mirrors[`${clubId}__snap__${dateKey}`] = {
         updatedAt: snap.snapshotAt,
         payload: snap,
       };
     } else {
-      await redis.set(`${SNAPSHOT_PREFIX}${dateKey}:${clubId}`, snap);
+      await kvSet(`${SNAPSHOT_PREFIX}${dateKey}:${clubId}`, snap);
     }
     clubs.push(clubId);
   }
 
-  if (redis) {
-    await redis.set(`${SNAPSHOT_PREFIX}${dateKey}:index`, {
+  if (durable) {
+    await kvSet(`${SNAPSHOT_PREFIX}${dateKey}:index`, {
       dateKey,
       clubs,
       createdAt: new Date().toISOString(),
     });
   }
 
-  return { dateKey, clubs, durable: Boolean(redis) };
+  return { dateKey, clubs, durable };
 }
 
 export async function savePublicClubConfig(config: PublicClubConfig): Promise<void> {
   const slug = config.slug.trim().toLowerCase();
-  const redis = getRedis();
-  if (!redis) {
+  if (!isDurableKvEnabled()) {
     for (const [key, value] of Object.entries(memory().publicClubs)) {
       if (value.clubId === config.clubId && key !== slug) {
         delete memory().publicClubs[key];
@@ -277,62 +271,57 @@ export async function savePublicClubConfig(config: PublicClubConfig): Promise<vo
     return;
   }
   const indexKey = 'ss360:public-club-index';
-  const index = (await redis.get<Record<string, string>>(indexKey)) ?? {};
+  const index = (await kvGet<Record<string, string>>(indexKey)) ?? {};
   const prevSlug = Object.entries(index).find(([, id]) => id === config.clubId)?.[0];
   if (prevSlug && prevSlug !== slug) {
-    await redis.del(`${PUBLIC_CLUB_PREFIX}${prevSlug}`);
+    await kvDel(`${PUBLIC_CLUB_PREFIX}${prevSlug}`);
     delete index[prevSlug];
   }
   index[slug] = config.clubId;
-  await redis.set(indexKey, index);
-  await redis.set(`${PUBLIC_CLUB_PREFIX}${slug}`, { ...config, slug });
+  await kvSet(indexKey, index);
+  await kvSet(`${PUBLIC_CLUB_PREFIX}${slug}`, { ...config, slug });
 }
 
 export async function loadPublicClubBySlug(slug: string): Promise<PublicClubConfig | null> {
   const normalized = slug.trim().toLowerCase();
   if (!normalized) return null;
-  const redis = getRedis();
-  if (!redis) return memory().publicClubs[normalized] ?? null;
-  return (await redis.get<PublicClubConfig>(`${PUBLIC_CLUB_PREFIX}${normalized}`)) ?? null;
+  if (!isDurableKvEnabled()) return memory().publicClubs[normalized] ?? null;
+  return (await kvGet<PublicClubConfig>(`${PUBLIC_CLUB_PREFIX}${normalized}`)) ?? null;
 }
 
 export async function saveClubNotifyConfig(config: ClubNotifyConfig): Promise<void> {
-  const redis = getRedis();
-  if (!redis) {
+  if (!isDurableKvEnabled()) {
     memory().notifyConfigs[config.clubId] = config;
     return;
   }
-  await redis.set(`${NOTIFY_PREFIX}${config.clubId}`, config);
+  await kvSet(`${NOTIFY_PREFIX}${config.clubId}`, config);
 }
 
 export async function loadClubNotifyConfig(clubId: string): Promise<ClubNotifyConfig | null> {
-  const redis = getRedis();
-  if (!redis) return memory().notifyConfigs[clubId] ?? null;
-  return (await redis.get<ClubNotifyConfig>(`${NOTIFY_PREFIX}${clubId}`)) ?? null;
+  if (!isDurableKvEnabled()) return memory().notifyConfigs[clubId] ?? null;
+  return (await kvGet<ClubNotifyConfig>(`${NOTIFY_PREFIX}${clubId}`)) ?? null;
 }
 
 export async function appendPendingApplication(
   clubId: string,
   application: RemoteRegistrationApplication,
 ): Promise<RemoteRegistrationApplication[]> {
-  const redis = getRedis();
-  if (!redis) {
+  if (!isDurableKvEnabled()) {
     const prev = memory().pendingApps[clubId] ?? [];
     const next = [application, ...prev.filter((a) => a.id !== application.id)].slice(0, 200);
     memory().pendingApps[clubId] = next;
     return next;
   }
   const key = `${PENDING_APPS_PREFIX}${clubId}`;
-  const prev = (await redis.get<RemoteRegistrationApplication[]>(key)) ?? [];
+  const prev = (await kvGet<RemoteRegistrationApplication[]>(key)) ?? [];
   const next = [application, ...prev.filter((a) => a.id !== application.id)].slice(0, 200);
-  await redis.set(key, next);
+  await kvSet(key, next);
   return next;
 }
 
 export async function listPendingApplications(
   clubId: string,
 ): Promise<RemoteRegistrationApplication[]> {
-  const redis = getRedis();
-  if (!redis) return memory().pendingApps[clubId] ?? [];
-  return (await redis.get<RemoteRegistrationApplication[]>(`${PENDING_APPS_PREFIX}${clubId}`)) ?? [];
+  if (!isDurableKvEnabled()) return memory().pendingApps[clubId] ?? [];
+  return (await kvGet<RemoteRegistrationApplication[]>(`${PENDING_APPS_PREFIX}${clubId}`)) ?? [];
 }
