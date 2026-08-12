@@ -31,4 +31,6 @@ export const seedData: AppData = {
     women: ['XS', 'S', 'M', 'L', 'XL'],
   },
   termsOfUseHtml: '',
+  cashAccounts: [],
+  closedFinanceMonths: [],
 };

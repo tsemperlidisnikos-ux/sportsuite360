@@ -14,8 +14,10 @@ import {
   getConfiguredIncomeCategories,
   getConfiguredIncomeDescriptions,
 } from '../platform/financeCatalog';
+import { PAYMENT_METHODS } from '../shared/paymentMethods';
 import { localDateIso } from '../utils/dates';
 import { formatCurrency, formatDate } from '../utils/labels';
+import type { PaymentMethod } from '../types';
 
 const today = () => localDateIso();
 
@@ -63,6 +65,9 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState(0);
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [accountId, setAccountId] = useState('');
+  const [vatRate, setVatRate] = useState(0);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -72,6 +77,10 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   const showSubscriptionPeriod = isSubscriptionSubcategory(subcategory);
   const nameKind = personNameKind(subcategory);
   const descriptions = getConfiguredIncomeDescriptions(subcategory);
+  const cashAccounts = useMemo(
+    () => (data.cashAccounts ?? []).filter((a) => a.active),
+    [data.cashAccounts],
+  );
 
   const clubs = useMemo(
     () => (data.associations ?? []).filter((a) => a.active),
@@ -159,6 +168,9 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
       firstName: showPersonFields ? firstName.trim() : '',
       subscriptionPeriod: showSubscriptionPeriod ? subscriptionPeriod : '',
       notes,
+      paymentMethod,
+      accountId: accountId || '',
+      vatRate,
     };
     const result = await financeService.createRevenue(payload);
     setSaving(false);
@@ -348,6 +360,48 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
                   {item}
                 </option>
               ))}
+            </select>
+          </TitleAnalysisRow>
+
+          <TitleAnalysisRow title="Τρόπος πληρωμής" htmlFor="income-method">
+            <select
+              id="income-method"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </TitleAnalysisRow>
+
+          <TitleAnalysisRow title="Ταμείο / λογαριασμός" htmlFor="income-account">
+            <select
+              id="income-account"
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+            >
+              <option value="">— χωρίς ταμείο —</option>
+              {cashAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </TitleAnalysisRow>
+
+          <TitleAnalysisRow title="ΦΠΑ %" htmlFor="income-vat">
+            <select
+              id="income-vat"
+              value={vatRate}
+              onChange={(e) => setVatRate(Number(e.target.value) || 0)}
+            >
+              <option value={0}>0%</option>
+              <option value={6}>6%</option>
+              <option value={13}>13%</option>
+              <option value={24}>24%</option>
             </select>
           </TitleAnalysisRow>
 

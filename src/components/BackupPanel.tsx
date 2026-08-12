@@ -4,6 +4,12 @@ import { getSession } from '../auth/auth';
 import { ensureSessionClub, getClubById } from '../auth/clubs';
 import { Button } from './ui/Button';
 import {
+  flushClubMirrorPush,
+  getLastSyncAt,
+  isAutoSyncEnabled,
+  setAutoSyncEnabled,
+} from '../data/clubSync';
+import {
   clearDataCache,
   getData,
   replaceClubData,
@@ -40,6 +46,8 @@ export function BackupPanel() {
   const clubId = useMemo(() => resolveTargetClubId(), [clubTick]);
   const club = clubId ? getClubById(clubId) : null;
   const isDemoClub = isDemoClubName(club?.name);
+  const autoSync = clubId ? isAutoSyncEnabled(clubId) : false;
+  const lastSync = clubId ? getLastSyncAt(clubId) : null;
 
   function flash(ok: string) {
     setError('');
@@ -74,6 +82,31 @@ export function BackupPanel() {
     flash(
       `Cloud mirror ενημερώθηκε${result.data?.updatedAt ? ` · ${result.data.updatedAt}` : ''}.`,
     );
+    setClubTick((n) => n + 1);
+  }
+
+  async function handleToggleAutoSync(enabled: boolean) {
+    const activeClubId = resolveTargetClubId();
+    setClubTick((n) => n + 1);
+    if (!activeClubId) {
+      setError('Δεν βρέθηκε σύλλογος.');
+      return;
+    }
+    setAutoSyncEnabled(activeClubId, enabled);
+    setClubTick((n) => n + 1);
+    if (enabled) {
+      setSyncing('push');
+      const result = await flushClubMirrorPush(activeClubId);
+      setSyncing(null);
+      if (!result.success) {
+        setError(result.error ?? 'Αποτυχία αρχικού push');
+        flash('Το αυτόματο sync ενεργοποιήθηκε, αλλά το πρώτο push απέτυχε.');
+        return;
+      }
+      flash('Αυτόματο cloud sync ενεργό. Τα δεδομένα ανεβαίνουν μετά από κάθε αλλαγή.');
+      return;
+    }
+    flash('Αυτόματο cloud sync απενεργοποιήθηκε.');
   }
 
   async function handlePullMirror() {
@@ -261,10 +294,26 @@ export function BackupPanel() {
 
         <div className="settings-form-row settings-backup-block">
           <div className="settings-form-row-label settings-backup-copy">
-            <strong>Cloud mirror (πειραματικό)</strong>
-            <p>Push / Pull μέσω `/api/sync/mirror` (Upstash Redis αν έχει ρυθμιστεί).</p>
+            <strong>Cloud sync (multi-device)</strong>
+            <p>
+              Αυτόματο sync: pull στο login, push μετά από κάθε αλλαγή (Upstash Redis στο Vercel).
+              {lastSync ? (
+                <>
+                  <br />
+                  Τελευταίο sync: {lastSync}
+                </>
+              ) : null}
+            </p>
           </div>
           <div className="settings-form-row-content settings-backup-panel">
+            <label className="admin-check" style={{ maxWidth: 280 }}>
+              <span>Αυτόματο sync</span>
+              <input
+                type="checkbox"
+                checked={autoSync}
+                onChange={(e) => void handleToggleAutoSync(e.target.checked)}
+              />
+            </label>
             <Button
               type="button"
               className="settings-backup-action"

@@ -92,6 +92,10 @@ export const revenueSchema = z.object({
   firstName: z.string().optional().default(''),
   subscriptionPeriod: z.string().optional().default(''),
   notes: z.string().optional().default(''),
+  paymentMethod: z.enum(['cash', 'transfer', 'card', 'viva', 'other', '']).optional(),
+  accountId: z.string().optional(),
+  vatRate: z.coerce.number().min(0).max(100).optional(),
+  linkedTransactionId: z.string().optional(),
 });
 
 const matchExpenseDetailsSchema = z.object({
@@ -123,6 +127,9 @@ export const expenseSchema = z.object({
   studentId: z.string().optional(),
   notes: z.string().optional().default(''),
   matchDetails: matchExpenseDetailsSchema.optional(),
+  paymentMethod: z.enum(['cash', 'transfer', 'card', 'viva', 'other', '']).optional(),
+  accountId: z.string().optional(),
+  vatRate: z.coerce.number().min(0).max(100).optional(),
 });
 
 export type StudentInput = z.infer<typeof studentSchema>;

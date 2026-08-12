@@ -274,6 +274,58 @@ export function FeesPage() {
     refresh();
   }
 
+  async function handleSendAllReminders() {
+    if (!clubId) {
+      setError('Δεν βρέθηκε σύλλογος.');
+      return;
+    }
+    const smtp = getClubSmtp(clubId);
+    if (!smtp.enabled) {
+      setError('Ενεργοποιήστε το SMTP στις Ρυθμίσεις → Email.');
+      return;
+    }
+    const rows = reminders.filter((r) => r.email.includes('@'));
+    if (rows.length === 0) {
+      setError('Δεν υπάρχουν οφειλές με έγκυρο email.');
+      return;
+    }
+    if (!confirm(`Αποστολή υπενθύμισης σε ${rows.length} παραλήπτες;`)) return;
+
+    setSaving(true);
+    setError('');
+    let ok = 0;
+    for (const row of rows) {
+      const club = getClubById(clubId);
+      const send = await emailService.sendClubEmail({
+        clubId,
+        to: row.email,
+        subject: `Υπενθύμιση οφειλής — ${club?.name ?? 'Σύλλογος'}`,
+        text: [
+          `Αγαπητοί γονείς / κηδεμόνες,`,
+          ``,
+          `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${row.athleteName}.`,
+          `Ποσό: ${formatCurrency(row.balance)}`,
+          `Ημέρες καθυστέρησης: ${row.daysOverdue}`,
+          ``,
+          `Παρακαλούμε τακτοποιήστε την οφειλή το συντομότερο.`,
+          ``,
+          club?.name ?? 'SPORTSUITE 360',
+        ].join('\n'),
+      });
+      if (send.success) {
+        ok += 1;
+        await feeChargesService.logDebtReminder({
+          athleteId: row.athleteId,
+          amount: row.balance,
+          note: `Email υπενθύμισης σε ${row.email} · ${formatCurrency(row.balance)}`,
+        });
+      }
+    }
+    setSaving(false);
+    setMessage(`Στάλθηκαν ${ok}/${rows.length} υπενθυμίσεις.`);
+    refresh();
+  }
+
   async function handleVivaPay(athleteId: string, amount: number, athleteName: string, email: string) {
     if (!clubId) return;
     setPayingId(athleteId);
@@ -743,6 +795,16 @@ export function FeesPage() {
           {reminders.length === 0 ? (
             <p className="muted">Δεν υπάρχουν οφειλές προς υπενθύμιση αυτή τη στιγμή.</p>
           ) : (
+            <>
+              <div className="admin-entry-actions" style={{ marginBottom: '0.75rem' }}>
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void handleSendAllReminders()}
+                >
+                  Αποστολή όλων ({reminders.filter((r) => r.email.includes('@')).length})
+                </Button>
+              </div>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -776,6 +838,7 @@ export function FeesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
           {error && panel === 'reminders' ? <p className="form-error">{error}</p> : null}
         </div>

@@ -30,6 +30,8 @@ type ReportRow = {
   surname?: string;
   firstName?: string;
   notes?: string;
+  paymentMethod?: string;
+  vatRate?: number;
   matchDetails?: MatchExpenseDetails;
 };
 
@@ -116,6 +118,8 @@ function exportCsv(items: ReportRow[], filename: string) {
     'Περιγραφή',
     'Ονοματεπώνυμο',
     'Ποσό',
+    'Τρόπος πληρωμής',
+    'ΦΠΑ %',
     'Σημειώσεις',
   ];
   const lines = items.map((item) =>
@@ -128,6 +132,8 @@ function exportCsv(items: ReportRow[], filename: string) {
       item.description,
       [item.surname, item.firstName].filter(Boolean).join(' '),
       String(item.amount),
+      item.paymentMethod ?? '',
+      item.vatRate != null ? String(item.vatRate) : '',
       item.notes ?? '',
     ]
       .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
@@ -172,6 +178,8 @@ export function FinanceReportsPanel() {
       surname: rev.surname,
       firstName: rev.firstName,
       notes: rev.notes,
+      paymentMethod: rev.paymentMethod,
+      vatRate: rev.vatRate,
     }));
     const expenseRows: ReportRow[] = data.expenses.map((exp) => ({
       id: exp.id,
@@ -185,6 +193,8 @@ export function FinanceReportsPanel() {
       surname: exp.surname,
       firstName: exp.firstName,
       notes: exp.notes,
+      paymentMethod: exp.paymentMethod,
+      vatRate: exp.vatRate,
       matchDetails: exp.matchDetails,
     }));
     return [...incomeRows, ...expenseRows].sort((a, b) => b.date.localeCompare(a.date));

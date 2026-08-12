@@ -7,6 +7,8 @@ import {
   type RevenueInput,
 } from '../../schemas';
 import type { Expense, Revenue } from '../../types';
+import { paymentMethodLabel } from '../../shared/paymentMethods';
+import { assertFinanceMonthOpen } from './financePeriodService';
 
 export async function getRevenues() {
   return apiClient(() => getData().revenues);
@@ -15,6 +17,7 @@ export async function getRevenues() {
 export async function createRevenue(input: RevenueInput) {
   return apiClient(() => {
     const parsed = revenueSchema.parse(input);
+    assertFinanceMonthOpen(parsed.date);
     const revenue: Revenue = {
       ...parsed,
       id: createId('rev'),
@@ -29,10 +32,12 @@ export async function createRevenue(input: RevenueInput) {
 export async function updateRevenue(id: string, input: RevenueInput) {
   return apiClient(() => {
     const parsed = revenueSchema.parse(input);
+    assertFinanceMonthOpen(parsed.date);
     let updated: Revenue | undefined;
     mutateData((data) => {
       const index = data.revenues.findIndex((r) => r.id === id);
       if (index === -1) throw new Error('Η είσπραξη δεν βρέθηκε');
+      assertFinanceMonthOpen(data.revenues[index].date);
       updated = { ...data.revenues[index], ...parsed };
       data.revenues[index] = updated;
     });
@@ -43,6 +48,8 @@ export async function updateRevenue(id: string, input: RevenueInput) {
 export async function deleteRevenue(id: string) {
   return apiClient(() => {
     mutateData((data) => {
+      const existing = data.revenues.find((r) => r.id === id);
+      if (existing) assertFinanceMonthOpen(existing.date);
       data.revenues = data.revenues.filter((r) => r.id !== id);
     });
     return { id };
@@ -56,6 +63,7 @@ export async function getExpenses() {
 export async function createExpense(input: ExpenseInput) {
   return apiClient(() => {
     const parsed = expenseSchema.parse(input);
+    assertFinanceMonthOpen(parsed.date);
     const expense: Expense = {
       ...parsed,
       id: createId('exp'),
@@ -70,10 +78,12 @@ export async function createExpense(input: ExpenseInput) {
 export async function updateExpense(id: string, input: ExpenseInput) {
   return apiClient(() => {
     const parsed = expenseSchema.parse(input);
+    assertFinanceMonthOpen(parsed.date);
     let updated: Expense | undefined;
     mutateData((data) => {
       const index = data.expenses.findIndex((e) => e.id === id);
       if (index === -1) throw new Error('Η δαπάνη δεν βρέθηκε');
+      assertFinanceMonthOpen(data.expenses[index].date);
       updated = { ...data.expenses[index], ...parsed };
       data.expenses[index] = updated;
     });
@@ -84,6 +94,8 @@ export async function updateExpense(id: string, input: ExpenseInput) {
 export async function deleteExpense(id: string) {
   return apiClient(() => {
     mutateData((data) => {
+      const existing = data.expenses.find((e) => e.id === id);
+      if (existing) assertFinanceMonthOpen(existing.date);
       data.expenses = data.expenses.filter((e) => e.id !== id);
     });
     return { id };
@@ -92,7 +104,7 @@ export async function deleteExpense(id: string) {
 
 export async function getFinanceSummary() {
   return apiClient(() => {
-    const { revenues, expenses, students, coaches, classes } = getData();
+    const { revenues, expenses, students, coaches, classes, cashAccounts } = getData();
     const paidRevenues = revenues.filter((r) => r.paymentStatus === 'paid');
     const totalRevenue = paidRevenues.reduce((sum, r) => sum + r.amount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -136,6 +148,33 @@ export async function getFinanceSummary() {
       }, {}),
     ).map(([category, amount]) => ({ category, amount }));
 
+    const byPaymentMethod = Object.entries(
+      paidRevenues.reduce<Record<string, number>>((acc, r) => {
+        const key = r.paymentMethod || 'cash';
+        acc[key] = (acc[key] ?? 0) + r.amount;
+        return acc;
+      }, {}),
+    ).map(([method, amount]) => ({
+      method,
+      label: paymentMethodLabel(method),
+      amount,
+    }));
+
+    const accounts = (cashAccounts ?? []).map((account) => {
+      const income = paidRevenues
+        .filter((r) => r.accountId === account.id)
+        .reduce((sum, r) => sum + r.amount, 0);
+      const expense = expenses
+        .filter((e) => e.accountId === account.id)
+        .reduce((sum, e) => sum + e.amount, 0);
+      return {
+        id: account.id,
+        name: account.name,
+        kind: account.kind,
+        balance: account.openingBalance + income - expense,
+      };
+    });
+
     return {
       totalRevenue,
       totalExpenses,
@@ -147,6 +186,8 @@ export async function getFinanceSummary() {
       monthly,
       revenueByCategory,
       expenseByCategory,
+      byPaymentMethod,
+      accounts,
     };
   });
 }

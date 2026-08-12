@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { Flag, Megaphone, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import * as announcementsService from '../api/services/announcementsService';
+import * as notificationService from '../api/services/notificationService';
+import { getSession } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -88,6 +90,7 @@ export function AnnouncementsPage() {
   const [form, setForm] = useState<AnnouncementInput>(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
   const [templates, setTemplates] = useState<MessageTemplate[]>(() => loadTemplates());
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateName, setTemplateName] = useState('');
@@ -485,11 +488,49 @@ export function AnnouncementsPage() {
     const result = editing
       ? await announcementsService.updateAnnouncement(editing.id, payload)
       : await announcementsService.createAnnouncement(payload);
-    setSaving(false);
     if (!result.success) {
+      setSaving(false);
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
       return;
     }
+
+    if (sendEmail && !editing) {
+      const session = getSession();
+      const clubId = session?.clubId;
+      if (!clubId) {
+        setSaving(false);
+        setError('Δεν βρέθηκε σύλλογος για αποστολή email.');
+        return;
+      }
+      const emails = notificationService.resolveAnnouncementEmails(payload);
+      if (emails.length === 0) {
+        setSaving(false);
+        setError('Η ανακοίνωση αποθηκεύτηκε, αλλά δεν βρέθηκαν έγκυρα email παραληπτών.');
+        closeModal();
+        refresh();
+        return;
+      }
+      const mail = await notificationService.sendAnnouncementEmails({
+        clubId,
+        title: payload.title,
+        message: payload.message,
+        emails,
+      });
+      setSaving(false);
+      if (mail.data?.failed.length) {
+        setError(
+          `Αποθηκεύτηκε. Στάλθηκαν ${mail.data.sent.length}/${emails.length}. Αποτυχίες: ${mail.data.failed
+            .slice(0, 3)
+            .map((f) => f.email)
+            .join(', ')}`,
+        );
+      }
+      closeModal();
+      refresh();
+      return;
+    }
+
+    setSaving(false);
     closeModal();
     refresh();
   }
@@ -616,6 +657,17 @@ export function AnnouncementsPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
             />
           </label>
+
+          {!editing ? (
+            <label className="admin-check" style={{ marginBottom: '0.75rem' }}>
+              <span>Αποστολή και με email (SMTP συλλόγου)</span>
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+              />
+            </label>
+          ) : null}
 
           <div className="ann-image-field ann-image-field--compose">
             <span className="ann-label">Εικόνα</span>

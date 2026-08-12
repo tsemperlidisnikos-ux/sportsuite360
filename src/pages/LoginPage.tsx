@@ -30,7 +30,7 @@ export function LoginPage() {
     return <Navigate to={homeForRole(role)} replace />;
   }
 
-  function completeLogin(result: Awaited<ReturnType<typeof login>>) {
+  async function completeLogin(result: Awaited<ReturnType<typeof login>>) {
     if (!result.success) {
       setError(result.error ?? 'Αποτυχία σύνδεσης');
       return;
@@ -38,6 +38,13 @@ export function LoginPage() {
     endPreview();
     clearDataCache();
     window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+
+    if (result.data?.clubId) {
+      const { syncClubOnLogin } = await import('../data/clubSync');
+      await syncClubOnLogin(result.data.clubId);
+      clearDataCache();
+    }
+
     if (result.data?.role === 'platform_admin') {
       navigate('/platform', { replace: true });
       return;
@@ -51,8 +58,8 @@ export function LoginPage() {
     setSaving(true);
     setError('');
     const result = await login(email, password);
+    await completeLogin(result);
     setSaving(false);
-    completeLogin(result);
   }
 
   async function handleEnterDemo() {

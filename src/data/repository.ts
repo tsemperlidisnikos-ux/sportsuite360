@@ -1,5 +1,6 @@
 import { getClubById, getClubs, saveClubs } from '../auth/clubs';
 import { notifyAppDataChanged } from './appDataEvents';
+import { scheduleClubMirrorPush } from './clubSync';
 import {
   buildDemoShowcaseData,
   isDemoClubName,
@@ -50,6 +51,10 @@ function ensureCollections(data: AppData): void {
   }
   if (!data.sizeChart) data.sizeChart = structuredClone(seedData.sizeChart);
   if (data.termsOfUseHtml === undefined) data.termsOfUseHtml = seedData.termsOfUseHtml ?? '';
+  if (!data.cashAccounts) data.cashAccounts = structuredClone(seedData.cashAccounts ?? []);
+  if (!data.closedFinanceMonths) {
+    data.closedFinanceMonths = structuredClone(seedData.closedFinanceMonths ?? []);
+  }
 }
 
 function purgeRemovedAthletePayment(data: AppData): boolean {
@@ -145,6 +150,7 @@ export function mutateData(updater: (data: AppData) => void): AppData {
   cacheClubId = resolveActiveClubId();
   saveStore(data);
   notifyAppDataChanged();
+  scheduleClubMirrorPush(cacheClubId);
   return data;
 }
 
@@ -168,6 +174,7 @@ export function mutateClubData(clubId: string, updater: (data: AppData) => void)
     clearDataCache();
   }
   notifyAppDataChanged();
+  scheduleClubMirrorPush(clubId);
   return data;
 }
 

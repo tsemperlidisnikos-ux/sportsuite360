@@ -137,6 +137,10 @@ export interface Revenue {
   firstName?: string;
   subscriptionPeriod?: string;
   notes?: string;
+  paymentMethod?: PaymentMethod;
+  accountId?: string;
+  vatRate?: number;
+  linkedTransactionId?: string;
 }
 
 export interface MatchExpenseDetails {
@@ -169,6 +173,17 @@ export interface Expense {
   studentId?: string;
   notes?: string;
   matchDetails?: MatchExpenseDetails;
+  paymentMethod?: PaymentMethod;
+  accountId?: string;
+  vatRate?: number;
+}
+
+export interface CashAccount {
+  id: string;
+  name: string;
+  kind: 'cash' | 'bank' | 'other';
+  openingBalance: number;
+  active: boolean;
 }
 
 export interface Training {
@@ -408,4 +423,7 @@ export interface AppData {
   sizeChart: SizeChart;
   /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
   termsOfUseHtml?: string;
+  cashAccounts?: CashAccount[];
+  /** Κλειστοί μήνες YYYY-MM — δεν επιτρέπεται επεξεργασία κινήσεων. */
+  closedFinanceMonths?: string[];
 }

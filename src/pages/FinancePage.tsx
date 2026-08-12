@@ -16,6 +16,7 @@ import {
 import * as financeService from '../api/services/financeService';
 import { ExpenseEntryPanel } from '../components/ExpenseEntryPanel';
 import { BudgetPanel } from '../components/BudgetPanel';
+import { CashAccountsPanel } from '../components/CashAccountsPanel';
 import { FinanceReportsPanel } from '../components/FinanceReportsPanel';
 import { IncomeEntryPanel } from '../components/IncomeEntryPanel';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -35,11 +36,11 @@ import {
   revenueCategoryLabels,
 } from '../utils/labels';
 
-type Tab = 'analysis' | 'revenues' | 'expenses' | 'budget' | 'reports';
+type Tab = 'analysis' | 'revenues' | 'expenses' | 'budget' | 'reports' | 'accounts';
 
 const pieColors = ['#0d7377', '#14919b', '#c45c26', '#e8a838', '#2f4858', '#6b8f71'];
 
-const TAB_TO_SCF: Record<Tab, ScfModuleId> = {
+const TAB_TO_SCF: Record<Exclude<Tab, 'accounts'>, ScfModuleId> = {
   analysis: 'dashboard',
   revenues: 'income',
   expenses: 'expense',
@@ -62,10 +63,12 @@ export function FinancePage() {
       ['analysis', 'Ανάλυση'],
       ['revenues', 'Έσοδα'],
       ['expenses', 'Έξοδα'],
+      ['accounts', 'Ταμεία'],
       ['budget', 'Προϋπολογισμός'],
       ['reports', 'Reports'],
     ] as const
   ).filter(([id]) => {
+    if (id === 'accounts') return true;
     const moduleId = TAB_TO_SCF[id];
     // Budget is always available in Finance; other tabs follow club SCF modules.
     return scfModules.has(moduleId) || id === 'analysis' || id === 'budget';
@@ -213,6 +216,7 @@ export function FinancePage() {
 
       {tab === 'revenues' ? <IncomeEntryPanel onSaved={refresh} /> : null}
       {tab === 'expenses' ? <ExpenseEntryPanel onSaved={refresh} /> : null}
+      {tab === 'accounts' ? <CashAccountsPanel onSaved={refresh} /> : null}
       {tab === 'budget' ? <BudgetPanel onSaved={refresh} /> : null}
       {tab === 'reports' ? <FinanceReportsPanel /> : null}
     </div>

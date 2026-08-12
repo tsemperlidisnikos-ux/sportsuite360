@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { upsertAttendance } from '../api/services/attendanceService';
+import * as notificationService from '../api/services/notificationService';
+import { getSession } from '../auth/auth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Select } from '../components/ui/Select';
 import { useAppData } from '../hooks/useAppData';
@@ -9,6 +11,8 @@ export function AttendancePage() {
   const { data, refresh } = useAppData();
   const [classId, setClassId] = useState(data.classes[0]?.id ?? '');
   const [date, setDate] = useState(() => localDateIso());
+  const [notifyAbsence, setNotifyAbsence] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const students = useMemo(
     () => data.students.filter((s) => s.classId === classId && s.status !== 'inactive'),
@@ -16,7 +20,25 @@ export function AttendancePage() {
   );
 
   async function togglePresent(studentId: string, present: boolean) {
+    setNotice('');
     await upsertAttendance({ classId, studentId, date, present });
+    if (!present && notifyAbsence) {
+      const clubId = getSession()?.clubId;
+      const className = data.classes.find((c) => c.id === classId)?.name;
+      if (clubId) {
+        const result = await notificationService.notifyAbsenceByEmail({
+          clubId,
+          studentId,
+          date,
+          className,
+        });
+        if (result.success) {
+          setNotice(`Στάλθηκε ειδοποίηση απουσίας (${result.data?.sent.join(', ')}).`);
+        } else {
+          setNotice(result.error ?? 'Αποτυχία ειδοποίησης απουσίας');
+        }
+      }
+    }
     refresh();
   }
 
@@ -43,7 +65,17 @@ export function AttendancePage() {
             onChange={(e) => setDate(e.target.value)}
           />
         </label>
+        <label className="admin-check" style={{ alignSelf: 'end', marginBottom: '0.35rem' }}>
+          <span>Email σε απουσία</span>
+          <input
+            type="checkbox"
+            checked={notifyAbsence}
+            onChange={(e) => setNotifyAbsence(e.target.checked)}
+          />
+        </label>
       </div>
+
+      {notice ? <p className="settings-success">{notice}</p> : null}
 
       <div className="panel table-wrap">
         <table>
