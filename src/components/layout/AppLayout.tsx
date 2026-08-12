@@ -20,6 +20,7 @@ import {
   Package,
   Building2,
   Settings,
+  Trophy,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -66,6 +67,7 @@ const academyItems: Array<{
   { id: 'classes', to: '/classes', label: 'Τμήματα', icon: Layers },
   { id: 'parents', to: '/parents', label: 'Γονείς', icon: Users },
   { id: 'trainings', to: '/trainings', label: 'Προπονήσεις', icon: TrainingsIcon },
+  { id: 'matches', to: '/matches', label: 'Αγώνες', icon: Trophy },
   { id: 'schedule', to: '/schedule', label: 'Πρόγραμμα', icon: CalendarDays },
   { id: 'attendance', to: '/attendance', label: 'Παρουσίες', icon: ClipboardCheck },
   { id: 'announcements', to: '/announcements', label: 'Ανακοινώσεις', icon: Megaphone },

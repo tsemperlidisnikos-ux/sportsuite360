@@ -55,6 +55,7 @@ function ensureCollections(data: AppData): void {
   if (!data.closedFinanceMonths) {
     data.closedFinanceMonths = structuredClone(seedData.closedFinanceMonths ?? []);
   }
+  if (!data.matches) data.matches = structuredClone(seedData.matches ?? []);
 }
 
 function purgeRemovedAthletePayment(data: AppData): boolean {

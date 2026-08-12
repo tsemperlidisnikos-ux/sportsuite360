@@ -26,6 +26,8 @@ export const studentSchema = z.object({
   sport: z.string().optional(),
   healthCardStatus: z.string().optional(),
   healthCard: z.boolean().optional(),
+  healthCardExpires: z.string().optional().default(''),
+  consentExpires: z.string().optional().default(''),
   uniformReceived: z.boolean().optional(),
   uniformSize: z.string().optional(),
   registrationFee: z.coerce.number().optional(),
@@ -148,9 +150,26 @@ export const transactionSchema = z.object({
   year: z.coerce.number().int().min(2000),
   paymentMethod: z.enum(['cash', 'transfer', 'card', 'viva', 'other', '']),
   comments: z.string().optional().default(''),
+  allocatesChargeId: z.string().nullable().optional(),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
+
+export const matchSchema = z.object({
+  date: z.string().min(1, 'Η ημερομηνία είναι υποχρεωτική'),
+  time: z.string().optional().default(''),
+  opponent: z.string().min(1, 'Ο αντίπαλος είναι υποχρεωτικός'),
+  sport: z.string().optional().default(''),
+  classId: z.string().nullable().optional().default(null),
+  venue: z.enum(['home', 'away', 'neutral']).default('home'),
+  location: z.string().optional().default(''),
+  status: z.enum(['scheduled', 'played', 'cancelled']).default('scheduled'),
+  ourScore: z.coerce.number().int().min(0).nullable().optional(),
+  opponentScore: z.coerce.number().int().min(0).nullable().optional(),
+  notes: z.string().optional().default(''),
+});
+
+export type MatchInput = z.infer<typeof matchSchema>;
 
 export const trainingSchema = z.object({
   date: z.string().min(1, 'Η ημερομηνία είναι υποχρεωτική'),
@@ -285,6 +304,7 @@ export const feeChargeTemplateSchema = z.object({
   registrationFee: z.coerce.number().min(0).optional().default(0),
   seasonTicketAmount: z.coerce.number().min(0).optional().default(0),
   seasonTicketMonths: z.array(z.coerce.number().int().min(1).max(12)).default([]),
+  autoGenerate: z.boolean().optional().default(false),
 });
 
 export type FeeChargeTemplateInput = z.infer<typeof feeChargeTemplateSchema>;

@@ -129,6 +129,8 @@ export async function createFeeChargeTemplate(input: FeeChargeTemplateInput) {
     const template: FeeChargeTemplate = {
       ...parsed,
       classId: parsed.appliesTo === 'class' ? parsed.classId : null,
+      autoGenerate: Boolean(parsed.autoGenerate),
+      lastGeneratedAt: null,
       id: createId('feeTpl'),
       createdAt: localDateTimeIso(),
     };
@@ -320,5 +322,33 @@ export async function logDebtReminder(input: {
       data.feeReminderLogs.unshift(entry);
     });
     return entry;
+  });
+}
+
+/**
+ * Τρέχει αυτόματη δημιουργία χρεώσεων για πρότυπα με autoGenerate,
+ * το πολύ μία φορά ανά ημερολογιακό μήνα ανά πρότυπο.
+ */
+export async function runDueFeeGenerations() {
+  return apiClient(async () => {
+    const monthKey = localDateIso().slice(0, 7);
+    const templates = (getData().feeChargeTemplates ?? []).filter((t) => t.autoGenerate);
+    let generated = 0;
+    let templatesRun = 0;
+
+    for (const template of templates) {
+      const last = (template.lastGeneratedAt ?? '').slice(0, 7);
+      if (last === monthKey) continue;
+      const result = await generateChargesFromTemplate(template.id);
+      if (!result.success) continue;
+      generated += result.data?.created ?? 0;
+      templatesRun += 1;
+      mutateData((data) => {
+        const row = data.feeChargeTemplates.find((t) => t.id === template.id);
+        if (row) row.lastGeneratedAt = localDateTimeIso();
+      });
+    }
+
+    return { templatesRun, generated, monthKey };
   });
 }

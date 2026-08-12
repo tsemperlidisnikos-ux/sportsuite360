@@ -39,10 +39,16 @@ export function LoginPage() {
     clearDataCache();
     window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
 
-    if (result.data?.clubId) {
+    if (result.data?.clubId || result.data?.role === 'platform_admin') {
       const { syncClubOnLogin } = await import('../data/clubSync');
-      await syncClubOnLogin(result.data.clubId);
+      await syncClubOnLogin(result.data?.clubId ?? null);
       clearDataCache();
+      try {
+        const { runDueFeeGenerations } = await import('../api/services/feeChargesService');
+        await runDueFeeGenerations();
+      } catch {
+        /* best-effort auto fees */
+      }
     }
 
     if (result.data?.role === 'platform_admin') {

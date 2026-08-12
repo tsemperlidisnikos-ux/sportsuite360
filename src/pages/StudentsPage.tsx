@@ -39,6 +39,8 @@ const draftAthlete: StudentInput = {
   registrationNumber: '',
   sport: '',
   healthCard: false,
+  healthCardExpires: '',
+  consentExpires: '',
   uniformReceived: false,
   uniformSize: '',
   registrationFee: 0,

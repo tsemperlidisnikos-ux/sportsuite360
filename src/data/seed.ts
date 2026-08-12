@@ -33,4 +33,5 @@ export const seedData: AppData = {
   termsOfUseHtml: '',
   cashAccounts: [],
   closedFinanceMonths: [],
+  matches: [],
 };

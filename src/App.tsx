@@ -61,6 +61,9 @@ const ParentsPage = lazy(() =>
 const TrainingsPage = lazy(() =>
   import('./pages/TrainingsPage').then((m) => ({ default: m.TrainingsPage })),
 );
+const MatchesPage = lazy(() =>
+  import('./pages/MatchesPage').then((m) => ({ default: m.MatchesPage })),
+);
 const SchedulePage = lazy(() =>
   import('./pages/SchedulePage').then((m) => ({ default: m.SchedulePage })),
 );
@@ -200,6 +203,14 @@ export default function App() {
                 element={
                   <RequireModule moduleId="trainings">
                     <TrainingsPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="matches"
+                element={
+                  <RequireModule moduleId="matches">
+                    <MatchesPage />
                   </RequireModule>
                 }
               />

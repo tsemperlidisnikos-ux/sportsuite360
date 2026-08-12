@@ -189,6 +189,38 @@ export async function listMirrorKeys(): Promise<string[]> {
 }
 
 const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
+const ACCOUNT_BUNDLE_KEY = 'ss360:account-bundle';
+
+export type AccountBundle = {
+  users: unknown;
+  clubs: unknown;
+  platformConfig?: unknown;
+  updatedAt: string;
+};
+
+export async function saveAccountBundle(
+  bundle: Omit<AccountBundle, 'updatedAt'>,
+): Promise<AccountBundle> {
+  const record: AccountBundle = {
+    ...bundle,
+    updatedAt: new Date().toISOString(),
+  };
+  const redis = getRedis();
+  if (!redis) {
+    (memory() as GlobalStore & { accountBundle?: AccountBundle }).accountBundle = record;
+    return record;
+  }
+  await redis.set(ACCOUNT_BUNDLE_KEY, record);
+  return record;
+}
+
+export async function loadAccountBundle(): Promise<AccountBundle | null> {
+  const redis = getRedis();
+  if (!redis) {
+    return (memory() as GlobalStore & { accountBundle?: AccountBundle }).accountBundle ?? null;
+  }
+  return (await redis.get<AccountBundle>(ACCOUNT_BUNDLE_KEY)) ?? null;
+}
 
 /** Αντίγραφο όλων των club mirrors με ημερομηνία (για scheduled cloud backup). */
 export async function snapshotAllMirrors(): Promise<{

@@ -9,19 +9,24 @@ export async function getTransactions() {
 }
 
 export async function createTransaction(input: TransactionInput) {
-  return apiClient(() => {
+  return apiClient(async () => {
     const parsed = transactionSchema.parse(input);
     const transaction: AthleteTransaction = {
       ...parsed,
       id: createId('txn'),
       createdAt: localDateTimeIso(),
+      allocatesChargeId: parsed.allocatesChargeId ?? null,
     };
     mutateData((data) => {
       if (!data.transactions) data.transactions = [];
       data.transactions.push(transaction);
-      // Πληρωμές αθλητών μένουν μόνο στις Συναλλαγές / προϋπολογισμό —
-      // δεν δημιουργούν ξεχωριστή εγγραφή στα Έσοδα (Reports).
     });
+    if (transaction.type === 'payment' && !transaction.allocatesChargeId) {
+      const { autoAllocatePayment } = await import('./paymentMatchingService');
+      await autoAllocatePayment(transaction.id);
+      const refreshed = getData().transactions.find((t) => t.id === transaction.id);
+      return refreshed ?? transaction;
+    }
     return transaction;
   });
 }

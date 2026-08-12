@@ -24,6 +24,7 @@ export const ACADEMY_MODULES = [
   { id: 'classes', label: 'Τμήματα', path: '/classes' },
   { id: 'parents', label: 'Γονείς', path: '/parents' },
   { id: 'trainings', label: 'Προπονήσεις', path: '/trainings' },
+  { id: 'matches', label: 'Αγώνες', path: '/matches' },
   { id: 'schedule', label: 'Πρόγραμμα', path: '/schedule' },
   { id: 'attendance', label: 'Παρουσίες', path: '/attendance' },
   { id: 'associations', label: 'Σωματείο', path: '/associations' },
@@ -66,6 +67,7 @@ export const CLUB_PERMISSIONS = [
   'classes',
   'parents',
   'trainings',
+  'matches',
   'schedule',
   'attendance',
   'announcements',
@@ -89,6 +91,7 @@ export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
   classes: 'Τμήματα',
   parents: 'Γονείς',
   trainings: 'Προπονήσεις',
+  matches: 'Αγώνες',
   schedule: 'Πρόγραμμα',
   attendance: 'Παρουσίες',
   announcements: 'Ανακοινώσεις',
@@ -109,6 +112,7 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
     'athletes',
     'classes',
     'trainings',
+    'matches',
     'schedule',
     'attendance',
     'announcements',
@@ -302,6 +306,10 @@ function sanitizeClubRolePermissions(
     if (result[role].includes('classes') && !result[role].includes('parents')) {
       const classesIndex = result[role].indexOf('classes');
       result[role].splice(classesIndex + 1, 0, 'parents');
+    }
+    if (result[role].includes('trainings') && !result[role].includes('matches')) {
+      const trainingsIndex = result[role].indexOf('trainings');
+      result[role].splice(trainingsIndex + 1, 0, 'matches');
     }
     if (!result[role].includes('calendar')) {
       const hasRelated =
@@ -597,7 +605,15 @@ export function getAcademyModulesForClub(clubId: string): AcademyModuleId[] {
   const allowed = new Set(allIds);
   const filtered = stored.filter((id): id is AcademyModuleId => allowed.has(id as AcademyModuleId));
   // Newer modules (e.g. warehouse) appear even if older club configs omit them
-  for (const id of ['calendar', 'parents', 'photos', 'warehouse', 'partnerBusinesses', 'settings'] as const) {
+  for (const id of [
+    'calendar',
+    'parents',
+    'photos',
+    'warehouse',
+    'partnerBusinesses',
+    'settings',
+    'matches',
+  ] as const) {
     if (!filtered.includes(id)) filtered.push(id);
   }
   return filtered.length > 0 ? filtered : allIds;

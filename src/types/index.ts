@@ -28,6 +28,8 @@ export interface AthleteTransaction {
   paymentMethod: PaymentMethod;
   comments: string;
   createdAt: string;
+  /** Για type=payment: χρέωση στην οποία αντιστοιχίστηκε. */
+  allocatesChargeId?: string | null;
 }
 
 export interface Student {
@@ -59,6 +61,10 @@ export interface Student {
   sport?: string;
   healthCardStatus?: string;
   healthCard?: boolean;
+  /** Λήξη ιατρικής κάρτας / πιστοποιητικού (YYYY-MM-DD). */
+  healthCardExpires?: string;
+  /** Λήξη συναίνεσης GDPR / όρων (YYYY-MM-DD). */
+  consentExpires?: string;
   uniformReceived?: boolean;
   uniformSize?: string;
   registrationFee?: number;
@@ -335,6 +341,29 @@ export interface FeeChargeTemplate {
   seasonTicketAmount: number;
   seasonTicketMonths: number[];
   createdAt: string;
+  /** Αυτόματη δημιουργία χρεώσεων όταν αλλάζει μήνας. */
+  autoGenerate?: boolean;
+  lastGeneratedAt?: string | null;
+}
+
+export type MatchVenue = 'home' | 'away' | 'neutral';
+export type MatchStatus = 'scheduled' | 'played' | 'cancelled';
+
+/** Αγώνας συλλόγου (φύλλο / αποτέλεσμα). */
+export interface Match {
+  id: string;
+  date: string;
+  time: string;
+  opponent: string;
+  sport: string;
+  classId: string | null;
+  venue: MatchVenue;
+  location: string;
+  status: MatchStatus;
+  ourScore: number | null;
+  opponentScore: number | null;
+  notes: string;
+  createdAt: string;
 }
 
 export interface FeeReminderLog {
@@ -426,4 +455,5 @@ export interface AppData {
   cashAccounts?: CashAccount[];
   /** Κλειστοί μήνες YYYY-MM — δεν επιτρέπεται επεξεργασία κινήσεων. */
   closedFinanceMonths?: string[];
+  matches?: Match[];
 }

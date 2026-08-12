@@ -1,8 +1,10 @@
+import * as accountSyncService from '../api/services/accountSyncService';
 import * as backendSyncService from '../api/services/backendSyncService';
 import { resolveActiveClubId } from './store';
 
 const AUTO_SYNC_KEY = 'academyhub-auto-sync-v1';
 const LAST_SYNC_KEY = 'academyhub-last-sync-v1';
+const CLOUD_PREFERRED_KEY = 'academyhub-cloud-preferred-v1';
 
 type AutoSyncMap = Record<string, boolean>;
 type LastSyncMap = Record<string, string>;
@@ -22,6 +24,18 @@ function readMap<T extends Record<string, unknown>>(key: string): T {
 
 function writeMap(key: string, value: unknown): void {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function isCloudPreferred(): boolean {
+  try {
+    return localStorage.getItem(CLOUD_PREFERRED_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function setCloudPreferred(enabled: boolean): void {
+  localStorage.setItem(CLOUD_PREFERRED_KEY, enabled ? '1' : '0');
 }
 
 export function isAutoSyncEnabled(clubId?: string | null): boolean {
@@ -48,7 +62,7 @@ function setLastSyncAt(clubId: string, at: string): void {
   writeMap(LAST_SYNC_KEY, map);
 }
 
-/** Debounced push of active club AppData to cloud mirror. */
+/** Debounced push of active club AppData + account bundle to cloud. */
 export function scheduleClubMirrorPush(clubId?: string | null): void {
   const id = clubId ?? resolveActiveClubId();
   if (!id || !isAutoSyncEnabled(id)) return;
@@ -66,6 +80,7 @@ export async function flushClubMirrorPush(clubId?: string | null) {
   }
   pushing = true;
   const result = await backendSyncService.pushClubMirror(id);
+  await accountSyncService.pushAccountBundle();
   pushing = false;
   if (result.success) {
     setLastSyncAt(id, result.data?.updatedAt ?? new Date().toISOString());
@@ -74,27 +89,56 @@ export async function flushClubMirrorPush(clubId?: string | null) {
 }
 
 /**
- * Pull cloud mirror into local store after login (when auto-sync is on).
- * Missing mirror is OK (first device) — returns success without changes.
+ * Cloud-first login sync:
+ * 1) Pull users/clubs/config if available
+ * 2) Pull club AppData mirror if available (source of truth when present)
+ * Missing cloud data is OK on first device.
  */
 export async function syncClubOnLogin(clubId: string | null | undefined) {
-  if (!clubId || !isAutoSyncEnabled(clubId)) {
-    return { success: true as const, data: { pulled: false }, error: null };
+  let pulledAccount = false;
+  let pulledClub = false;
+
+  const account = await accountSyncService.pullAccountBundle();
+  if (account.success && account.data) {
+    accountSyncService.applyAccountBundle(account.data);
+    pulledAccount = true;
   }
 
+  if (!clubId) {
+    return {
+      success: true as const,
+      data: { pulled: pulledAccount, pulledAccount, pulledClub },
+      error: null,
+    };
+  }
+
+  // Prefer cloud when available (source of truth), even before auto-sync toggle.
   const result = await backendSyncService.pullClubMirror(clubId);
-  if (!result.success) {
-    const msg = result.error ?? '';
-    if (msg.includes('Δεν υπάρχει αποθηκευμένο mirror') || msg.includes('No mirror')) {
-      return { success: true as const, data: { pulled: false }, error: null };
-    }
-    return { success: false as const, data: null, error: result.error ?? 'Αποτυχία sync' };
-  }
-
-  if (result.data?.payload) {
+  if (result.success && result.data?.payload) {
     const { replaceData } = await import('./repository');
     replaceData(result.data.payload);
     setLastSyncAt(clubId, result.data.updatedAt ?? new Date().toISOString());
+    setAutoSyncEnabled(clubId, true);
+    setCloudPreferred(true);
+    pulledClub = true;
+  } else {
+    const msg = result.error ?? '';
+    const missing =
+      msg.includes('Δεν υπάρχει αποθηκευμένο mirror') ||
+      msg.includes('No mirror') ||
+      msg.includes('μόνο στο production');
+    if (!missing && !result.success && isAutoSyncEnabled(clubId)) {
+      return {
+        success: false as const,
+        data: null,
+        error: result.error ?? 'Αποτυχία sync',
+      };
+    }
   }
-  return { success: true as const, data: { pulled: true }, error: null };
+
+  return {
+    success: true as const,
+    data: { pulled: pulledAccount || pulledClub, pulledAccount, pulledClub },
+    error: null,
+  };
 }

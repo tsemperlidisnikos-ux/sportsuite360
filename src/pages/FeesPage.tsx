@@ -33,6 +33,7 @@ function emptyForm(season: string): FeeChargeTemplateInput {
     registrationFee: 0,
     seasonTicketAmount: 0,
     seasonTicketMonths: defaultMonths,
+    autoGenerate: false,
   };
 }
 
@@ -519,6 +520,14 @@ export function FeesPage() {
               Ισχύει για μηνιαία συνδρομή, εγγραφή και εισιτήριο διαρκείας. Αν επιλεγεί άθλημα, η
               χρέωση εφαρμόζεται μόνο σε αθλητές αυτού του αθλήματος.
             </p>
+            <label className="admin-check" style={{ maxWidth: 420, marginTop: '0.65rem' }}>
+              <span>Αυτόματη μηνιαία χρέωση (στο login, 1×/μήνα)</span>
+              <input
+                type="checkbox"
+                checked={Boolean(form.autoGenerate)}
+                onChange={(e) => setForm({ ...form, autoGenerate: e.target.checked })}
+              />
+            </label>
           </div>
 
           <section className="fee-charge-section">
@@ -745,6 +754,7 @@ export function FeesPage() {
                       <th>Μηνιαίο</th>
                       <th>Εγγραφή</th>
                       <th>Εισιτήριο</th>
+                      <th>Αυτόματο</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -756,6 +766,7 @@ export function FeesPage() {
                         <td>{formatCurrency(tpl.monthlyAmount)}</td>
                         <td>{formatCurrency(tpl.registrationFee)}</td>
                         <td>{formatCurrency(tpl.seasonTicketAmount)}</td>
+                        <td>{tpl.autoGenerate ? 'Ναι' : 'Όχι'}</td>
                         <td className="row-actions">
                           <button
                             type="button"

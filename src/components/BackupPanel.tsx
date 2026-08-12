@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type ChangeEvent } from 'react';
+import * as accountSyncService from '../api/services/accountSyncService';
 import * as backendSyncService from '../api/services/backendSyncService';
 import { getSession } from '../auth/auth';
 import { ensureSessionClub, getClubById } from '../auth/clubs';
@@ -39,7 +40,9 @@ export function BackupPanel() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [fileLabel, setFileLabel] = useState('Δεν επιλέχθηκε κανένα αρχείο.');
-  const [syncing, setSyncing] = useState<'push' | 'pull' | null>(null);
+  const [syncing, setSyncing] = useState<'push' | 'pull' | 'accountPush' | 'accountPull' | null>(
+    null,
+  );
   const [restoring, setRestoring] = useState(false);
   const [clubTick, setClubTick] = useState(0);
 
@@ -107,6 +110,38 @@ export function BackupPanel() {
       return;
     }
     flash('Αυτόματο cloud sync απενεργοποιήθηκε.');
+  }
+
+  async function handleAccountPush() {
+    setSyncing('accountPush');
+    setError('');
+    const result = await accountSyncService.pushAccountBundle();
+    setSyncing(null);
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία push λογαριασμών');
+      return;
+    }
+    flash(
+      `Cloud λογαριασμοί ενημερώθηκαν${result.data?.updatedAt ? ` · ${result.data.updatedAt}` : ''}.`,
+    );
+  }
+
+  async function handleAccountPull() {
+    const confirmed = window.confirm(
+      'Θα αντικατασταθούν οι τοπικοί users/clubs/config από το cloud. Συνέχεια;',
+    );
+    if (!confirmed) return;
+    setSyncing('accountPull');
+    setError('');
+    const result = await accountSyncService.pullAccountBundle();
+    setSyncing(null);
+    if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία pull λογαριασμών');
+      return;
+    }
+    accountSyncService.applyAccountBundle(result.data);
+    flash('Επαναφορά λογαριασμών από cloud. Ανανέωση…');
+    window.setTimeout(() => window.location.reload(), 600);
   }
 
   async function handlePullMirror() {
@@ -329,6 +364,22 @@ export function BackupPanel() {
               onClick={() => void handlePullMirror()}
             >
               {syncing === 'pull' ? 'Pull…' : 'Pull / επαναφορά από mirror'}
+            </Button>
+            <Button
+              type="button"
+              className="settings-backup-action"
+              disabled={syncing !== null}
+              onClick={() => void handleAccountPush()}
+            >
+              {syncing === 'accountPush' ? 'Push…' : 'Push λογαριασμοί (users/clubs)'}
+            </Button>
+            <Button
+              type="button"
+              className="settings-backup-action"
+              disabled={syncing !== null}
+              onClick={() => void handleAccountPull()}
+            >
+              {syncing === 'accountPull' ? 'Pull…' : 'Pull λογαριασμοί (cloud)'}
             </Button>
           </div>
         </div>
