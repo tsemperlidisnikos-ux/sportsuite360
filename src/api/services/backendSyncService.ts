@@ -1,5 +1,5 @@
 import { apiClient } from '../apiClient';
-import { getData } from '../../data/repository';
+import { getClubData } from '../../data/repository';
 import type { AppData } from '../../types';
 
 function isAppDataPayload(value: unknown): value is AppData {
@@ -10,12 +10,13 @@ function isAppDataPayload(value: unknown): value is AppData {
 
 export async function pushClubMirror(clubId: string) {
   return apiClient(async () => {
+    const payload = getClubData(clubId);
     const response = await fetch('/api/sync/mirror', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clubId,
-        payload: getData(),
+        payload,
       }),
     });
     const json = (await response.json()) as { ok?: boolean; error?: string; updatedAt?: string };

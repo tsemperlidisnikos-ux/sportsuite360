@@ -33,7 +33,24 @@ export function buildBackupPayload(): BackupPayload {
   };
 }
 
-export function downloadBackupZip(payload: BackupPayload = buildBackupPayload()): string {
+/** Backup μόνο για έναν σύλλογο (δεδομένα χρήστη/tenant). */
+export function buildClubBackupPayload(clubId: string): BackupPayload {
+  const all = exportAllClubsData();
+  const clubData = all[clubId];
+  const club = getClubs().find((c) => c.id === clubId);
+  return {
+    exportedAt: localDateTimeIso(),
+    appData: clubData,
+    appDataByClub: clubData ? { [clubId]: clubData } : {},
+    clubs: club ? [club] : [],
+    users: getUsers().filter((u) => u.clubId === clubId),
+  };
+}
+
+export function downloadBackupZip(
+  payload: BackupPayload = buildBackupPayload(),
+  filenamePrefix = 'academyhub-backup',
+): string {
   const json = JSON.stringify(payload, null, 2);
   const zip = createZip([
     {
@@ -41,7 +58,7 @@ export function downloadBackupZip(payload: BackupPayload = buildBackupPayload())
       data: new TextEncoder().encode(json),
     },
   ]);
-  const filename = `academyhub-backup-${localDateIso()}.zip`;
+  const filename = `${filenamePrefix}-${localDateIso()}.zip`;
   const url = URL.createObjectURL(zip);
   const a = document.createElement('a');
   a.href = url;
@@ -52,9 +69,12 @@ export function downloadBackupZip(payload: BackupPayload = buildBackupPayload())
 }
 
 /** Plain JSON backup — often more reliable across browsers. */
-export function downloadBackupJson(payload: BackupPayload = buildBackupPayload()): string {
+export function downloadBackupJson(
+  payload: BackupPayload = buildBackupPayload(),
+  filenamePrefix = 'academyhub-backup',
+): string {
   const json = JSON.stringify(payload, null, 2);
-  const filename = `academyhub-backup-${localDateIso()}.json`;
+  const filename = `${filenamePrefix}-${localDateIso()}.json`;
   const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -188,6 +188,50 @@ export async function listMirrorKeys(): Promise<string[]> {
   return (await redis.get<string[]>(MIRROR_INDEX_KEY)) ?? [];
 }
 
+const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
+
+/** Αντίγραφο όλων των club mirrors με ημερομηνία (για scheduled cloud backup). */
+export async function snapshotAllMirrors(): Promise<{
+  dateKey: string;
+  clubs: string[];
+  durable: boolean;
+}> {
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const keys = await listMirrorKeys();
+  const redis = getRedis();
+  const clubs: string[] = [];
+
+  for (const clubId of keys) {
+    const mirror = await loadMirror(clubId);
+    if (!mirror) continue;
+    const snap = {
+      clubId,
+      snapshotAt: new Date().toISOString(),
+      sourceUpdatedAt: mirror.updatedAt,
+      payload: mirror.payload,
+    };
+    if (!redis) {
+      memory().mirrors[`${clubId}__snap__${dateKey}`] = {
+        updatedAt: snap.snapshotAt,
+        payload: snap,
+      };
+    } else {
+      await redis.set(`${SNAPSHOT_PREFIX}${dateKey}:${clubId}`, snap);
+    }
+    clubs.push(clubId);
+  }
+
+  if (redis) {
+    await redis.set(`${SNAPSHOT_PREFIX}${dateKey}:index`, {
+      dateKey,
+      clubs,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return { dateKey, clubs, durable: Boolean(redis) };
+}
+
 export async function savePublicClubConfig(config: PublicClubConfig): Promise<void> {
   const slug = config.slug.trim().toLowerCase();
   const redis = getRedis();

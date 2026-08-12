@@ -135,6 +135,59 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
   parent: [],
 };
 
+export type BackupFrequency = 'daily' | 'weekly' | 'monthly';
+export type BackupDeliveryMode = 'download' | 'cloud' | 'both';
+
+/** Κανόνας προγραμματισμένου backup (ώρα τοπική του browser). */
+export type BackupScheduleRule = {
+  enabled: boolean;
+  frequency: BackupFrequency;
+  /** HH:mm τοπική ώρα */
+  timeLocal: string;
+  /** 0=Κυρ … 6=Σαβ (μόνο weekly) */
+  dayOfWeek?: number;
+  /** 1–28 (μόνο monthly) */
+  dayOfMonth?: number;
+  /** download = αρχείο, cloud = Redis mirror, both = και τα δύο */
+  mode: BackupDeliveryMode;
+  lastRunAt?: string | null;
+};
+
+export type PlatformBackupSchedules = {
+  /** Πλήρες backup εφαρμογής (users, clubs, config, όλα τα δεδομένα). */
+  fullApp: BackupScheduleRule;
+  /** Backup δεδομένων κάθε συλλόγου / χρήστη πλατφόρμας. */
+  perClub: BackupScheduleRule;
+  /**
+   * Σύλλογοι που συμμετέχουν στο per-club backup.
+   * Κενό = όλοι οι σύλλογοι.
+   */
+  clubIds: string[];
+};
+
+export function defaultBackupScheduleRule(
+  overrides?: Partial<BackupScheduleRule>,
+): BackupScheduleRule {
+  return {
+    enabled: false,
+    frequency: 'daily',
+    timeLocal: '02:00',
+    dayOfWeek: 1,
+    dayOfMonth: 1,
+    mode: 'download',
+    lastRunAt: null,
+    ...overrides,
+  };
+}
+
+export function defaultBackupSchedules(): PlatformBackupSchedules {
+  return {
+    fullApp: defaultBackupScheduleRule({ mode: 'download' }),
+    perClub: defaultBackupScheduleRule({ mode: 'cloud' }),
+    clubIds: [],
+  };
+}
+
 export type PlatformConfig = {
   scfModulesByClub: Record<string, ScfModuleId[]>;
   academyModulesByClub: Record<string, AcademyModuleId[]>;
@@ -147,6 +200,7 @@ export type PlatformConfig = {
   seasons: string[];
   appLogoUrl?: string | null;
   appName?: string;
+  backupSchedules?: PlatformBackupSchedules;
 };
 
 const CONFIG_KEY = 'academyhub-platform-config-v5';
@@ -274,6 +328,42 @@ export function defaultPlatformConfig(): PlatformConfig {
     seasons: ['2025–2026', '2026–2027'],
     appLogoUrl: null,
     appName: 'SPORTSUITE 360',
+    backupSchedules: defaultBackupSchedules(),
+  };
+}
+
+function sanitizeBackupSchedules(
+  stored: Partial<PlatformBackupSchedules> | undefined,
+): PlatformBackupSchedules {
+  const base = defaultBackupSchedules();
+  if (!stored) return base;
+  const mergeRule = (
+    rule: Partial<BackupScheduleRule> | undefined,
+    fallback: BackupScheduleRule,
+  ): BackupScheduleRule => ({
+    ...fallback,
+    ...(rule ?? {}),
+    enabled: Boolean(rule?.enabled),
+    frequency:
+      rule?.frequency === 'weekly' || rule?.frequency === 'monthly' || rule?.frequency === 'daily'
+        ? rule.frequency
+        : fallback.frequency,
+    timeLocal:
+      typeof rule?.timeLocal === 'string' && /^\d{2}:\d{2}$/.test(rule.timeLocal)
+        ? rule.timeLocal
+        : fallback.timeLocal,
+    mode:
+      rule?.mode === 'cloud' || rule?.mode === 'both' || rule?.mode === 'download'
+        ? rule.mode
+        : fallback.mode,
+    lastRunAt: rule?.lastRunAt ?? null,
+  });
+  return {
+    fullApp: mergeRule(stored.fullApp, base.fullApp),
+    perClub: mergeRule(stored.perClub, base.perClub),
+    clubIds: Array.isArray(stored.clubIds)
+      ? stored.clubIds.filter((id): id is string => typeof id === 'string')
+      : [],
   };
 }
 
@@ -311,6 +401,7 @@ function loadPlatformConfigRaw(): PlatformConfig {
         (parsed as { clubRolePermissions?: Partial<Record<ClubRole, string[]>> })
           .clubRolePermissions,
       ),
+      backupSchedules: sanitizeBackupSchedules(parsed.backupSchedules),
       incomeDescriptions: {
         ...base.incomeDescriptions,
         ...(parsed.incomeDescriptions ?? {}),
@@ -383,6 +474,7 @@ export function loadPlatformConfig(): PlatformConfig {
           ),
           appLogoUrl: parsed.appLogoUrl ?? base.appLogoUrl,
           appName: parsed.appName ?? base.appName,
+          backupSchedules: sanitizeBackupSchedules(parsed.backupSchedules),
         };
         localStorage.setItem(CONFIG_KEY, JSON.stringify(migrated));
         if (!localStorage.getItem(FINANCE_DEFAULTS_KEY)) {
@@ -417,6 +509,7 @@ export function loadPlatformConfig(): PlatformConfig {
         (parsed as { clubRolePermissions?: Partial<Record<ClubRole, string[]>> })
           .clubRolePermissions,
       ),
+      backupSchedules: sanitizeBackupSchedules(parsed.backupSchedules),
       incomeCategories,
       expenseCategories,
       incomeDescriptions: resolveCatalogDescriptions(
@@ -437,6 +530,19 @@ export function loadPlatformConfig(): PlatformConfig {
   } catch {
     return base;
   }
+}
+
+export function getBackupSchedules(): PlatformBackupSchedules {
+  return sanitizeBackupSchedules(loadPlatformConfig().backupSchedules);
+}
+
+export function saveBackupSchedules(schedules: PlatformBackupSchedules): PlatformConfig {
+  const next: PlatformConfig = {
+    ...loadPlatformConfig(),
+    backupSchedules: sanitizeBackupSchedules(schedules),
+  };
+  savePlatformConfig(next);
+  return next;
 }
 
 /** Κρατά τις αποθηκευμένες υποκατηγορίες· δεν επαναφέρει διαγραμμένες τιμές από defaults. */

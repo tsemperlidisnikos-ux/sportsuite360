@@ -7,9 +7,11 @@ import './styles/prints.css';
 import './styles/finance-income.css';
 import './styles/platform-admin.css';
 import './styles/announcements.css';
+import { startBackupScheduleRunner } from './data/backupScheduleRunner';
 import { startDocumentBranding } from './utils/documentBranding';
 
 startDocumentBranding();
+startBackupScheduleRunner();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

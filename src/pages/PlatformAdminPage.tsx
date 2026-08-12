@@ -2,6 +2,7 @@ import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } f
 import { Link, useNavigate } from 'react-router-dom';
 import { getSession, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
+import { BackupSchedulePanel } from '../components/BackupSchedulePanel';
 import { Button } from '../components/ui/Button';
 import { createId, getData, mutateData, replaceAllClubsData, replaceData, resetData } from '../data/repository';
 import { downloadBackupZip, formatBackupError, readBackupFile } from '../utils/backupArchive';
@@ -843,6 +844,25 @@ export function PlatformAdminPage() {
               <RecordsTable>
                 <RecordsRow title="Περιεχόμενο">
                   Users, clubs, app data, κατηγορίες, περιγραφές.
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
+
+          <AdminRow
+            title="Πρόγραμμα backup"
+            description="Ορίστε πότε γίνεται full backup εφαρμογής και πότε backup δεδομένων κάθε συλλόγου/χρήστη."
+            entry={<BackupSchedulePanel onSaved={flash} />}
+            records={
+              <RecordsTable>
+                <RecordsRow title="Full app">
+                  Όλη η βάση (users, clubs, config, δεδομένα).
+                </RecordsRow>
+                <RecordsRow title="Ανά σύλλογο">
+                  Ξεχωριστό ZIP ή cloud mirror ανά tenant.
+                </RecordsRow>
+                <RecordsRow title="Σημείωση">
+                  Αυτόματη εκτέλεση όσο είναι ανοιχτή η εφαρμογή (τοπική ώρα browser).
                 </RecordsRow>
               </RecordsTable>
             }
