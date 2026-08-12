@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FileText, Plus } from 'lucide-react';
 import * as sizeChartService from '../api/services/sizeChartService';
 import { Button } from './ui/Button';
+import { SettingsFormRow } from './ui/SettingsFormRow';
 import { useAppData } from '../hooks/useAppData';
 import type { SizeChart } from '../types';
 import {
@@ -116,11 +117,11 @@ export function SizeChartPanel() {
   }
 
   return (
-    <section className="panel size-chart-panel">
+    <section className="panel settings-panel size-chart-panel">
       <div className="size-chart-header">
         <div>
-          <h2>Μεγεθολόγιο</h2>
-          <p>Ρουχισμός/Μεγέθη</p>
+          <h3>Μεγεθολόγιο</h3>
+          <p className="lede">Ρουχισμός / μεγέθη συλλόγου.</p>
         </div>
         <div className="size-chart-actions">
           <button type="button" className="size-chart-link" onClick={handlePrintArchive}>
@@ -137,43 +138,45 @@ export function SizeChartPanel() {
       </div>
 
       {addingFor ? (
-        <div className="size-chart-add-row">
-          <span>Νέο μέγεθος για {SIZE_CHART_GROUP_LABELS[addingFor]}:</span>
-          <select
-            value={addingFor}
-            onChange={(e) => setAddingFor(e.target.value as SizeChartGroupId)}
-          >
-            {GROUPS.map((group) => (
-              <option key={group} value={group}>
-                {SIZE_CHART_GROUP_LABELS[group]}
-              </option>
-            ))}
-          </select>
-          <input
-            value={newSize}
-            onChange={(e) => setNewSize(e.target.value)}
-            placeholder="π.χ. XL"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                confirmAdd();
-              }
-            }}
-          />
-          <Button type="button" onClick={confirmAdd}>
-            Προσθήκη
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setAddingFor(null)}>
-            Άκυρο
-          </Button>
+        <div className="settings-form">
+          <SettingsFormRow label={`Νέο μέγεθος (${SIZE_CHART_GROUP_LABELS[addingFor]})`}>
+            <div className="size-chart-add-row">
+              <select
+                value={addingFor}
+                onChange={(e) => setAddingFor(e.target.value as SizeChartGroupId)}
+              >
+                {GROUPS.map((group) => (
+                  <option key={group} value={group}>
+                    {SIZE_CHART_GROUP_LABELS[group]}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={newSize}
+                onChange={(e) => setNewSize(e.target.value)}
+                placeholder="π.χ. XL"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmAdd();
+                  }
+                }}
+              />
+              <Button type="button" onClick={confirmAdd}>
+                Προσθήκη
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setAddingFor(null)}>
+                Άκυρο
+              </Button>
+            </div>
+          </SettingsFormRow>
         </div>
       ) : null}
 
-      <div className="size-chart-grid size-chart-grid--2">
+      <div className="settings-form">
         {GROUPS.map((group) => (
-          <div key={group} className="size-chart-column">
-            <h3>{SIZE_CHART_GROUP_LABELS[group]}</h3>
-            <ul>
+          <SettingsFormRow key={group} label={SIZE_CHART_GROUP_LABELS[group]}>
+            <ul className="size-chart-inline-list">
               {lists[group].length === 0 ? (
                 <li className="size-chart-empty">Δεν υπάρχουν μεγέθη</li>
               ) : (
@@ -198,14 +201,14 @@ export function SizeChartPanel() {
             >
               + Προσθήκη
             </button>
-          </div>
+          </SettingsFormRow>
         ))}
       </div>
 
       {error ? <p className="form-error">{error}</p> : null}
       {message ? <p className="settings-success">{message}</p> : null}
 
-      <div className="size-chart-footer">
+      <div className="settings-form-actions">
         <Button type="button" disabled={saving} onClick={() => void handleSave()}>
           {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
         </Button>

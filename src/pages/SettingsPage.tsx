@@ -23,6 +23,7 @@ import { ClubUsersPanel } from '../components/ClubUsersPanel';
 import { ClubVivaPanel } from '../components/ClubVivaPanel';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
+import { SettingsFormRow } from '../components/ui/SettingsFormRow';
 import { SizeChartPanel } from '../components/SizeChartPanel';
 import { getPreviewClubId } from '../platform/platformConfig';
 import { AssociationsPage } from './AssociationsPage';
@@ -111,7 +112,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg settings-page">
       <PageHeader
         title="Ρυθμίσεις"
         subtitle="Εμφάνιση συλλόγου, χρήστες, κωδικός, email, Viva, σωματείο, αθλήματα, μεγεθολόγιο, όροι χρήσης και backup."
@@ -204,47 +205,52 @@ export function SettingsPage() {
           <p className="form-error">Δεν βρέθηκε σύλλογος για τον λογαριασμό.</p>
         ) : (
           <section className="panel settings-panel">
-            <h3>Logo συλλόγου</h3>
-            <p className="lede">
-              Το logo εμφανίζεται στο μενού, πάνω από την ενότητα «Ακαδημία».
-            </p>
+            <h3>Εμφάνιση συλλόγου</h3>
+            <p className="lede">Ρυθμίσεις εμφάνισης στο μενού της ακαδημίας.</p>
 
-            <div className="settings-logo-row">
-              <div className="settings-logo-preview">
-                {club.logoUrl ? (
-                  <img src={club.logoUrl} alt={`Logo ${club.name}`} />
-                ) : (
-                  <span>Χωρίς logo</span>
-                )}
-              </div>
+            <div className="settings-form">
+              <SettingsFormRow label="Logo συλλόγου">
+                <p className="lede public-reg-inline-lede">
+                  Το logo εμφανίζεται στο μενού, πάνω από την ενότητα «Ακαδημία».
+                </p>
+                <div className="settings-logo-row">
+                  <div className="settings-logo-preview">
+                    {club.logoUrl ? (
+                      <img src={club.logoUrl} alt={`Logo ${club.name}`} />
+                    ) : (
+                      <span>Χωρίς logo</span>
+                    )}
+                  </div>
 
-              <div className="settings-logo-actions">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  hidden
-                  onChange={handleFileChange}
-                />
-                <Button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <ImagePlus size={16} /> Ανέβασμα φωτογραφίας
-                </Button>
-                {club.logoUrl ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={saving}
-                    onClick={handleRemoveLogo}
-                  >
-                    <Trash2 size={16} /> Αφαίρεση
-                  </Button>
-                ) : null}
-                <p className="settings-hint">JPG / PNG / WEBP · έως ~500KB</p>
-              </div>
+                  <div className="settings-logo-actions">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      hidden
+                      onChange={handleFileChange}
+                    />
+                    <Button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      <ImagePlus size={16} /> Ανέβασμα φωτογραφίας
+                    </Button>
+                    {club.logoUrl ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={saving}
+                        onClick={handleRemoveLogo}
+                      >
+                        <Trash2 size={16} /> Αφαίρεση
+                      </Button>
+                    ) : null}
+                    <p className="settings-hint">JPG / PNG / WEBP · έως ~500KB</p>
+                  </div>
+                </div>
+              </SettingsFormRow>
             </div>
 
             {error ? <p className="form-error">{error}</p> : null}

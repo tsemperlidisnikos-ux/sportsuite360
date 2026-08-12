@@ -189,115 +189,115 @@ export function BackupPanel() {
   }
 
   return (
-    <section className="settings-backup">
+    <section className="panel settings-panel settings-backup">
       <header className="settings-backup-head">
-        <h2>Αντίγραφα ασφαλείας</h2>
-        <p>
-          Backup και επαναφορά δεδομένων στον τρέχοντα σύλλογο (δουλεύει και από localhost →
-          Vercel).
+        <h3>Αντίγραφα ασφαλείας</h3>
+        <p className="lede">
+          Backup και επαναφορά δεδομένων στον τρέχοντα σύλλογο (δουλεύει και από localhost → Vercel).
         </p>
       </header>
 
-      <div className="settings-backup-block">
-        <div className="settings-backup-copy">
-          <h3>Λήψη backup</h3>
-          <p>
-            Κατεβάστε ZIP ή JSON. Για μεταφορά στο Vercel προτείνεται <strong>JSON</strong>.
-          </p>
-        </div>
-        <div className="settings-backup-panel" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Button type="button" className="settings-backup-action" onClick={handleBackupExport}>
-            Λήψη ZIP
-          </Button>
-          <Button type="button" className="settings-backup-action" onClick={handleBackupExportJson}>
-            Λήψη JSON
-          </Button>
-        </div>
-      </div>
-
-      <div className="settings-backup-block">
-        <div className="settings-backup-copy">
-          <h3>Επαναφορά από backup</h3>
-          <p>
-            Εφαρμόζει τα δεδομένα στον ενεργό σύλλογο
-            {club ? (
-              <>
-                {' '}
-                (<strong>{club.name}</strong>)
-              </>
-            ) : (
-              ' (θα χρησιμοποιηθεί ο σύλλογος του λογαριασμού σας)'
-            )}
-            . Δεν αλλάζει τους λογαριασμούς σύνδεσης.
-          </p>
-        </div>
-        <div className="settings-backup-panel">
-          <label
-            htmlFor={fileInputId}
-            className={`settings-backup-file-btn${restoring ? ' is-disabled' : ''}`}
-            aria-disabled={restoring}
-            onClick={() => {
-              // Ensure club exists before picker opens
-              resolveTargetClubId();
-              setClubTick((n) => n + 1);
-            }}
-          >
-            {restoring ? 'Επαναφορά…' : 'Επιλογή αρχείου'}
-          </label>
-          <input
-            id={fileInputId}
-            type="file"
-            accept=".zip,.json,application/zip,application/json,text/json"
-            className="settings-backup-file-input"
-            disabled={restoring}
-            onChange={handleFileChange}
-          />
-          <span className="settings-backup-file-name">{fileLabel}</span>
-          <p className="settings-hint">
-            Προτίμησε .json από localhost. Αν το κουμπί φαίνεται ανενεργό, κάνε login με DEMO και
-            Ctrl+F5.
-          </p>
-        </div>
-      </div>
-
-      <div className="settings-backup-block">
-        <div className="settings-backup-copy">
-          <h3>Cloud mirror (πειραματικό)</h3>
-          <p>Push / Pull μέσω `/api/sync/mirror` (Upstash Redis αν έχει ρυθμιστεί).</p>
-        </div>
-        <div className="settings-backup-panel" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Button
-            type="button"
-            className="settings-backup-action"
-            disabled={syncing !== null}
-            onClick={() => void handlePushMirror()}
-          >
-            {syncing === 'push' ? 'Push…' : 'Push mirror συλλόγου'}
-          </Button>
-          <Button
-            type="button"
-            className="settings-backup-action"
-            disabled={syncing !== null}
-            onClick={() => void handlePullMirror()}
-          >
-            {syncing === 'pull' ? 'Pull…' : 'Pull / επαναφορά από mirror'}
-          </Button>
-        </div>
-      </div>
-
-      {isDemoClub ? (
-        <div className="settings-backup-block">
-          <div className="settings-backup-copy">
-            <h3>Δεδομένα παρουσίασης DEMO</h3>
-            <p>Επαναφορτώνει το ενσωματωμένο δείγμα παρουσίασης.</p>
+      <div className="settings-form">
+        <div className="settings-form-row settings-backup-block">
+          <div className="settings-form-row-label settings-backup-copy">
+            <strong>Λήψη backup</strong>
+            <p>
+              Κατεβάστε ZIP ή JSON. Για μεταφορά στο Vercel προτείνεται <strong>JSON</strong>.
+            </p>
           </div>
-          <div className="settings-backup-panel">
-            <Button type="button" className="settings-backup-action" onClick={handleReseedDemo}>
-              Επαναφόρτωση DEMO δεδομένων
+          <div className="settings-form-row-content settings-backup-panel">
+            <Button type="button" className="settings-backup-action" onClick={handleBackupExport}>
+              Λήψη ZIP
+            </Button>
+            <Button type="button" className="settings-backup-action" onClick={handleBackupExportJson}>
+              Λήψη JSON
             </Button>
           </div>
         </div>
-      ) : null}
+
+        <div className="settings-form-row settings-backup-block">
+          <div className="settings-form-row-label settings-backup-copy">
+            <strong>Επαναφορά από backup</strong>
+            <p>
+              Εφαρμόζει τα δεδομένα στον ενεργό σύλλογο
+              {club ? (
+                <>
+                  {' '}
+                  (<strong>{club.name}</strong>)
+                </>
+              ) : (
+                ' (θα χρησιμοποιηθεί ο σύλλογος του λογαριασμού σας)'
+              )}
+              . Δεν αλλάζει τους λογαριασμούς σύνδεσης.
+            </p>
+          </div>
+          <div className="settings-form-row-content settings-backup-panel">
+            <label
+              htmlFor={fileInputId}
+              className={`settings-backup-file-btn${restoring ? ' is-disabled' : ''}`}
+              aria-disabled={restoring}
+              onClick={() => {
+                resolveTargetClubId();
+                setClubTick((n) => n + 1);
+              }}
+            >
+              {restoring ? 'Επαναφορά…' : 'Επιλογή αρχείου'}
+            </label>
+            <input
+              id={fileInputId}
+              type="file"
+              accept=".zip,.json,application/zip,application/json,text/json"
+              className="settings-backup-file-input"
+              disabled={restoring}
+              onChange={handleFileChange}
+            />
+            <span className="settings-backup-file-name">{fileLabel}</span>
+            <p className="settings-hint">
+              Προτίμησε .json από localhost. Αν το κουμπί φαίνεται ανενεργό, κάνε login με DEMO και
+              Ctrl+F5.
+            </p>
+          </div>
+        </div>
+
+        <div className="settings-form-row settings-backup-block">
+          <div className="settings-form-row-label settings-backup-copy">
+            <strong>Cloud mirror (πειραματικό)</strong>
+            <p>Push / Pull μέσω `/api/sync/mirror` (Upstash Redis αν έχει ρυθμιστεί).</p>
+          </div>
+          <div className="settings-form-row-content settings-backup-panel">
+            <Button
+              type="button"
+              className="settings-backup-action"
+              disabled={syncing !== null}
+              onClick={() => void handlePushMirror()}
+            >
+              {syncing === 'push' ? 'Push…' : 'Push mirror συλλόγου'}
+            </Button>
+            <Button
+              type="button"
+              className="settings-backup-action"
+              disabled={syncing !== null}
+              onClick={() => void handlePullMirror()}
+            >
+              {syncing === 'pull' ? 'Pull…' : 'Pull / επαναφορά από mirror'}
+            </Button>
+          </div>
+        </div>
+
+        {isDemoClub ? (
+          <div className="settings-form-row settings-backup-block">
+            <div className="settings-form-row-label settings-backup-copy">
+              <strong>Δεδομένα παρουσίασης DEMO</strong>
+              <p>Επαναφορτώνει το ενσωματωμένο δείγμα παρουσίασης.</p>
+            </div>
+            <div className="settings-form-row-content settings-backup-panel">
+              <Button type="button" className="settings-backup-action" onClick={handleReseedDemo}>
+                Επαναφόρτωση DEMO δεδομένων
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       {error ? <p className="form-error">{error}</p> : null}
       {message ? <p className="settings-success">{message}</p> : null}

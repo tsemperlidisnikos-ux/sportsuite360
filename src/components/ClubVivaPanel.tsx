@@ -7,6 +7,7 @@ import {
   type ClubVivaSettings,
 } from '../auth/clubs';
 import { Button } from './ui/Button';
+import { SettingsFormRow } from './ui/SettingsFormRow';
 
 type Props = {
   clubId: string;
@@ -56,48 +57,40 @@ export function ClubVivaPanel({ clubId }: Props) {
   }
 
   return (
-    <section className="panel club-email-panel club-viva-panel">
-      <div className="club-email-head">
-        <div>
-          <h2>Viva Wallet</h2>
-          <p className="club-email-banner">
-            Συνδέστε Client ID, Client Secret και Source Code από το Viva banking app για online
-            πληρωμές (Smart Checkout) του συλλόγου «{club?.name ?? '—'}».
-          </p>
-          <p className="club-email-banner club-viva-info">
-            Webhook URL: <code>{webhookUrlHint}</code>
-          </p>
-          <p className="club-email-banner club-viva-info">
-            Στο Viva payment source, ορίστε Success URL:{' '}
-            <code>{successUrlHint}</code> (επιστρέφει ?t=transactionid).
-          </p>
-        </div>
-      </div>
+    <section className="panel settings-panel club-viva-panel">
+      <h3>Viva Wallet</h3>
+      <p className="lede">
+        Συνδέστε Client ID, Client Secret και Source Code από το Viva banking app για online πληρωμές
+        (Smart Checkout) του συλλόγου «{club?.name ?? '—'}».
+      </p>
 
-      <label className="checkbox-row club-email-enabled">
-        <input
-          type="checkbox"
-          checked={form.enabled}
-          onChange={(e) => setField('enabled', e.target.checked)}
-        />
-        <span>Ενεργές online πληρωμές Viva</span>
-      </label>
+      <div className="settings-form">
+        <SettingsFormRow label="Ενεργές online πληρωμές" htmlFor="viva-enabled">
+          <label className="public-reg-check">
+            <input
+              id="viva-enabled"
+              type="checkbox"
+              checked={form.enabled}
+              onChange={(e) => setField('enabled', e.target.checked)}
+            />
+            <span>Ενεργές</span>
+          </label>
+        </SettingsFormRow>
 
-      <div className="club-email-grid">
-        <label className="field">
-          <span className="field-label">Client ID</span>
+        <SettingsFormRow label="Client ID" htmlFor="viva-client">
           <input
+            id="viva-client"
             className="field-input"
             value={form.clientId}
             onChange={(e) => setField('clientId', e.target.value)}
             placeholder="Client ID"
             autoComplete="off"
           />
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Client Secret</span>
+        <SettingsFormRow label="Client Secret" htmlFor="viva-secret">
           <input
+            id="viva-secret"
             className="field-input"
             type="password"
             value={form.clientSecret}
@@ -105,22 +98,22 @@ export function ClubVivaPanel({ clubId }: Props) {
             placeholder="Client Secret"
             autoComplete="new-password"
           />
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Merchant ID (προαιρετικό)</span>
+        <SettingsFormRow label="Merchant ID (προαιρετικό)" htmlFor="viva-merchant">
           <input
+            id="viva-merchant"
             className="field-input"
             value={form.merchantId}
             onChange={(e) => setField('merchantId', e.target.value)}
             placeholder="Merchant ID"
             autoComplete="off"
           />
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Source Code (4 ψηφία)</span>
+        <SettingsFormRow label="Source Code (4 ψηφία)" htmlFor="viva-source">
           <input
+            id="viva-source"
             className="field-input"
             value={form.sourceCode}
             onChange={(e) =>
@@ -130,11 +123,11 @@ export function ClubVivaPanel({ clubId }: Props) {
             inputMode="numeric"
             maxLength={4}
           />
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Περιβάλλον</span>
+        <SettingsFormRow label="Περιβάλλον" htmlFor="viva-env">
           <select
+            id="viva-env"
             className="field-input"
             value={form.environment}
             onChange={(e) =>
@@ -144,10 +137,19 @@ export function ClubVivaPanel({ clubId }: Props) {
             <option value="demo">Demo / δοκιμή</option>
             <option value="live">Live / παραγωγή</option>
           </select>
-        </label>
+        </SettingsFormRow>
+
+        <SettingsFormRow label="Webhook URL">
+          <code className="public-reg-link">{webhookUrlHint}</code>
+        </SettingsFormRow>
+
+        <SettingsFormRow label="Success URL">
+          <code className="public-reg-link">{successUrlHint}</code>
+          <span className="settings-hint">Στο Viva payment source (επιστρέφει ?t=transactionid).</span>
+        </SettingsFormRow>
       </div>
 
-      <div className="club-email-actions">
+      <div className="settings-form-actions">
         <Button type="button" disabled={saving} onClick={handleSave}>
           {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
         </Button>

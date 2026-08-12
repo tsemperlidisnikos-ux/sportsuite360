@@ -998,6 +998,171 @@ th {
   color: var(--muted);
 }
 
+/* —— Shared 2-column settings forms —— */
+.settings-form {
+  display: grid;
+  gap: 0;
+  margin: 0.35rem 0 1rem;
+}
+
+.settings-form-row,
+.public-reg-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 0.85rem 1.1rem;
+  align-items: start;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(26, 62, 56, 0.08);
+}
+
+.settings-form-row:last-child,
+.public-reg-row:last-child {
+  border-bottom: none;
+}
+
+.settings-form-row-label,
+.public-reg-row-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink, #1a2e28);
+  line-height: 1.35;
+  padding-top: 0.35rem;
+}
+
+.settings-form-row-label p,
+.settings-backup-copy p {
+  margin: 0.35rem 0 0;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.settings-form-row-content,
+.public-reg-row-content {
+  min-width: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.settings-form-row-content .field-input,
+.public-reg-row-content .field-input {
+  width: 100%;
+  max-width: 440px;
+}
+
+.settings-form-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.settings-page .club-users-grid,
+.settings-page .club-users-search {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.settings-page .club-users-grid .field,
+.settings-page .club-users-search .field {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 0.85rem 1.1rem;
+  align-items: start;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(26, 62, 56, 0.08);
+}
+
+.settings-page .club-users-grid .field > span:first-child,
+.settings-page .club-users-search .field > span:first-child {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink, #1a2e28);
+  padding-top: 0.45rem;
+}
+
+.settings-page .club-users-grid .field > input,
+.settings-page .club-users-grid .field > select,
+.settings-page .club-users-search .field > input,
+.settings-page .club-users-search .field > select {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #fff;
+  max-width: 440px;
+  width: 100%;
+}
+
+.settings-page .club-users-permissions {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 0.85rem 1.1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(26, 62, 56, 0.08);
+}
+
+.settings-page .settings-backup-block {
+  border: none;
+  border-radius: 0;
+  padding: 0.8rem 0;
+  background: transparent;
+  border-bottom: 1px solid rgba(26, 62, 56, 0.08);
+}
+
+.settings-page .settings-backup-panel {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.settings-page .training-modal-fields > label {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 0.65rem 0.85rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.settings-page .training-modal-fields > label > span:first-child {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+
+.size-chart-inline-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .settings-form-row,
+  .public-reg-row,
+  .settings-page .club-users-grid .field,
+  .settings-page .club-users-search .field,
+  .settings-page .club-users-permissions {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .settings-form-row-label,
+  .public-reg-row-label,
+  .settings-page .club-users-grid .field > span:first-child {
+    padding-top: 0;
+  }
+
+  .settings-form-row-content .field-input,
+  .public-reg-row-content .field-input {
+    max-width: none;
+  }
+}
+
 .club-users-panel h4 {
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
@@ -3729,11 +3894,58 @@ th {
   margin: 0 0 0.85rem;
 }
 
+.public-reg-form {
+  display: grid;
+  gap: 0;
+  margin: 0.5rem 0 1rem;
+}
+
+.public-reg-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 0.85rem 1.1rem;
+  align-items: start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(26, 62, 56, 0.08);
+}
+
+.public-reg-row:last-child {
+  border-bottom: none;
+}
+
+.public-reg-row-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink, #1a2e28);
+  line-height: 1.35;
+  padding-top: 0.35rem;
+}
+
+.public-reg-row-content {
+  min-width: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.public-reg-row-content .field-input {
+  width: 100%;
+  max-width: 420px;
+}
+
+.public-reg-inline-lede {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.public-reg-info--banner {
+  margin-bottom: 0.85rem;
+}
+
 .public-reg-info {
   display: flex;
   gap: 0.65rem;
   align-items: flex-start;
-  margin: 0.75rem 0 1rem;
+  margin: 0;
   padding: 0.7rem 0.85rem;
   border-radius: 8px;
   background: #eef7f2;
@@ -3769,7 +3981,7 @@ th {
   display: flex;
   gap: 0.55rem;
   align-items: center;
-  margin: 0.45rem 0;
+  margin: 0;
   font-size: 0.95rem;
 }
 
@@ -3778,7 +3990,7 @@ th {
   flex-wrap: wrap;
   gap: 0.65rem;
   align-items: center;
-  margin: 0.75rem 0 1.25rem;
+  margin: 0;
 }
 
 .public-reg-link {
@@ -3792,6 +4004,25 @@ th {
   background: #f4f6f5;
   border: 1px solid var(--line);
   font-size: 0.82rem;
+}
+
+.public-reg-actions {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .public-reg-row {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .public-reg-row-label {
+    padding-top: 0;
+  }
+
+  .public-reg-row-content .field-input {
+    max-width: none;
+  }
 }
 
 .public-reg-photo {

@@ -11,6 +11,7 @@ import {
 } from '../auth/clubs';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
+import { SettingsFormRow } from './ui/SettingsFormRow';
 
 type Props = {
   clubId: string;
@@ -102,17 +103,13 @@ export function ClubEmailPanel({ clubId }: Props) {
   }
 
   return (
-    <section className="panel club-email-panel">
+    <section className="panel settings-panel club-email-panel">
       <div className="club-email-head">
         <div>
-          <h2>Email συλλόγου (Gmail/SMTP)</h2>
-          <p className="club-email-banner">
-            Σύνδεσε Gmail μέσω App Password ή άλλο SMTP για προσκλήσεις, υπενθυμίσεις και
-            αποδείξεις του συλλόγου «{club?.name ?? '—'}».
-          </p>
-          <p className="club-email-banner club-viva-info">
-            Η πραγματική αποστολή γίνεται μέσω του production API (`/api/send-email`). Σε τοπικό
-            `npm run dev` η δοκιμή θα αποτύχει μέχρι να κάνετε deploy στο Vercel.
+          <h3>Email συλλόγου (Gmail/SMTP)</h3>
+          <p className="lede">
+            Σύνδεσε Gmail μέσω App Password ή άλλο SMTP για προσκλήσεις, υπενθυμίσεις και αποδείξεις
+            του συλλόγου «{club?.name ?? '—'}».
           </p>
         </div>
         <Button type="button" variant="secondary" onClick={() => setShowHelp(true)}>
@@ -120,19 +117,22 @@ export function ClubEmailPanel({ clubId }: Props) {
         </Button>
       </div>
 
-      <label className="checkbox-row club-email-enabled">
-        <input
-          type="checkbox"
-          checked={form.enabled}
-          onChange={(e) => setField('enabled', e.target.checked)}
-        />
-        <span>Ενεργό SMTP συλλόγου</span>
-      </label>
+      <div className="settings-form">
+        <SettingsFormRow label="Ενεργό SMTP συλλόγου" htmlFor="smtp-enabled">
+          <label className="public-reg-check">
+            <input
+              id="smtp-enabled"
+              type="checkbox"
+              checked={form.enabled}
+              onChange={(e) => setField('enabled', e.target.checked)}
+            />
+            <span>Ενεργό</span>
+          </label>
+        </SettingsFormRow>
 
-      <div className="club-email-grid">
-        <label className="field">
-          <span className="field-label">Πάροχος</span>
+        <SettingsFormRow label="Πάροχος" htmlFor="smtp-provider">
           <select
+            id="smtp-provider"
             className="field-input"
             value={form.provider}
             onChange={(e) =>
@@ -142,21 +142,21 @@ export function ClubEmailPanel({ clubId }: Props) {
             <option value="gmail">Gmail</option>
             <option value="custom">Προσαρμοσμένο SMTP</option>
           </select>
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">SMTP Host</span>
+        <SettingsFormRow label="SMTP Host" htmlFor="smtp-host">
           <input
+            id="smtp-host"
             className="field-input"
             value={form.host}
             onChange={(e) => setField('host', e.target.value)}
             placeholder="SMTP host"
           />
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Port</span>
+        <SettingsFormRow label="Port" htmlFor="smtp-port">
           <input
+            id="smtp-port"
             className="field-input"
             value={form.port}
             onChange={(e) => setField('port', e.target.value)}
@@ -165,11 +165,11 @@ export function ClubEmailPanel({ clubId }: Props) {
           <span className="settings-hint">
             587 → STARTTLS (recommended). 465 → SSL. Do not mix SSL with 587.
           </span>
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Email / username</span>
+        <SettingsFormRow label="Email / username" htmlFor="smtp-user">
           <input
+            id="smtp-user"
             className="field-input"
             type="email"
             value={form.username}
@@ -177,11 +177,11 @@ export function ClubEmailPanel({ clubId }: Props) {
             placeholder="Email / username"
             autoComplete="off"
           />
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">App Password / κωδικός SMTP</span>
+        <SettingsFormRow label="App Password / κωδικός SMTP" htmlFor="smtp-pass">
           <input
+            id="smtp-pass"
             className="field-input"
             type="password"
             value={form.password}
@@ -190,14 +190,14 @@ export function ClubEmailPanel({ clubId }: Props) {
             autoComplete="new-password"
           />
           <span className="settings-hint">
-            Στο Gmail χρησιμοποίησε App Password 16 χαρακτήρων από Google Security — όχι τον
-            κανονικό κωδικό.
+            Στο Gmail χρησιμοποίησε App Password 16 χαρακτήρων από Google Security — όχι τον κανονικό
+            κωδικό.
           </span>
-        </label>
+        </SettingsFormRow>
 
-        <label className="field">
-          <span className="field-label">Αποστολέας (From)</span>
+        <SettingsFormRow label="Αποστολέας (From)" htmlFor="smtp-from">
           <input
+            id="smtp-from"
             className="field-input"
             value={form.fromName}
             onChange={(e) => setField('fromName', e.target.value)}
@@ -207,32 +207,35 @@ export function ClubEmailPanel({ clubId }: Props) {
             Το όνομα είναι προαιρετικό (π.χ. «{club?.name ?? 'Όνομα συλλόγου'}»). Ως διεύθυνση
             χρησιμοποιείται το email του λογαριασμού.
           </span>
-        </label>
+        </SettingsFormRow>
+
+        <SettingsFormRow label="Δοκιμή αποστολής" htmlFor="smtp-test">
+          <div className="club-email-test-row">
+            <input
+              id="smtp-test"
+              className="field-input"
+              type="email"
+              value={testTo}
+              onChange={(e) => setTestTo(e.target.value)}
+              placeholder="Παραλήπτης δοκιμής"
+            />
+            <Button type="button" disabled={testing} onClick={() => void handleTestSend()}>
+              <Send size={15} /> {testing ? 'Αποστολή…' : 'Αποστολή δοκιμής'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setShowHistory(true)}>
+              <History size={15} /> Ιστορικό
+            </Button>
+          </div>
+          <p className="settings-hint">
+            Η πραγματική αποστολή γίνεται στο production (`/api/send-email`).
+          </p>
+        </SettingsFormRow>
       </div>
 
-      <div className="club-email-actions">
+      <div className="settings-form-actions">
         <Button type="button" disabled={saving} onClick={() => void handleSave()}>
           {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
         </Button>
-      </div>
-
-      <div className="club-email-test">
-        <p>Στείλε δοκιμαστικό μήνυμα για επαλήθευση</p>
-        <div className="club-email-test-row">
-          <input
-            className="field-input"
-            type="email"
-            value={testTo}
-            onChange={(e) => setTestTo(e.target.value)}
-            placeholder="Παραλήπτης δοκιμής"
-          />
-          <Button type="button" disabled={testing} onClick={() => void handleTestSend()}>
-            <Send size={15} /> {testing ? 'Αποστολή…' : 'Αποστολή δοκιμής'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setShowHistory(true)}>
-            <History size={15} /> Ιστορικό αποστολών
-          </Button>
-        </div>
       </div>
 
       {error ? <p className="form-error">{error}</p> : null}
@@ -260,10 +263,6 @@ export function ClubEmailPanel({ clubId }: Props) {
           </p>
           <p>5. Ενεργοποίησε «Ενεργό SMTP συλλόγου» και πάτα Αποθήκευση.</p>
           <p>6. Κάνε deploy στο Vercel και δοκίμασε «Αποστολή δοκιμής» από το production.</p>
-          <p className="muted">
-            Οι ρυθμίσεις αποθηκεύονται μόνο για αυτόν τον σύλλογο και δεν επηρεάζουν άλλους
-            συλλόγους.
-          </p>
         </div>
       </Modal>
 

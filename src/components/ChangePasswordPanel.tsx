@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { changePassword } from '../auth/auth';
 import { Button } from './ui/Button';
+import { SettingsFormRow } from './ui/SettingsFormRow';
 
 export function ChangePasswordPanel() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -32,12 +33,12 @@ export function ChangePasswordPanel() {
   }
 
   return (
-    <section className="panel change-password-panel">
-      <h2>Αλλαγή κωδικού</h2>
-      <form className="change-password-form" onSubmit={handleSubmit}>
-        <label className="field">
-          <span className="field-label">Τρέχων κωδικός</span>
+    <section className="panel settings-panel change-password-panel">
+      <h3>Αλλαγή κωδικού</h3>
+      <form className="settings-form" onSubmit={(e) => void handleSubmit(e)}>
+        <SettingsFormRow label="Τρέχων κωδικός" htmlFor="pw-current">
           <input
+            id="pw-current"
             className="field-input"
             type="password"
             value={currentPassword}
@@ -45,10 +46,10 @@ export function ChangePasswordPanel() {
             placeholder="Τρέχων"
             autoComplete="current-password"
           />
-        </label>
-        <label className="field">
-          <span className="field-label">Νέος κωδικός</span>
+        </SettingsFormRow>
+        <SettingsFormRow label="Νέος κωδικός" htmlFor="pw-new">
           <input
+            id="pw-new"
             className="field-input"
             type="password"
             value={newPassword}
@@ -56,10 +57,10 @@ export function ChangePasswordPanel() {
             placeholder="Νέος"
             autoComplete="new-password"
           />
-        </label>
-        <label className="field">
-          <span className="field-label">Επιβεβαίωση</span>
+        </SettingsFormRow>
+        <SettingsFormRow label="Επιβεβαίωση" htmlFor="pw-confirm">
           <input
+            id="pw-confirm"
             className="field-input"
             type="password"
             value={confirmPassword}
@@ -67,16 +68,16 @@ export function ChangePasswordPanel() {
             placeholder="Επιβεβαίωση"
             autoComplete="new-password"
           />
-        </label>
+        </SettingsFormRow>
 
-        <div className="change-password-actions">
+        {error ? <p className="form-error">{error}</p> : null}
+        {message ? <p className="settings-success">{message}</p> : null}
+
+        <div className="settings-form-actions">
           <Button type="submit" disabled={saving}>
             {saving ? 'Ενημέρωση…' : 'Ενημέρωση'}
           </Button>
         </div>
-
-        {error ? <p className="form-error">{error}</p> : null}
-        {message ? <p className="settings-success">{message}</p> : null}
       </form>
     </section>
   );
