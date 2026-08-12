@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { ClipboardCopy, ImagePlus, Trash2 } from 'lucide-react';
+import { ClipboardCopy, Download, ImagePlus, QrCode, Trash2 } from 'lucide-react';
 import * as publicClubCloudService from '../api/services/publicClubCloudService';
 import {
   getClubById,
@@ -40,6 +40,12 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
     if (typeof window === 'undefined') return joinPath;
     return `${window.location.origin}${joinPath}`;
   }, [joinPath]);
+
+  const qrImageUrl = useMemo(
+    () =>
+      `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=${encodeURIComponent(joinUrl)}`,
+    [joinUrl],
+  );
 
   const heroPreview = form.heroImageUrl || club?.logoUrl || null;
 
@@ -85,6 +91,28 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
       () => setMessage('Ο σύνδεσμος αντιγράφηκε.'),
       () => setError('Αδυναμία αντιγραφής συνδέσμου.'),
     );
+  }
+
+  async function handleDownloadQr() {
+    try {
+      const response = await fetch(qrImageUrl);
+      if (!response.ok) throw new Error('QR fetch failed');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      const slug = (form.slug.trim() || 'club').replace(/[^a-z0-9-]/gi, '-');
+      anchor.href = objectUrl;
+      anchor.download = `join-${slug}-qr.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      setMessage('Το QR κατέβηκε.');
+    } catch {
+      // Fallback: ανοίγει σε νέα καρτέλα αν το fetch μπλοκαριστεί.
+      window.open(qrImageUrl, '_blank', 'noopener,noreferrer');
+      setMessage('Άνοιξε το QR σε νέα καρτέλα — αποθήκευσέ το από εκεί.');
+    }
   }
 
   function handleHeroFile(event: ChangeEvent<HTMLInputElement>) {
@@ -204,6 +232,34 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
         <a className="text-link" href={joinPath} target="_blank" rel="noreferrer">
           Προεπισκόπηση →
         </a>
+      </div>
+
+      <div className="public-reg-qr">
+        <h4>
+          <QrCode size={18} aria-hidden /> QR κωδικός εγγραφής
+        </h4>
+        <p className="lede">
+          Σκάναρε με το κινητό για άμεσο άνοιγμα της δημόσιας φόρμας. Χρήσιμο για αφίσες / Viber /
+          WhatsApp.
+        </p>
+        <div className="public-reg-qr-row">
+          <div className="public-reg-qr-preview">
+            <img src={qrImageUrl} alt={`QR εγγραφής ${club?.name ?? ''}`} width={180} height={180} />
+          </div>
+          <div className="public-reg-qr-actions">
+            <Button type="button" variant="secondary" onClick={() => void handleDownloadQr()}>
+              <Download size={16} /> Λήψη PNG
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => window.print()}
+            >
+              Εκτύπωση σελίδας
+            </Button>
+            <p className="settings-hint">Το QR δείχνει πάντα το τρέχον URL (μετά την αλλαγή slug πάτα Αποθήκευση).</p>
+          </div>
+        </div>
       </div>
 
       <label className="field">
