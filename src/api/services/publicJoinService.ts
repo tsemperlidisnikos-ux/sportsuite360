@@ -7,6 +7,7 @@ import type {
   RegistrationApplicationKind,
   Student,
 } from '../../types';
+import * as emailService from './emailService';
 import { notifyClubNewRegistration } from './registrationApplicationsService';
 
 export type PublicJoinInput = {
@@ -124,8 +125,9 @@ export async function submitPublicJoin(input: PublicJoinInput) {
       ? 'athlete'
       : 'application';
 
-    // Best-effort notify — μην αποτύχει η υποβολή αν λείπει SMTP.
+    // Best-effort emails — μην αποτύχει η υποβολή αν λείπει SMTP.
     let emailSent = false;
+    let guardianEmailSent = false;
     try {
       const notify = await notifyClubNewRegistration({
         clubId: input.clubId,
@@ -139,11 +141,40 @@ export async function submitPublicJoin(input: PublicJoinInput) {
       emailSent = false;
     }
 
+    const guardianEmail = input.email.trim();
+    if (guardianEmail.includes('@')) {
+      try {
+        const clubName = club.name;
+        const confirm = await emailService.sendClubEmail({
+          clubId: input.clubId,
+          to: guardianEmail,
+          subject: `Επιβεβαίωση αίτησης · ${clubName}`,
+          text: [
+            `Αγαπητέ/ή ${input.guardianName.trim()},`,
+            '',
+            `Λάβαμε την αίτηση εγγραφής για τον/την ${firstName} ${lastName} στον σύλλογο ${clubName}.`,
+            resolvedMode === 'athlete'
+              ? 'Η εγγραφή καταχωρήθηκε.'
+              : resultKind === 'waitlist'
+                ? 'Η αίτηση μπήκε στη λίστα αναμονής.'
+                : 'Η αίτηση εκκρεμεί έγκριση από τον σύλλογο.',
+            '',
+            'Ευχαριστούμε.',
+            clubName,
+          ].join('\n'),
+        });
+        guardianEmailSent = Boolean(confirm.success);
+      } catch {
+        guardianEmailSent = false;
+      }
+    }
+
     return {
       mode: resolvedMode,
       kind: resultKind,
       athleteId: createdAthleteId,
       emailSent,
+      guardianEmailSent,
       message:
         resolvedMode === 'athlete'
           ? 'Η εγγραφή ολοκληρώθηκε.'

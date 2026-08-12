@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, History, Send } from 'lucide-react';
 import * as emailService from '../api/services/emailService';
+import * as publicClubCloudService from '../api/services/publicClubCloudService';
 import {
   getClubById,
   getClubSmtp,
@@ -50,13 +51,19 @@ export function ClubEmailPanel({ clubId }: Props) {
     setError('');
     setMessage('');
     const result = updateClubSmtp(clubId, form);
-    setSaving(false);
     if (!result.success) {
+      setSaving(false);
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
       return;
     }
     setForm(getClubSmtp(clubId));
-    setMessage('Οι ρυθμίσεις email συλλόγου αποθηκεύτηκαν.');
+    const publish = await publicClubCloudService.publishPublicClubCloud(clubId);
+    setSaving(false);
+    if (!publish.success) {
+      setMessage('Οι ρυθμίσεις email αποθηκεύτηκαν τοπικά. Cloud sync ειδοποιήσεων απέτυχε.');
+      return;
+    }
+    setMessage('Οι ρυθμίσεις email συλλόγου αποθηκεύτηκαν και συγχρονίστηκαν για δημόσια εγγραφή.');
   }
 
   async function handleTestSend() {

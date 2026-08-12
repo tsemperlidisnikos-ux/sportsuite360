@@ -1,6 +1,8 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import * as publicClubCloudService from '../api/services/publicClubCloudService';
 import * as publicJoinService from '../api/services/publicJoinService';
+import type { RemotePublicClub } from '../api/services/publicClubCloudService';
 import {
   getClubPublicRegistration,
   getClubs,
@@ -10,21 +12,43 @@ import { Button } from '../components/ui/Button';
 import { getClubData } from '../data/repository';
 import type { RegistrationApplicationKind } from '../types';
 
+type JoinClubView = {
+  source: 'local' | 'remote';
+  clubId: string;
+  slug: string;
+  name: string;
+  city: string;
+  logoUrl: string | null;
+  heroImageUrl: string | null;
+  enabled: boolean;
+  allowTrial: boolean;
+  allowWaitlist: boolean;
+  classes: Array<{ id: string; name: string; sport?: string }>;
+  termsHtml: string;
+};
+
+function fromRemote(club: RemotePublicClub): JoinClubView {
+  return {
+    source: 'remote',
+    clubId: club.clubId,
+    slug: club.slug,
+    name: club.name,
+    city: club.city || '',
+    logoUrl: club.logoUrl,
+    heroImageUrl: club.heroImageUrl,
+    enabled: club.enabled,
+    allowTrial: club.allowTrial,
+    allowWaitlist: club.allowWaitlist,
+    classes: club.classes ?? [],
+    termsHtml: club.termsHtml || '',
+  };
+}
+
 export function PublicJoinPage() {
   const { slug = '' } = useParams();
-  const club = useMemo(() => {
-    const normalized = slug.trim().toLowerCase();
-    const enabled = getClubs().find((c) => {
-      const s = (c.publicRegistration?.slug || slugifyClubName(c.name)).toLowerCase();
-      return s === normalized;
-    });
-    return enabled ?? null;
-  }, [slug]);
-
-  const settings = club ? getClubPublicRegistration(club.id) : null;
-  const data = club ? getClubData(club.id) : null;
-  const classes = (data?.classes ?? []).filter((c) => c.name);
-  const termsHtml = data?.termsOfUseHtml?.trim() || '';
+  const [club, setClub] = useState<JoinClubView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -41,11 +65,64 @@ export function PublicJoinPage() {
   const [done, setDone] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const hero = settings?.heroImageUrl || club?.logoUrl || null;
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setLoadError('');
+      const normalized = slug.trim().toLowerCase();
+      const local = getClubs().find((c) => {
+        const s = (c.publicRegistration?.slug || slugifyClubName(c.name)).toLowerCase();
+        return s === normalized;
+      });
+      if (local) {
+        const settings = getClubPublicRegistration(local.id);
+        const data = getClubData(local.id);
+        if (!cancelled) {
+          setClub({
+            source: 'local',
+            clubId: local.id,
+            slug: settings.slug,
+            name: local.name,
+            city: local.city || '',
+            logoUrl: local.logoUrl ?? null,
+            heroImageUrl: settings.heroImageUrl ?? null,
+            enabled: settings.enabled,
+            allowTrial: settings.allowTrial,
+            allowWaitlist: settings.allowWaitlist,
+            classes: (data.classes ?? []).filter((c) => c.name),
+            termsHtml: data.termsOfUseHtml?.trim() || '',
+          });
+          setLoading(false);
+        }
+        return;
+      }
+
+      const remote = await publicClubCloudService.fetchPublicClubBySlug(normalized);
+      if (cancelled) return;
+      if (!remote.success || !remote.data?.club) {
+        setClub(null);
+        setLoadError(remote.error ?? 'Ο σύνδεσμος δεν βρέθηκε.');
+        setLoading(false);
+        return;
+      }
+      setClub(fromRemote(remote.data.club));
+      setLoading(false);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const hero = useMemo(
+    () => club?.heroImageUrl || club?.logoUrl || null,
+    [club?.heroImageUrl, club?.logoUrl],
+  );
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!club || !settings?.enabled) return;
+    if (!club || !club.enabled) return;
     if (!acceptedTerms) {
       setError('Πρέπει να αποδεχτείτε τους όρους χρήσης / GDPR.');
       return;
@@ -53,8 +130,8 @@ export function PublicJoinPage() {
     setSaving(true);
     setError('');
     setDone('');
-    const result = await publicJoinService.submitPublicJoin({
-      clubId: club.id,
+
+    const payload = {
       firstName,
       lastName,
       birthDate,
@@ -66,13 +143,46 @@ export function PublicJoinPage() {
       kind,
       notes,
       acceptedTerms,
-    });
-    setSaving(false);
-    if (!result.success) {
-      setError(result.error ?? 'Αποτυχία υποβολής');
-      return;
+    };
+
+    let message = '';
+    if (club.source === 'local') {
+      const localResult = await publicJoinService.submitPublicJoin({
+        clubId: club.clubId,
+        ...payload,
+      });
+      if (!localResult.success) {
+        setSaving(false);
+        setError(localResult.error ?? 'Αποτυχία υποβολής');
+        return;
+      }
+      message = localResult.data?.message ?? 'Η αίτηση καταχωρήθηκε.';
+      if (localResult.data?.guardianEmailSent) {
+        message += ' Στάλθηκε email επιβεβαίωσης.';
+      }
+      // Also push to cloud so other devices / staff pull can see it.
+      void publicClubCloudService.submitPublicJoinRemote({
+        slug: club.slug,
+        ...payload,
+      });
+    } else {
+      const remoteResult = await publicClubCloudService.submitPublicJoinRemote({
+        slug: club.slug,
+        ...payload,
+      });
+      if (!remoteResult.success || !remoteResult.data) {
+        setSaving(false);
+        setError(remoteResult.error ?? 'Αποτυχία υποβολής');
+        return;
+      }
+      message = remoteResult.data.message;
+      if (remoteResult.data.guardianEmailSent) {
+        message += ' Στάλθηκε email επιβεβαίωσης.';
+      }
     }
-    setDone(result.data?.message ?? 'Η αίτηση καταχωρήθηκε.');
+
+    setSaving(false);
+    setDone(message);
     setFirstName('');
     setLastName('');
     setBirthDate('');
@@ -86,12 +196,23 @@ export function PublicJoinPage() {
     setAcceptedTerms(false);
   }
 
+  if (loading) {
+    return (
+      <div className="public-join-page">
+        <div className="public-join-card">
+          <h1>Φόρτωση…</h1>
+          <p className="muted">Ελέγχουμε τον σύνδεσμο εγγραφής.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!club) {
     return (
       <div className="public-join-page">
         <div className="public-join-card">
           <h1>Ο σύνδεσμος δεν βρέθηκε</h1>
-          <p className="muted">Ελέγξτε το URL ή επικοινωνήστε με τον σύλλογο.</p>
+          <p className="muted">{loadError || 'Ελέγξτε το URL ή επικοινωνήστε με τον σύλλογο.'}</p>
           <Link to="/login" className="text-link">
             Σύνδεση →
           </Link>
@@ -100,7 +221,7 @@ export function PublicJoinPage() {
     );
   }
 
-  if (!settings?.enabled) {
+  if (!club.enabled) {
     return (
       <div className="public-join-page">
         <div className="public-join-card">
@@ -131,7 +252,9 @@ export function PublicJoinPage() {
 
         <form className="public-join-card" onSubmit={(e) => void handleSubmit(e)}>
           <h2>Φόρμα εγγραφής αθλητή</h2>
-          <p className="lede">Συμπληρώστε τα στοιχεία. Θα ενημερωθείτε μετά τον έλεγχο από τον σύλλογο.</p>
+          <p className="lede">
+            Συμπληρώστε τα στοιχεία. Θα ενημερωθείτε μετά τον έλεγχο από τον σύλλογο.
+          </p>
 
           <div className="public-join-grid">
             <label className="field">
@@ -193,12 +316,13 @@ export function PublicJoinPage() {
               />
             </label>
             <label className="field">
-              <span className="field-label">Email</span>
+              <span className="field-label">Email κηδεμόνα</span>
               <input
                 className="field-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="Για επιβεβαίωση αίτησης"
               />
             </label>
             <label className="field">
@@ -209,7 +333,7 @@ export function PublicJoinPage() {
                 onChange={(e) => setClassId(e.target.value)}
               >
                 <option value="">—</option>
-                {classes.map((cls) => (
+                {club.classes.map((cls) => (
                   <option key={cls.id} value={cls.id}>
                     {cls.name}
                     {cls.sport ? ` · ${cls.sport}` : ''}
@@ -230,7 +354,7 @@ export function PublicJoinPage() {
               />
               Πλήρης εγγραφή
             </label>
-            {settings.allowTrial ? (
+            {club.allowTrial ? (
               <label>
                 <input
                   type="radio"
@@ -241,7 +365,7 @@ export function PublicJoinPage() {
                 Δοκιμαστική προπόνηση
               </label>
             ) : null}
-            {settings.allowWaitlist ? (
+            {club.allowWaitlist ? (
               <label>
                 <input
                   type="radio"
@@ -265,12 +389,12 @@ export function PublicJoinPage() {
           </label>
 
           <div className="public-join-terms">
-            {termsHtml ? (
+            {club.termsHtml ? (
               <details className="public-join-terms-details">
                 <summary>Όροι χρήσης / πολιτική απορρήτου</summary>
                 <div
                   className="public-join-terms-body"
-                  dangerouslySetInnerHTML={{ __html: termsHtml }}
+                  dangerouslySetInnerHTML={{ __html: club.termsHtml }}
                 />
               </details>
             ) : (

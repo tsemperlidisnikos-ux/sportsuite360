@@ -13,20 +13,92 @@ export type VivaSettlement = {
 
 type MirrorRecord = { updatedAt: string; payload: unknown };
 
+export type PublicClubClass = {
+  id: string;
+  name: string;
+  sport?: string;
+  maxStudents?: number;
+};
+
+export type PublicClubConfig = {
+  clubId: string;
+  slug: string;
+  name: string;
+  city: string;
+  logoUrl: string | null;
+  heroImageUrl: string | null;
+  enabled: boolean;
+  autoApprove: boolean;
+  allowTrial: boolean;
+  allowWaitlist: boolean;
+  classes: PublicClubClass[];
+  termsHtml: string;
+  updatedAt: string;
+};
+
+export type ClubNotifySmtp = {
+  enabled: boolean;
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  fromName: string;
+};
+
+export type ClubNotifyConfig = {
+  clubId: string;
+  clubName: string;
+  notifyEmail: string;
+  smtp: ClubNotifySmtp;
+  updatedAt: string;
+};
+
+export type RemoteRegistrationApplication = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  gender: string;
+  guardianName: string;
+  guardianPhone: string;
+  email: string;
+  classId: string | null;
+  kind: 'full' | 'trial' | 'waitlist';
+  status: 'pending' | 'approved' | 'rejected';
+  notes: string;
+  createdAt: string;
+  athleteId?: string | null;
+};
+
 type GlobalStore = {
   settlements: VivaSettlement[];
   mirrors: Record<string, MirrorRecord>;
+  publicClubs: Record<string, PublicClubConfig>;
+  notifyConfigs: Record<string, ClubNotifyConfig>;
+  pendingApps: Record<string, RemoteRegistrationApplication[]>;
 };
 
 const SETTLEMENTS_KEY = 'ss360:settlements';
 const MIRROR_PREFIX = 'ss360:mirror:';
 const MIRROR_INDEX_KEY = 'ss360:mirror-keys';
+const PUBLIC_CLUB_PREFIX = 'ss360:public-club:';
+const NOTIFY_PREFIX = 'ss360:notify:';
+const PENDING_APPS_PREFIX = 'ss360:pending-apps:';
 
 function memory(): GlobalStore {
   const g = globalThis as typeof globalThis & { __ss360?: GlobalStore };
   if (!g.__ss360) {
-    g.__ss360 = { settlements: [], mirrors: {} };
+    g.__ss360 = {
+      settlements: [],
+      mirrors: {},
+      publicClubs: {},
+      notifyConfigs: {},
+      pendingApps: {},
+    };
   }
+  if (!g.__ss360.publicClubs) g.__ss360.publicClubs = {};
+  if (!g.__ss360.notifyConfigs) g.__ss360.notifyConfigs = {};
+  if (!g.__ss360.pendingApps) g.__ss360.pendingApps = {};
   return g.__ss360;
 }
 
@@ -114,4 +186,77 @@ export async function listMirrorKeys(): Promise<string[]> {
   const redis = getRedis();
   if (!redis) return Object.keys(memory().mirrors);
   return (await redis.get<string[]>(MIRROR_INDEX_KEY)) ?? [];
+}
+
+export async function savePublicClubConfig(config: PublicClubConfig): Promise<void> {
+  const slug = config.slug.trim().toLowerCase();
+  const redis = getRedis();
+  if (!redis) {
+    for (const [key, value] of Object.entries(memory().publicClubs)) {
+      if (value.clubId === config.clubId && key !== slug) {
+        delete memory().publicClubs[key];
+      }
+    }
+    memory().publicClubs[slug] = { ...config, slug };
+    return;
+  }
+  const indexKey = 'ss360:public-club-index';
+  const index = (await redis.get<Record<string, string>>(indexKey)) ?? {};
+  const prevSlug = Object.entries(index).find(([, id]) => id === config.clubId)?.[0];
+  if (prevSlug && prevSlug !== slug) {
+    await redis.del(`${PUBLIC_CLUB_PREFIX}${prevSlug}`);
+    delete index[prevSlug];
+  }
+  index[slug] = config.clubId;
+  await redis.set(indexKey, index);
+  await redis.set(`${PUBLIC_CLUB_PREFIX}${slug}`, { ...config, slug });
+}
+
+export async function loadPublicClubBySlug(slug: string): Promise<PublicClubConfig | null> {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return null;
+  const redis = getRedis();
+  if (!redis) return memory().publicClubs[normalized] ?? null;
+  return (await redis.get<PublicClubConfig>(`${PUBLIC_CLUB_PREFIX}${normalized}`)) ?? null;
+}
+
+export async function saveClubNotifyConfig(config: ClubNotifyConfig): Promise<void> {
+  const redis = getRedis();
+  if (!redis) {
+    memory().notifyConfigs[config.clubId] = config;
+    return;
+  }
+  await redis.set(`${NOTIFY_PREFIX}${config.clubId}`, config);
+}
+
+export async function loadClubNotifyConfig(clubId: string): Promise<ClubNotifyConfig | null> {
+  const redis = getRedis();
+  if (!redis) return memory().notifyConfigs[clubId] ?? null;
+  return (await redis.get<ClubNotifyConfig>(`${NOTIFY_PREFIX}${clubId}`)) ?? null;
+}
+
+export async function appendPendingApplication(
+  clubId: string,
+  application: RemoteRegistrationApplication,
+): Promise<RemoteRegistrationApplication[]> {
+  const redis = getRedis();
+  if (!redis) {
+    const prev = memory().pendingApps[clubId] ?? [];
+    const next = [application, ...prev.filter((a) => a.id !== application.id)].slice(0, 200);
+    memory().pendingApps[clubId] = next;
+    return next;
+  }
+  const key = `${PENDING_APPS_PREFIX}${clubId}`;
+  const prev = (await redis.get<RemoteRegistrationApplication[]>(key)) ?? [];
+  const next = [application, ...prev.filter((a) => a.id !== application.id)].slice(0, 200);
+  await redis.set(key, next);
+  return next;
+}
+
+export async function listPendingApplications(
+  clubId: string,
+): Promise<RemoteRegistrationApplication[]> {
+  const redis = getRedis();
+  if (!redis) return memory().pendingApps[clubId] ?? [];
+  return (await redis.get<RemoteRegistrationApplication[]>(`${PENDING_APPS_PREFIX}${clubId}`)) ?? [];
 }

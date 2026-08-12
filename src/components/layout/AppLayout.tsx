@@ -47,6 +47,7 @@ import {
   type AcademyModuleId,
 } from '../../platform/platformConfig';
 import { useAppData } from '../../hooks/useAppData';
+import * as publicClubCloudService from '../../api/services/publicClubCloudService';
 
 type NavIcon = LucideIcon | ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
 
@@ -133,6 +134,11 @@ export function AppLayout() {
       window.removeEventListener('academyhub-users-updated', onUsersUpdated);
     };
   }, []);
+
+  useEffect(() => {
+    if (!clubId) return;
+    void publicClubCloudService.pullRemoteRegistrationApplications(clubId);
+  }, [clubId]);
 
   const enabledModules = useMemo(() => {
     if (!clubId) return new Set(ACADEMY_MODULES.map((m) => m.id));

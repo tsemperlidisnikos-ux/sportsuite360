@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Check, Plus, Pencil, Trash2, Search, X } from 'lucide-react';
+import * as publicClubCloudService from '../api/services/publicClubCloudService';
 import * as registrationApplicationsService from '../api/services/registrationApplicationsService';
 import * as studentsService from '../api/services/studentsService';
+import { getSession } from '../auth/auth';
 import { AthletesIcon } from '../components/icons/AthletesIcon';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
+import { getPreviewClubId } from '../platform/platformConfig';
 import type { StudentInput } from '../schemas';
 import type { RegistrationApplication, RegistrationApplicationKind } from '../types';
 import { studentStatusLabels } from '../utils/labels';
@@ -90,6 +93,17 @@ export function StudentsPage() {
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [appMessage, setAppMessage] = useState('');
   const [appError, setAppError] = useState('');
+
+  useEffect(() => {
+    const clubId = getSession()?.clubId ?? getPreviewClubId();
+    if (!clubId) return;
+    void publicClubCloudService.pullRemoteRegistrationApplications(clubId).then((result) => {
+      if (result.success && (result.data?.merged ?? 0) > 0) {
+        refresh();
+        setAppMessage(`Συγχρονίστηκαν ${result.data!.merged} νέες αιτήσεις από το cloud.`);
+      }
+    });
+  }, [refresh]);
 
   const pendingApplications = useMemo(
     () =>

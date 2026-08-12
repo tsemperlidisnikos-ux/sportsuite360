@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { ClipboardCopy, ImagePlus, Trash2 } from 'lucide-react';
+import * as publicClubCloudService from '../api/services/publicClubCloudService';
 import {
   getClubById,
   getClubPublicRegistration,
@@ -49,7 +50,7 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSave() {
+  async function handleSave() {
     setSaving(true);
     setError('');
     setMessage('');
@@ -57,13 +58,26 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
       ...form,
       notifyEmail: form.notifyEmail ?? '',
     });
-    setSaving(false);
     if (!result.success) {
+      setSaving(false);
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
       return;
     }
     setForm(getClubPublicRegistration(clubId));
-    setMessage('Οι ρυθμίσεις δημόσιας εγγραφής αποθηκεύτηκαν.');
+    const publish = await publicClubCloudService.publishPublicClubCloud(clubId);
+    setSaving(false);
+    if (!publish.success) {
+      setMessage(
+        'Οι ρυθμίσεις αποθηκεύτηκαν τοπικά. Cloud δημοσίευση απέτυχε — δοκιμάστε ξανά στο live (Vercel) με Redis.',
+      );
+      setError(publish.error ?? '');
+      return;
+    }
+    setMessage(
+      publish.data?.durable
+        ? 'Αποθηκεύτηκε και δημοσιεύτηκε στο cloud. Το /join είναι διαθέσιμο από οποιαδήποτε συσκευή.'
+        : 'Αποθηκεύτηκε. Cloud χωρίς Redis — το /join από άλλες συσκευές μπορεί να μην είναι διαθέσιμο.',
+    );
   }
 
   function handleCopyLink() {
@@ -207,8 +221,9 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
           i
         </span>
         <p>
-          Αν το SMTP είναι ενεργό στις Ρυθμίσεις → Email, στέλνεται ειδοποίηση σε αυτό το address.
-          Αν μείνει κενό, χρησιμοποιείται το email του διαχειριστή ή το SMTP username.
+          Αν το SMTP είναι ενεργό στις Ρυθμίσεις → Email, στέλνεται ειδοποίηση σε αυτό το address
+          και επιβεβαίωση στον κηδεμόνα (αν δόθηκε email). Αν μείνει κενό, χρησιμοποιείται το email
+          του διαχειριστή ή το SMTP username. Μετά την Αποθήκευση η φόρμα δημοσιεύεται στο cloud.
         </p>
       </div>
 
