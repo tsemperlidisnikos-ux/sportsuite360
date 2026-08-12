@@ -1,4 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { Trash2 } from 'lucide-react';
+import * as registrationApplicationsService from '../api/services/registrationApplicationsService';
+import { isPlatformAdmin } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { useAppData } from '../hooks/useAppData';
@@ -268,6 +271,9 @@ function ResultsModal({
   columns,
   rows,
   onClose,
+  onDeleteRow,
+  onDeleteAll,
+  deleting,
 }: {
   open: boolean;
   title: string;
@@ -277,7 +283,11 @@ function ResultsModal({
   columns: Array<{ key: string; label: string }>;
   rows: Array<Record<string, string>>;
   onClose: () => void;
+  onDeleteRow?: (id: string) => void;
+  onDeleteAll?: () => void;
+  deleting?: boolean;
 }) {
+  const showActions = Boolean(onDeleteRow);
   return (
     <Modal
       open={open}
@@ -287,6 +297,16 @@ function ResultsModal({
       className="prints-results-modal"
       footer={
         <>
+          {onDeleteAll && rows.length > 0 ? (
+            <Button
+              type="button"
+              variant="danger"
+              disabled={deleting}
+              onClick={onDeleteAll}
+            >
+              <Trash2 size={16} /> Διαγραφή όλων
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="secondary"
@@ -314,6 +334,7 @@ function ResultsModal({
                 {columns.map((col) => (
                   <th key={col.key}>{col.label}</th>
                 ))}
+                {showActions ? <th></th> : null}
               </tr>
             </thead>
             <tbody>
@@ -322,6 +343,22 @@ function ResultsModal({
                   {columns.map((col) => (
                     <td key={col.key}>{row[col.key] ?? ''}</td>
                   ))}
+                  {showActions ? (
+                    <td className="row-actions">
+                      {row.id ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={deleting}
+                          aria-label="Διαγραφή αίτησης"
+                          title="Διαγραφή"
+                          onClick={() => onDeleteRow?.(row.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      ) : null}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -976,7 +1013,8 @@ function TrainingAttendanceSheetSection() {
 }
 
 function RegistrationApplicationsSection() {
-  const { data } = useAppData();
+  const { data, refresh } = useAppData();
+  const canDelete = isPlatformAdmin();
   const [fromDate, setFromDate] = useState('');
   const [untilDate, setUntilDate] = useState(todayIso);
   const [category, setCategory] = useState('pending');
@@ -984,6 +1022,7 @@ function RegistrationApplicationsSection() {
   const [teamId, setTeamId] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [deleting, setDeleting] = useState(false);
 
   function kindLabel(kind: string): string {
     if (kind === 'trial') return 'Δοκιμαστική';
@@ -997,9 +1036,22 @@ function RegistrationApplicationsSection() {
     return 'Εκκρεμής';
   }
 
-  function runSearch() {
-    const apps = data.registrationApplications ?? [];
-    const filtered = apps.filter((app) => {
+  function mapRows(apps: typeof data.registrationApplications) {
+    return apps.map((app, index) => ({
+      id: app.id,
+      index: String(index + 1),
+      name: `${app.lastName} ${app.firstName}`.trim(),
+      guardian: app.guardianName || '—',
+      phone: app.guardianPhone || '—',
+      team: data.classes.find((c) => c.id === app.classId)?.name ?? '—',
+      kind: kindLabel(app.kind),
+      status: statusLabel(app.status),
+      date: (app.createdAt || '').slice(0, 10) || '—',
+    }));
+  }
+
+  function filterApps(apps = data.registrationApplications ?? []) {
+    return apps.filter((app) => {
       const day = (app.createdAt || '').slice(0, 10);
       if (fromDate && day && day < fromDate) return false;
       if (untilDate && day && day > untilDate) return false;
@@ -1010,20 +1062,45 @@ function RegistrationApplicationsSection() {
       if (category === 'waitlist' && app.kind !== 'waitlist') return false;
       return true;
     });
+  }
 
-    setRows(
-      filtered.map((app, index) => ({
-        index: String(index + 1),
-        name: `${app.lastName} ${app.firstName}`.trim(),
-        guardian: app.guardianName || '—',
-        phone: app.guardianPhone || '—',
-        team: data.classes.find((c) => c.id === app.classId)?.name ?? '—',
-        kind: kindLabel(app.kind),
-        status: statusLabel(app.status),
-        date: (app.createdAt || '').slice(0, 10) || '—',
-      })),
-    );
+  function runSearch() {
+    setRows(mapRows(filterApps()));
     setShowResults(true);
+  }
+
+  async function handleDeleteRow(id: string) {
+    if (!canDelete || deleting) return;
+    if (!confirm('Διαγραφή αυτής της αίτησης;')) return;
+    setDeleting(true);
+    const result = await registrationApplicationsService.deleteRegistrationApplication(id);
+    setDeleting(false);
+    if (!result.success) {
+      window.alert(result.error ?? 'Αποτυχία διαγραφής');
+      return;
+    }
+    refresh();
+    setRows((prev) =>
+      prev
+        .filter((row) => row.id !== id)
+        .map((row, index) => ({ ...row, index: String(index + 1) })),
+    );
+  }
+
+  async function handleDeleteAll() {
+    if (!canDelete || deleting || rows.length === 0) return;
+    if (!confirm(`Διαγραφή και των ${rows.length} εμφανιζόμενων αιτήσεων;`)) return;
+    setDeleting(true);
+    const result = await registrationApplicationsService.deleteRegistrationApplications(
+      rows.map((row) => row.id).filter(Boolean),
+    );
+    setDeleting(false);
+    if (!result.success) {
+      window.alert(result.error ?? 'Αποτυχία διαγραφής');
+      return;
+    }
+    refresh();
+    setRows([]);
   }
 
   return (
@@ -1099,6 +1176,9 @@ function RegistrationApplicationsSection() {
         ]}
         rows={rows}
         onClose={() => setShowResults(false)}
+        onDeleteRow={canDelete ? (id) => void handleDeleteRow(id) : undefined}
+        onDeleteAll={canDelete ? () => void handleDeleteAll() : undefined}
+        deleting={deleting}
       />
     </SectionShell>
   );

@@ -1,5 +1,5 @@
 import { apiClient } from '../apiClient';
-import { getSession, getUserById } from '../../auth/auth';
+import { getSession, getUserById, isPlatformAdmin } from '../../auth/auth';
 import { getClubById, getClubPublicRegistration, getClubSmtp } from '../../auth/clubs';
 import { createId, getData, mutateData } from '../../data/repository';
 import type {
@@ -190,6 +190,43 @@ export async function rejectRegistrationApplication(id: string) {
       data.registrationApplications = apps.map((a, i) => (i === index ? application! : a));
     });
     return application!;
+  });
+}
+
+export async function deleteRegistrationApplication(id: string) {
+  return apiClient(() => {
+    if (!isPlatformAdmin()) {
+      throw new Error('Μόνο Platform Admin μπορεί να διαγράψει αιτήσεις εγγραφής.');
+    }
+    mutateData((data) => {
+      const apps = data.registrationApplications ?? [];
+      if (!apps.some((a) => a.id === id)) {
+        throw new Error('Η αίτηση δεν βρέθηκε.');
+      }
+      data.registrationApplications = apps.filter((a) => a.id !== id);
+    });
+    return { id };
+  });
+}
+
+export async function deleteRegistrationApplications(ids: string[]) {
+  return apiClient(() => {
+    if (!isPlatformAdmin()) {
+      throw new Error('Μόνο Platform Admin μπορεί να διαγράψει αιτήσεις εγγραφής.');
+    }
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (unique.length === 0) return { deleted: 0 };
+    let deleted = 0;
+    mutateData((data) => {
+      const before = data.registrationApplications ?? [];
+      const remove = new Set(unique);
+      data.registrationApplications = before.filter((a) => {
+        if (!remove.has(a.id)) return true;
+        deleted += 1;
+        return false;
+      });
+    });
+    return { deleted };
   });
 }
 
