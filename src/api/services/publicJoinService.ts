@@ -110,6 +110,7 @@ export async function submitPublicJoin(input: PublicJoinInput) {
         status: shouldCreateAthlete ? 'approved' : 'pending',
         notes: input.notes?.trim() || '',
         createdAt: localDateIso(),
+        athleteId: createdAthleteId,
       };
       data.registrationApplications = [application, ...(data.registrationApplications ?? [])];
     });

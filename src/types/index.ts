@@ -376,6 +376,8 @@ export interface RegistrationApplication {
   status: RegistrationApplicationStatus;
   notes: string;
   createdAt: string;
+  /** Αθλητής που δημιουργήθηκε μετά από έγκριση / auto-approve. */
+  athleteId?: string | null;
 }
 
 export interface AppData {

@@ -3944,3 +3944,27 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+/* Pending public registration applications on Athletes page */
+.registration-apps-panel {
+  border-color: rgba(180, 120, 20, 0.28);
+  background: linear-gradient(180deg, #fffaf0 0%, #fff 55%);
+}
+
+.registration-apps-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.25rem;
+}
+
+.registration-apps-head h3 {
+  margin: 0;
+}
+
+.registration-apps-panel .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
