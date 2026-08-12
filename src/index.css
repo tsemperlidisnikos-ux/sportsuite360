@@ -1261,17 +1261,18 @@ th {
 }
 
 .club-users-permissions .admin-check-list,
-.club-users-permissions-grid {
+.settings-page .club-users-permissions-grid {
   max-height: none;
   overflow: visible;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.35rem 1.25rem;
+  margin-bottom: 0;
 }
 
 @media (max-width: 640px) {
   .club-users-permissions .admin-check-list,
-  .club-users-permissions-grid {
+  .settings-page .club-users-permissions-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -392,7 +392,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
           ) : null}
 
           <SettingsFormRow label="Δικαιώματα πρόσβασης">
-            <div className="club-users-permissions-grid admin-check-list">
+            <div className="club-users-permissions-grid">
               {CLUB_PERMISSIONS.map((permission) => (
                 <label key={permission} className="admin-check">
                   <span>{CLUB_PERMISSION_LABELS[permission]}</span>
