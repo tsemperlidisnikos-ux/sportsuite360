@@ -1,5 +1,9 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
+import {
+  ATHLETE_INCOME_SUBCATEGORY,
+  ensureAthletePaymentRevenuesSynced,
+} from '../api/services/athletePaymentRevenueBridge';
 import * as financeService from '../api/services/financeService';
 import { Button } from './ui/Button';
 import { useAppData } from '../hooks/useAppData';
@@ -53,8 +57,8 @@ function TitleAnalysisTable({ children }: { children: ReactNode }) {
 }
 
 export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
-  const { data } = useAppData();
-  const [subcategory, setSubcategory] = useState<string>(() => getConfiguredIncomeCategories()[0] ?? 'ΕΙΣΙΤΗΡΙΑ ΑΓΩΝΩΝ');
+  const { data, refresh } = useAppData();
+  const [subcategory, setSubcategory] = useState<string>(ATHLETE_INCOME_SUBCATEGORY);
   const [clubName, setClubName] = useState('');
   const [sport, setSport] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -72,7 +76,18 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const incomeCategories = getConfiguredIncomeCategories();
+  useEffect(() => {
+    ensureAthletePaymentRevenuesSynced();
+    refresh();
+  }, [refresh]);
+
+  const incomeCategories = useMemo(() => {
+    const configured = getConfiguredIncomeCategories().filter(
+      (item) => item !== ATHLETE_INCOME_SUBCATEGORY,
+    );
+    return [ATHLETE_INCOME_SUBCATEGORY, ...configured];
+  }, []);
+  const isAthletePayments = subcategory === ATHLETE_INCOME_SUBCATEGORY;
   const showPersonFields = requiresPersonName(subcategory);
   const showSubscriptionPeriod = isSubscriptionSubcategory(subcategory);
   const nameKind = personNameKind(subcategory);
@@ -205,7 +220,10 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
         <div>
           <p className="eyebrow">Κατηγορία</p>
           <h2>ΕΣΟΔΑ</h2>
-          <p className="lede">Καταχώρηση εσόδων συλλόγου ανά υποκατηγορία.</p>
+          <p className="lede">
+            Καταχώρηση εσόδων συλλόγου ανά υποκατηγορία, μαζί με αυτόματες πληρωμές αθλητών
+            (εγγραφές, συνδρομές, κάρτες διαρκείας).
+          </p>
         </div>
         <div className="stat-pill">
           <span>Σύνολο υποκατηγορίας</span>
@@ -231,6 +249,15 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
         </TitleAnalysisTable>
       </div>
 
+      {isAthletePayments ? (
+        <p className="admin-entry-note">
+          Τα έσοδα αυτής της κατηγορίας προστίθενται αυτόματα από τις πληρωμές αθλητών
+          (Συνδρομές / Κινήσεις / Viva): εγγραφές, μηνιαίες ή ετήσιες συνδρομές και κάρτες
+          διαρκείας. Εμφανίζονται και στην Ανάλυση.
+        </p>
+      ) : null}
+
+      {isAthletePayments ? null : (
       <form className="entry-form" onSubmit={(e) => void handleSubmit(e)}>
         <TitleAnalysisTable>
           <TitleAnalysisRow title="Σωματείο" htmlFor="income-club">
@@ -445,10 +472,15 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
           </Button>
         </div>
       </form>
+      )}
 
       <div className="income-entry-list">
         {filteredRevenues.length === 0 ? (
-          <p className="income-entry-empty">Δεν υπάρχουν εγγραφές ακόμη.</p>
+          <p className="income-entry-empty">
+            {isAthletePayments
+              ? 'Δεν υπάρχουν ακόμη πληρωμές αθλητών για εμφάνιση ως έσοδα.'
+              : 'Δεν υπάρχουν εγγραφές ακόμη.'}
+          </p>
         ) : (
           <table className="data-table">
             <thead>
@@ -457,8 +489,9 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
                 <th>Περιγραφή</th>
                 <th>Σωματείο</th>
                 <th>Άθλημα</th>
+                <th>Περίοδος</th>
                 <th>Ποσό</th>
-                <th></th>
+                {isAthletePayments ? null : <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -471,18 +504,21 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
                   </td>
                   <td>{rev.clubName || '—'}</td>
                   <td>{rev.sport || '—'}</td>
+                  <td>{rev.subscriptionPeriod || '—'}</td>
                   <td>{formatCurrency(rev.amount)}</td>
-                  <td className="row-actions">
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      aria-label="Διαγραφή"
-                      disabled={deletingId === rev.id}
-                      onClick={() => void handleDelete(rev.id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
+                  {isAthletePayments ? null : (
+                    <td className="row-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        aria-label="Διαγραφή"
+                        disabled={deletingId === rev.id}
+                        onClick={() => void handleDelete(rev.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -2671,13 +2671,19 @@ th {
   letter-spacing: 0.02em;
 }
 
+/* Μόνο η στήλη Μήνας/Έτος — όχι το «Χρέωση» στη 2η γραμμή κεφαλίδας */
 .ap-finance-table td:first-child,
-.ap-finance-table th:first-child {
+.ap-finance-table thead tr:first-child th:first-child {
   text-align: left;
   position: sticky;
   left: 0;
   background: #fff;
   z-index: 1;
+}
+
+.ap-finance-table thead tr:first-child th:first-child {
+  background: #f1f7f4;
+  z-index: 2;
 }
 
 .ap-balance-col {

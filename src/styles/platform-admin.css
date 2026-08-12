@@ -265,3 +265,96 @@
     border-bottom: 1px solid var(--line);
   }
 }
+
+.platform-diagnostic .diag-progress {
+  margin-top: 0.75rem;
+  background: rgba(26, 62, 56, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  min-height: 1.5rem;
+}
+
+.platform-diagnostic .diag-progress-bar {
+  height: 0.35rem;
+  background: var(--brand, #1a3e38);
+  transition: width 0.2s ease;
+}
+
+.platform-diagnostic .diag-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin: 0.85rem 0;
+}
+
+.diag-sev {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.diag-sev--critical {
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+
+.diag-sev--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.diag-sev--info {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.diag-sev--ok {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.diag-list {
+  display: grid;
+  gap: 0.65rem;
+  max-height: 420px;
+  overflow: auto;
+  margin-top: 0.75rem;
+}
+
+.diag-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  background: #fff;
+}
+
+.diag-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.65rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.diag-cat {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.diag-detail,
+.diag-fix {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.diag-fix {
+  color: #17362e;
+}

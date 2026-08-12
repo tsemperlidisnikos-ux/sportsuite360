@@ -99,8 +99,10 @@ export function DashboardPage() {
       )
       .reduce((sum, t) => sum + t.amount, 0);
 
+    // Χειροκίνητα έσοδα αθλητή χωρίς mirror από πληρωμή (αποφυγή διπλομέτρησης).
     const fromAthleteRevenues = data.revenues
       .filter((r) => {
+        if (r.linkedTransactionId) return false;
         if (r.date !== today || r.paymentStatus !== 'paid') return false;
         if (!r.studentId && !r.surname && !r.firstName) return false;
         if (!sportKey) return true;

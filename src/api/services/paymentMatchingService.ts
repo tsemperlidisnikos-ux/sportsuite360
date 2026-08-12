@@ -1,6 +1,7 @@
 import { apiClient } from '../apiClient';
 import { getData, mutateData } from '../../data/repository';
 import type { AthleteTransaction } from '../../types';
+import { syncRevenuesForPaymentInData } from './athletePaymentRevenueBridge';
 
 function chargeRemaining(charge: AthleteTransaction, payments: AthleteTransaction[]): number {
   const allocated = payments
@@ -60,6 +61,7 @@ export async function applyPaymentToCharge(input: {
           : open[0]) ?? null;
       if (!target) throw new Error('Δεν υπάρχει ανοιχτή χρέωση για αντιστοίχιση');
       payment.allocatesChargeId = target.charge.id;
+      syncRevenuesForPaymentInData(data, payment.id);
       result = {
         paymentId: payment.id,
         chargeId: target.charge.id,
@@ -82,6 +84,7 @@ export async function clearPaymentAllocation(paymentId: string) {
         throw new Error('Η πληρωμή δεν βρέθηκε');
       }
       payment.allocatesChargeId = null;
+      syncRevenuesForPaymentInData(data, payment.id);
     });
     return { paymentId };
   });

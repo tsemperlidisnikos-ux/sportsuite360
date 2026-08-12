@@ -8,10 +8,14 @@ import {
 } from '../../schemas';
 import type { Expense, Revenue } from '../../types';
 import { paymentMethodLabel } from '../../shared/paymentMethods';
+import { ensureAthletePaymentRevenuesSynced } from './athletePaymentRevenueBridge';
 import { assertFinanceMonthOpen } from './financePeriodService';
 
 export async function getRevenues() {
-  return apiClient(() => getData().revenues);
+  return apiClient(() => {
+    ensureAthletePaymentRevenuesSynced();
+    return getData().revenues;
+  });
 }
 
 export async function createRevenue(input: RevenueInput) {
@@ -104,6 +108,7 @@ export async function deleteExpense(id: string) {
 
 export async function getFinanceSummary() {
   return apiClient(() => {
+    ensureAthletePaymentRevenuesSynced();
     const { revenues, expenses, students, coaches, classes, cashAccounts } = getData();
     const paidRevenues = revenues.filter((r) => r.paymentStatus === 'paid');
     const totalRevenue = paidRevenues.reduce((sum, r) => sum + r.amount, 0);

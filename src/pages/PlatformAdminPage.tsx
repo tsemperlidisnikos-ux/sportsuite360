@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getSession, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { BackupSchedulePanel } from '../components/BackupSchedulePanel';
+import { PlatformDiagnosticPanel } from '../components/PlatformDiagnosticPanel';
 import { Button } from '../components/ui/Button';
 import { createId, getData, mutateData, replaceAllClubsData, replaceData, resetData } from '../data/repository';
 import { downloadBackupZip, formatBackupError, readBackupFile } from '../utils/backupArchive';
@@ -863,6 +864,26 @@ export function PlatformAdminPage() {
                 </RecordsRow>
                 <RecordsRow title="Σημείωση">
                   Αυτόματη εκτέλεση όσο είναι ανοιχτή η εφαρμογή (τοπική ώρα browser).
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
+
+          <AdminRow
+            title="Διαγνωστικό τεστ εφαρμογής"
+            description="Αναλυτικός έλεγχος όλων των βασικών λειτουργιών για bugs/ασυνέπειες, με οδηγίες διόρθωσης."
+            entry={<PlatformDiagnosticPanel onSaved={flash} />}
+            records={
+              <RecordsTable>
+                <RecordsRow title="Καλύπτει">
+                  API, Redis/sync, storage, users, clubs, SMTP/Viva, δεδομένα, οικονομικά, fees,
+                  αγώνες, config, backup.
+                </RecordsRow>
+                <RecordsRow title="Αποτέλεσμα">
+                  Κρίσιμα / προειδοποιήσεις / info / OK + τρόπος διόρθωσης ανά εύρημα.
+                </RecordsRow>
+                <RecordsRow title="Εξαγωγή">
+                  Λήψη αναφοράς TXT μετά την εκτέλεση.
                 </RecordsRow>
               </RecordsTable>
             }

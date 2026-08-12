@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
+import { ATHLETE_INCOME_SUBCATEGORY } from '../api/services/athletePaymentRevenueBridge';
 import * as financeService from '../api/services/financeService';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -201,14 +202,17 @@ export function FinanceReportsPanel() {
   }, [data.revenues, data.expenses]);
 
   const subcategoryOptions = useMemo(() => {
-    const income = getConfiguredIncomeCategories();
-    const expense = getConfiguredExpenseCategories();
-    if (draft.type === 'income') return income.length ? income : [...INCOME_SUBCATEGORIES];
-    if (draft.type === 'expense') return expense.length ? expense : [...EXPENSE_SUBCATEGORIES];
-    return [
-      ...(income.length ? income : [...INCOME_SUBCATEGORIES]),
-      ...(expense.length ? expense : [...EXPENSE_SUBCATEGORIES]),
+    const configuredIncome = getConfiguredIncomeCategories().filter(
+      (item) => item !== ATHLETE_INCOME_SUBCATEGORY,
+    );
+    const income = [
+      ATHLETE_INCOME_SUBCATEGORY,
+      ...(configuredIncome.length ? configuredIncome : [...INCOME_SUBCATEGORIES]),
     ];
+    const expense = getConfiguredExpenseCategories();
+    if (draft.type === 'income') return income;
+    if (draft.type === 'expense') return expense.length ? expense : [...EXPENSE_SUBCATEGORIES];
+    return [...income, ...(expense.length ? expense : [...EXPENSE_SUBCATEGORIES])];
   }, [draft.type]);
 
   const todayIso = localDateIso();

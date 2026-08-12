@@ -3,6 +3,10 @@ import { createId, getData, mutateData } from '../../data/repository';
 import { transactionSchema, type TransactionInput } from '../../schemas';
 import type { AthleteTransaction } from '../../types';
 import { localDateTimeIso } from '../../utils/dates';
+import {
+  removeRevenuesForPaymentInData,
+  syncRevenuesForPaymentInData,
+} from './athletePaymentRevenueBridge';
 
 export async function getTransactions() {
   return apiClient(() => getData().transactions ?? []);
@@ -21,18 +25,33 @@ export async function createTransaction(input: TransactionInput) {
       if (!data.transactions) data.transactions = [];
       data.transactions.push(transaction);
     });
+
+    let current = transaction;
     if (transaction.type === 'payment' && !transaction.allocatesChargeId) {
       const { autoAllocatePayment } = await import('./paymentMatchingService');
-      await autoAllocatePayment(transaction.id);
-      const refreshed = getData().transactions.find((t) => t.id === transaction.id);
-      return refreshed ?? transaction;
+      try {
+        await autoAllocatePayment(transaction.id);
+      } catch {
+        // Δεν υπάρχει ανοιχτή χρέωση — το έσοδο δημιουργείται χωρίς tags χρέωσης.
+      }
+      current =
+        getData().transactions.find((t) => t.id === transaction.id) ?? transaction;
     }
-    return transaction;
+
+    if (current.type === 'payment') {
+      mutateData((data) => {
+        syncRevenuesForPaymentInData(data, current.id);
+      });
+      current =
+        getData().transactions.find((t) => t.id === current.id) ?? current;
+    }
+
+    return current;
   });
 }
 
 export async function updateTransaction(id: string, input: TransactionInput) {
-  return apiClient(() => {
+  return apiClient(async () => {
     const parsed = transactionSchema.parse(input);
     let updated: AthleteTransaction | undefined;
     mutateData((data) => {
@@ -44,6 +63,11 @@ export async function updateTransaction(id: string, input: TransactionInput) {
         ...parsed,
       };
       data.transactions[index] = updated;
+      if (updated.type === 'payment') {
+        syncRevenuesForPaymentInData(data, id);
+      } else {
+        removeRevenuesForPaymentInData(data, id);
+      }
     });
     return updated!;
   });
@@ -53,10 +77,9 @@ export async function deleteTransaction(id: string) {
   return apiClient(() => {
     mutateData((data) => {
       data.transactions = (data.transactions ?? []).filter((t) => t.id !== id);
-      // Remove auto-created revenue linked to this athlete payment
-      data.revenues = data.revenues.filter(
-        (r) => !r.description.includes(`(${id})`),
-      );
+      removeRevenuesForPaymentInData(data, id);
+      // Legacy mirrors που χρησιμοποιούσαν περιγραφή με (txnId)
+      data.revenues = data.revenues.filter((r) => !r.description.includes(`(${id})`));
     });
     return { id };
   });
