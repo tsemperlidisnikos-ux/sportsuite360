@@ -1,4 +1,4 @@
-import { getUsers, type AppUser } from '../../auth/auth';
+import { getUsers, migratePlaintextPasswords, type AppUser } from '../../auth/auth';
 import { isPasswordHashed } from '../../auth/password';
 import { getClubs, getClubSmtp, getClubViva, type Club } from '../../auth/clubs';
 import { exportAllClubsData, getData } from '../../data/repository';
@@ -11,6 +11,7 @@ import {
 } from '../../platform/platformConfig';
 import type { AppData } from '../../types';
 import { appDataWeight } from '../../data/mediaStrip';
+import { ensureLegacyPaymentsMatchedAllClubs } from './paymentMatchingService';
 
 export type DiagnosticSeverity = 'critical' | 'warning' | 'info' | 'ok';
 
@@ -327,7 +328,7 @@ function checkUsers(users: AppUser[], clubs: Club[]): DiagnosticFinding[] {
         severity: 'warning',
         title: `${plaintext} κωδικοί χωρίς hash`,
         detail: 'Παλιοί λογαριασμοί με plaintext password στο localStorage.',
-        fix: 'Κάντε login με κάθε λογαριασμό (γίνεται auto-hash) ή ορίστε νέο κωδικό από Ρυθμίσεις → Χρήστες.',
+        fix: 'Ξανατρέξτε το διαγνωστικό τεστ (γίνεται αυτόματη διόρθωση) ή login με κάθε λογαριασμό.',
       }),
     );
   } else {
@@ -555,7 +556,10 @@ function checkAppData(clubId: string, clubName: string, data: AppData): Diagnost
         severity: unallocated > payments.length * 0.5 ? 'warning' : 'info',
         title: `${prefix}: ${unallocated}/${payments.length} πληρωμές χωρίς αντιστοίχιση`,
         detail: 'Πληρωμές χωρίς allocatesChargeId.',
-        fix: 'Οι νέες πληρωμές αντιστοιχίζονται αυτόματα. Για παλιές: καταχωρήστε ξανά ή ελέγξτε Συναλλαγές.',
+        fix:
+          unallocated > 0
+            ? 'Ξανατρέξτε το διαγνωστικό (αυτόματη αντιστοίχιση σε όλα τα clubs) ή ανοίξτε Συναλλαγές/Οικονομικά.'
+            : 'Καμία ενέργεια.',
       }),
     );
   }
@@ -776,11 +780,69 @@ function checkRoutesSmoke(): DiagnosticFinding[] {
   return out;
 }
 
+async function applyAutomaticRepairs(
+  onProgress?: ProgressFn,
+): Promise<DiagnosticFinding[]> {
+  onProgress?.('Αυτόματες διορθώσεις', 2);
+  const out: DiagnosticFinding[] = [];
+
+  const hashed = await migratePlaintextPasswords();
+  out.push(
+    finding({
+      category: 'Repair',
+      severity: hashed > 0 ? 'ok' : 'info',
+      title:
+        hashed > 0
+          ? `Διορθώθηκαν ${hashed} plaintext κωδικοί`
+          : 'Δεν υπήρχαν plaintext κωδικοί',
+      detail:
+        hashed > 0
+          ? 'Οι κωδικοί μετατράπηκαν σε PBKDF2 hash χωρίς αλλαγή του μυστικού.'
+          : 'Όλοι οι κωδικοί ήταν ήδη hashed.',
+      fix: 'Καμία ενέργεια.',
+    }),
+  );
+
+  const matched = ensureLegacyPaymentsMatchedAllClubs();
+  out.push(
+    finding({
+      category: 'Repair',
+      severity: matched.paymentsMatched > 0 ? 'ok' : 'info',
+      title:
+        matched.paymentsMatched > 0
+          ? `Αντιστοιχίστηκαν ${matched.paymentsMatched} πληρωμές σε ${matched.clubsTouched} συλλόγους`
+          : 'Δεν υπήρχαν πληρωμές χωρίς αντιστοίχιση',
+      detail: 'FIFO / ίδια περίοδος σε όλα τα club stores (συμπεριλαμβανομένου DEMO).',
+      fix: 'Καμία ενέργεια.',
+    }),
+  );
+
+  return out;
+}
+
 export async function runPlatformDiagnostics(
   onProgress?: ProgressFn,
 ): Promise<DiagnosticReport> {
   const started = performance.now();
   const findings: DiagnosticFinding[] = [];
+
+  // Πρώτα διορθώσεις, μετά fresh snapshot των club data για τους ελέγχους.
+  try {
+    findings.push(...(await applyAutomaticRepairs(onProgress)));
+  } catch (err) {
+    findings.push(
+      finding({
+        category: 'Repair',
+        severity: 'critical',
+        title: 'Αποτυχία αυτόματων διορθώσεων',
+        detail: err instanceof Error ? err.message : String(err),
+        fix: 'Ανοίξτε την κονσόλα browser (F12) και ξανατρέξτε το τεστ.',
+      }),
+    );
+  }
+
+  const clubMap = exportAllClubsData();
+  const clubs = getClubs();
   const steps: Array<{ label: string; run: () => Promise<DiagnosticFinding[]> | DiagnosticFinding[] }> =
     [
       { label: 'API health', run: () => checkApiHealth() },
@@ -795,8 +857,6 @@ export async function runPlatformDiagnostics(
       { label: 'Routes', run: () => checkRoutesSmoke() },
     ];
 
-  const clubMap = exportAllClubsData();
-  const clubs = getClubs();
   for (const club of clubs) {
     steps.push({
       label: `Data «${club.name}»`,
@@ -812,7 +872,7 @@ export async function runPlatformDiagnostics(
 
   for (let i = 0; i < steps.length; i += 1) {
     const step = steps[i];
-    onProgress?.(step.label, Math.round(((i + 1) / steps.length) * 100));
+    onProgress?.(step.label, Math.round(((i + 1) / (steps.length + 1)) * 100));
     try {
       const part = await step.run();
       findings.push(...part);

@@ -891,6 +891,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         paymentMethod: 'cash',
         comments: 'Εξόφληση εγγραφής',
         createdAt: daysFromToday(-98, now),
+        allocatesChargeId: 'demo_txn_1',
       },
       {
         id: 'demo_txn_3',
@@ -915,6 +916,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         paymentMethod: 'card',
         comments: 'Πληρωμή συνδρομής',
         createdAt: daysFromToday(-4, now),
+        allocatesChargeId: 'demo_txn_3',
       },
       {
         id: 'demo_txn_5',
@@ -939,6 +941,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         paymentMethod: 'transfer',
         comments: 'Έμβασμα',
         createdAt: today,
+        allocatesChargeId: 'demo_txn_5',
       },
       {
         id: 'demo_txn_7',
@@ -975,6 +978,7 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         paymentMethod: 'viva',
         comments: 'Viva Wallet',
         createdAt: daysFromToday(-7, now),
+        allocatesChargeId: 'demo_txn_8',
       },
     ],
 

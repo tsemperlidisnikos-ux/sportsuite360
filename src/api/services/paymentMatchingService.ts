@@ -1,5 +1,11 @@
+import { getClubs } from '../../auth/clubs';
 import { apiClient } from '../apiClient';
-import { getData, mutateData } from '../../data/repository';
+import {
+  exportAllClubsData,
+  getData,
+  mutateClubData,
+  mutateData,
+} from '../../data/repository';
 import type { AppData, AthleteTransaction } from '../../types';
 import { syncRevenuesForPaymentInData } from './athletePaymentRevenueBridge';
 
@@ -157,4 +163,34 @@ export function ensureLegacyPaymentsMatched(): number {
     }
   });
   return count;
+}
+
+/** Αντιστοιχίζει πληρωμές σε όλα τα club stores (π.χ. DEMO). */
+export function ensureLegacyPaymentsMatchedAllClubs(): {
+  clubsTouched: number;
+  paymentsMatched: number;
+} {
+  const clubIds = new Set([
+    ...getClubs().map((c) => c.id),
+    ...Object.keys(exportAllClubsData()),
+  ]);
+  let clubsTouched = 0;
+  let paymentsMatched = 0;
+
+  for (const clubId of clubIds) {
+    let changedHere = 0;
+    mutateClubData(clubId, (draft) => {
+      const changed = backfillPaymentAllocationsInData(draft);
+      changedHere = changed.length;
+      for (const paymentId of changed) {
+        syncRevenuesForPaymentInData(draft, paymentId);
+      }
+    });
+    if (changedHere > 0) {
+      clubsTouched += 1;
+      paymentsMatched += changedHere;
+    }
+  }
+
+  return { clubsTouched, paymentsMatched };
 }

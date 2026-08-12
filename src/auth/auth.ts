@@ -337,3 +337,21 @@ export function impersonateUser(
 export async function prepareStoredPassword(plain: string): Promise<string> {
   return hashPassword(plain.trim());
 }
+
+/** Μετατρέπει όλους τους plaintext κωδικούς σε PBKDF2 hash (ίδιο secret). */
+export async function migratePlaintextPasswords(): Promise<number> {
+  ensurePlatformAdmin();
+  const users = getUsers();
+  let count = 0;
+  const next: AppUser[] = [];
+  for (const user of users) {
+    if (user.password && !isPasswordHashed(user.password)) {
+      next.push({ ...user, password: await hashPassword(user.password) });
+      count += 1;
+    } else {
+      next.push(user);
+    }
+  }
+  if (count > 0) saveUsers(next);
+  return count;
+}
