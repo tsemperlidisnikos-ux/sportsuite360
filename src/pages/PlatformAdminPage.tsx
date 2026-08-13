@@ -34,14 +34,16 @@ function AdminRow({
   description,
   entry,
   records,
+  id,
 }: {
   title: string;
   description: string;
   entry: ReactNode;
   records: ReactNode;
+  id?: string;
 }) {
   return (
-    <div className="admin-board-row">
+    <div className="admin-board-row" id={id}>
       <div className="admin-board-title">
         <h3>{title}</h3>
         <p>{description}</p>
@@ -392,26 +394,25 @@ export function PlatformAdminPage() {
             <div>Καταχωρημένα δεδομένα</div>
           </div>
 
-          <div id="login-activity">
-            <AdminRow
-              title="Ιστορικό εισόδων"
-              description="Ποιος συνδέθηκε, σε ποιον σύλλογο ανήκει ο λογαριασμός, ρόλος και ώρα. Αποθήκευση στο cloud."
-              entry={<LoginActivityPanel onSaved={flash} />}
-              records={
-                <RecordsTable>
-                  <RecordsRow title="Καταγράφει">
-                    Επιτυχημένες συνδέσεις και impersonate από Platform Admin.
-                  </RecordsRow>
-                  <RecordsRow title="Πεδία">
-                    Όνομα, email, σύλλογος, ρόλος, τύπος (σύνδεση / impersonate), ώρα.
-                  </RecordsRow>
-                  <RecordsRow title="Αποθήκευση">
-                    Cloud durable store (Blob/Redis) + τοπικό αντίγραφο ασφαλείας.
-                  </RecordsRow>
-                </RecordsTable>
-              }
-            />
-          </div>
+          <AdminRow
+            id="login-activity"
+            title="Ιστορικό εισόδων"
+            description="Ποιος συνδέθηκε, σε ποιον σύλλογο ανήκει ο λογαριασμός, ρόλος και ώρα. Αποθήκευση στο cloud."
+            entry={<LoginActivityPanel onSaved={flash} />}
+            records={
+              <RecordsTable>
+                <RecordsRow title="Καταγράφει">
+                  Επιτυχημένες συνδέσεις και impersonate από Platform Admin.
+                </RecordsRow>
+                <RecordsRow title="Πεδία">
+                  Όνομα, email, σύλλογος, ρόλος, τύπος (σύνδεση / impersonate), ώρα.
+                </RecordsRow>
+                <RecordsRow title="Αποθήκευση">
+                  Cloud durable store (Blob/Redis) + τοπικό αντίγραφο ασφαλείας.
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
 
           <AdminRow
             title="Logo εφαρμογής"
