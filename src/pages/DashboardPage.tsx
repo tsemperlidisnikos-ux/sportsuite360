@@ -4,6 +4,7 @@ import { Layers, Banknote, UserCog } from 'lucide-react';
 import { AthletesIcon } from '../components/icons/AthletesIcon';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
+import { getAccountBalances } from '../api/services/cashAccountsService';
 import { useAppData } from '../hooks/useAppData';
 import type { Coach, Student } from '../types';
 import { localDateIso } from '../utils/dates';
@@ -138,12 +139,41 @@ export function DashboardPage() {
           },
         ];
 
+  const moneyStrip = useMemo(() => {
+    const monthPrefix = today.slice(0, 7);
+    const payments = (data.transactions ?? []).filter((t) => t.type === 'payment');
+    const monthCollections = payments
+      .filter((t) => String(t.createdAt || '').slice(0, 7) === monthPrefix)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const charges = (data.transactions ?? []).filter((t) => t.type === 'charge');
+    const charged = charges.reduce((sum, t) => sum + t.amount, 0);
+    const paid = payments.reduce((sum, t) => sum + t.amount, 0);
+    const outstanding = Math.max(0, charged - paid);
+    const cashBalance = getAccountBalances().reduce((sum, account) => sum + account.balance, 0);
+    return { monthCollections, outstanding, cashBalance };
+  }, [data.transactions, data.revenues, data.expenses, data.cashAccounts, today]);
+
   return (
     <div className="stack-lg">
       <PageHeader
         title="Επισκόπηση"
         subtitle="Διαχείριση ακαδημίας σε μία οθόνη."
       />
+
+      <div className="money-strip" aria-label="Οικονομική σύνοψη">
+        <div className="money-strip-item">
+          <span>Ταμείο</span>
+          <strong>{formatCurrency(moneyStrip.cashBalance)}</strong>
+        </div>
+        <div className="money-strip-item is-warn">
+          <span>Οφειλές</span>
+          <strong>{formatCurrency(moneyStrip.outstanding)}</strong>
+        </div>
+        <div className="money-strip-item is-accent">
+          <span>Εισπράξεις μήνα</span>
+          <strong>{formatCurrency(moneyStrip.monthCollections)}</strong>
+        </div>
+      </div>
 
       {sportRows.map((row) => {
         const stats = statsForSport(row.sportKey);

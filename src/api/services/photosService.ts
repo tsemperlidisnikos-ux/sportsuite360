@@ -32,6 +32,7 @@ export async function createPhoto(input: GalleryPhotoInput) {
       imageUrl,
       caption: parsed.caption.trim(),
       fileName: parsed.fileName.trim(),
+      album: (parsed.album ?? '').trim(),
       createdAt: localDateTimeIso(),
     };
     mutateData((data) => {

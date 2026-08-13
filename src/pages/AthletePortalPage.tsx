@@ -1,14 +1,22 @@
 import { useMemo, useState } from 'react';
-import { Bell, CalendarDays, ClipboardCheck, CreditCard } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  CreditCard,
+  Megaphone,
+  XCircle,
+} from 'lucide-react';
 import * as vivaService from '../api/services/vivaService';
 import { getSession } from '../auth/auth';
 import { getClubViva } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
-import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import { getPreviewClubId } from '../platform/platformConfig';
 import { localDateIso } from '../utils/dates';
-import { formatCurrency, formatDate } from '../utils/labels';
+import { formatCurrency, formatDate, dayNames } from '../utils/labels';
+import { announcementVisibleToAthlete } from '../utils/announcementAudience';
 
 function athleteBalance(
   athleteId: string,
@@ -17,6 +25,32 @@ function athleteBalance(
   return transactions
     .filter((t) => t.athleteId === athleteId)
     .reduce((sum, t) => sum + (t.type === 'charge' ? t.amount : -t.amount), 0);
+}
+
+function greetingName(fullName?: string | null): string {
+  const first = (fullName ?? '').trim().split(/\s+/)[0];
+  return first || 'αθλητή';
+}
+
+function shortDayBadge(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const day = dayNames[d.getDay()].slice(0, 3).toUpperCase();
+  const months = [
+    'ΙΑΝ',
+    'ΦΕΒ',
+    'ΜΑΡ',
+    'ΑΠΡ',
+    'ΜΑΙ',
+    'ΙΟΥΝ',
+    'ΙΟΥΛ',
+    'ΑΥΓ',
+    'ΣΕΠ',
+    'ΟΚΤ',
+    'ΝΟΕ',
+    'ΔΕΚ',
+  ];
+  return `${day} ${d.getDate()} ${months[d.getMonth()]}`;
 }
 
 export function AthletePortalPage() {
@@ -33,44 +67,45 @@ export function AthletePortalPage() {
     }
     const email = session?.email?.toLowerCase() ?? '';
     return (
-      data.students.find((s) => s.email.toLowerCase() === email && s.status !== 'inactive') ??
-      null
+      data.students.find((s) => s.email.toLowerCase() === email && s.status !== 'inactive') ?? null
     );
   }, [data.students, session]);
 
-  const balance = athlete
-    ? athleteBalance(athlete.id, data.transactions ?? [])
-    : 0;
-
+  const balance = athlete ? athleteBalance(athlete.id, data.transactions ?? []) : 0;
   const today = localDateIso();
+
   const upcoming = useMemo(() => {
     if (!athlete?.classId) return [];
     return (data.trainings ?? [])
       .filter((t) => t.date >= today && t.classId === athlete.classId)
       .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))
-      .slice(0, 8);
+      .slice(0, 5);
   }, [data.trainings, athlete, today]);
 
-  const attendance = useMemo(() => {
+  const attendanceAll = useMemo(() => {
     if (!athlete) return [];
     return (data.attendance ?? [])
       .filter((a) => a.studentId === athlete.id)
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 12);
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [data.attendance, athlete]);
 
-  const announcements = useMemo(
-    () =>
-      (data.announcements ?? [])
-        .filter((a) => {
-          const roles = a.audienceRoles ?? [];
-          if (roles.length === 0) return true;
-          return roles.includes('athletes');
-        })
-        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-        .slice(0, 8),
-    [data.announcements],
-  );
+  const attendanceStats = useMemo(() => {
+    const present = attendanceAll.filter((a) => a.present).length;
+    const absent = attendanceAll.filter((a) => !a.present).length;
+    const total = present + absent;
+    const rate = total === 0 ? 0 : Math.round((present / total) * 100);
+    return { present, absent, rate };
+  }, [attendanceAll]);
+
+  const attendance = attendanceAll.slice(0, 6);
+
+  const announcements = useMemo(() => {
+    if (!athlete) return [];
+    return (data.announcements ?? [])
+      .filter((a) => announcementVisibleToAthlete(a, athlete.id, athlete.classId))
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, 5);
+  }, [data.announcements, athlete]);
 
   const className = athlete?.classId
     ? data.classes.find((c) => c.id === athlete.classId)?.name
@@ -97,15 +132,20 @@ export function AthletePortalPage() {
     window.location.href = result.data.checkoutUrl;
   }
 
+  const hour = new Date().getHours();
+  const hello = hour < 12 ? 'Καλημέρα' : hour < 18 ? 'Καλησπέρα' : 'Καληνύχτα';
+
   return (
-    <div className="stack-lg parent-portal">
-      <PageHeader
-        title="Περιοχή αθλητή"
-        subtitle={`Καλώς ήρθατε, ${session?.fullName ?? 'αθλητή'}.`}
-      />
+    <div className="aport">
+      <header className="aport-welcome">
+        <h1>
+          {hello}, {greetingName(session?.fullName)}! Καλωσήρθες στο SportSuite 360
+        </h1>
+        {className ? <p className="aport-class">Τμήμα · {className}</p> : null}
+      </header>
 
       {!athlete ? (
-        <section className="panel">
+        <section className="panel aport-card">
           <p className="muted">
             Δεν βρέθηκε συνδεδεμένο προφίλ αθλητή. Ζητήστε από τη γραμματεία να συνδέσει τον
             λογαριασμό σας με καρτέλα αθλητή.
@@ -113,90 +153,126 @@ export function AthletePortalPage() {
         </section>
       ) : (
         <>
-          <section className="panel parent-portal-section">
-            <h2>
-              <CreditCard size={18} /> Υπόλοιπο συνδρομής
-            </h2>
-            {payError ? <p className="form-error">{payError}</p> : null}
-            <p>
-              <strong className={balance > 0 ? 'badge badge-overdue' : 'badge badge-paid'}>
-                {formatCurrency(balance)}
-              </strong>
-              {className ? <span className="muted"> · {className}</span> : null}
-            </p>
-            {balance > 0 && viva?.enabled ? (
-              <Button type="button" disabled={paying} onClick={() => void handlePay()}>
-                {paying ? 'Μετάβαση…' : 'Πληρωμή Viva'}
-              </Button>
-            ) : null}
-          </section>
+          <div className="aport-top">
+            <section className="aport-balance" id="finance">
+              <span className="aport-balance-label">Υπόλοιπο λογαριασμού</span>
+              <strong className="aport-balance-value">{formatCurrency(balance)}</strong>
+              <em>
+                Ενημερώθηκε:{' '}
+                {new Date().toLocaleString('el-GR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </em>
+              {payError ? <p className="form-error">{payError}</p> : null}
+              {balance > 0 && viva?.enabled ? (
+                <Button type="button" disabled={paying} onClick={() => void handlePay()}>
+                  <CreditCard size={16} /> {paying ? 'Μετάβαση…' : 'Πληρωμή με Viva'}
+                </Button>
+              ) : (
+                <p className="aport-balance-hint">
+                  {balance <= 0 ? 'Δεν υπάρχει οφειλή.' : 'Το Viva δεν είναι ενεργό.'}
+                </p>
+              )}
+              <Link to="/fees" className="aport-history-link">
+                Ιστορικό Συναλλαγών
+              </Link>
+            </section>
 
-          <section className="panel parent-portal-section">
-            <h2>
-              <CalendarDays size={18} /> Επόμενες προπονήσεις
-            </h2>
-            {upcoming.length === 0 ? (
-              <p className="muted">Δεν υπάρχουν προγραμματισμένες προπονήσεις.</p>
-            ) : (
-              <ul className="parent-portal-list">
-                {upcoming.map((t) => (
-                  <li key={t.id}>
-                    <strong>
-                      {formatDate(t.date)} · {t.startTime}
-                      {t.endTime ? `–${t.endTime}` : ''}
-                    </strong>
-                    <span className="muted">{t.location || t.notes || 'Προπόνηση'}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="panel parent-portal-section">
-            <h2>
-              <ClipboardCheck size={18} /> Παρουσίες
-            </h2>
-            {attendance.length === 0 ? (
-              <p className="muted">Δεν υπάρχουν καταχωρήσεις.</p>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Ημ/νία</th>
-                      <th>Κατάσταση</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attendance.map((row) => (
-                      <tr key={row.id}>
-                        <td>{formatDate(row.date)}</td>
-                        <td>{row.present ? 'Παρών/ούσα' : 'Απών/ούσα'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <section className="aport-card panel" id="trainings">
+              <div className="aport-card-head">
+                <h2>
+                  <CalendarDays size={16} /> Πρόγραμμα προπονήσεων
+                </h2>
+                <Link to="/schedule">Προβολή όλων</Link>
               </div>
-            )}
-          </section>
+              {upcoming.length === 0 ? (
+                <p className="muted">Δεν υπάρχουν προσεχείς προπονήσεις.</p>
+              ) : (
+                <ul className="aport-trainings">
+                  {upcoming.map((t) => (
+                    <li key={t.id}>
+                      <span className="aport-day-badge">{shortDayBadge(t.date)}</span>
+                      <div>
+                        <strong>
+                          {t.startTime}
+                          {t.endTime ? ` - ${t.endTime}` : ''}
+                        </strong>
+                        <span>Προπόνηση ομάδας</span>
+                        <em>{t.location || '—'}</em>
+                      </div>
+                      <span className="aport-pill">Προγραμματισμένη</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-          <section className="panel parent-portal-section">
-            <h2>
-              <Bell size={18} /> Ανακοινώσεις
-            </h2>
+            <section className="aport-card panel" id="attendance">
+              <div className="aport-card-head">
+                <h2>
+                  <ClipboardCheck size={16} /> Ιστορικό παρουσιών
+                </h2>
+                <Link to="/attendance">Προβολή όλων</Link>
+              </div>
+              <div className="aport-att-stats">
+                <div>
+                  <strong>{attendanceStats.present}</strong>
+                  <span>Παρουσίες</span>
+                </div>
+                <div>
+                  <strong>{attendanceStats.absent}</strong>
+                  <span>Απουσίες</span>
+                </div>
+                <div>
+                  <strong>{attendanceStats.rate}%</strong>
+                  <span>Συμμετοχή</span>
+                </div>
+              </div>
+              {attendance.length === 0 ? (
+                <p className="muted">Δεν υπάρχουν καταχωρήσεις.</p>
+              ) : (
+                <ul className="aport-att-list">
+                  {attendance.map((row) => (
+                    <li key={row.id}>
+                      <span>{formatDate(row.date)}</span>
+                      <span className="aport-att-type">Προπόνηση</span>
+                      <span className={`aport-att-status ${row.present ? 'is-ok' : 'is-bad'}`}>
+                        {row.present ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                        {row.present ? 'Παρουσία' : 'Απουσία'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+
+          <section className="aport-card panel aport-ann" id="announcements">
+            <div className="aport-card-head">
+              <h2>
+                <Megaphone size={16} /> Ανακοινώσεις
+              </h2>
+              <Link to="/announcements">Προβολή όλων</Link>
+            </div>
             {announcements.length === 0 ? (
               <p className="muted">Δεν υπάρχουν ανακοινώσεις.</p>
             ) : (
-              <ul className="parent-portal-list">
+              <ul className="aport-ann-list">
                 {announcements.map((a) => (
                   <li key={a.id}>
-                    <strong>{a.title}</strong>
-                    <span className="muted">
-                      {a.createdAt ? formatDate(a.createdAt.slice(0, 10)) : ''}
-                      {a.message
-                        ? ` · ${a.message.slice(0, 120)}${a.message.length > 120 ? '…' : ''}`
-                        : ''}
-                    </span>
+                    <i aria-hidden />
+                    <div>
+                      <strong>{a.title}</strong>
+                      <span>
+                        {(a.message || '').slice(0, 110)}
+                        {(a.message || '').length > 110 ? '…' : ''}
+                      </span>
+                    </div>
+                    <em>{a.createdAt ? formatDate(a.createdAt.slice(0, 10)) : ''}</em>
                   </li>
                 ))}
               </ul>

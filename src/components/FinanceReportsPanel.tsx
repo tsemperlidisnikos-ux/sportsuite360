@@ -161,7 +161,7 @@ export function FinanceReportsPanel() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const clubs = useMemo(
-    () => (data.associations ?? []).filter((a) => a.active),
+    () => (data.associations ?? []).filter((a) => a.active !== false),
     [data.associations],
   );
   const sports = useMemo(() => (data.sports ?? []).filter((s) => s.active), [data.sports]);
@@ -666,6 +666,8 @@ export function FinanceReportsPanel() {
         open={previewOpen}
         title="Προεπισκόπηση αναφοράς"
         onClose={() => setPreviewOpen(false)}
+        fullscreen
+        className="finance-report-preview-modal"
         footer={
           <>
             <Button variant="secondary" type="button" onClick={() => setPreviewOpen(false)}>

@@ -6,6 +6,7 @@ import {
   getClubById,
   getClubSmtp,
   getClubSmtpSendLog,
+  getDefaultClubSmtp,
   updateClubSmtp,
   type ClubSmtpSettings,
 } from '../auth/clubs';
@@ -51,7 +52,13 @@ export function ClubEmailPanel({ clubId }: Props) {
     setSaving(true);
     setError('');
     setMessage('');
-    const result = updateClubSmtp(clubId, form);
+    const result = updateClubSmtp(clubId, {
+      ...getDefaultClubSmtp(),
+      ...form,
+      fromEmail: form.fromEmail || '',
+      security: form.security || 'starttls',
+      requireAuth: form.requireAuth ?? true,
+    });
     if (!result.success) {
       setSaving(false);
       setError(result.error ?? 'Σφάλμα αποθήκευσης');

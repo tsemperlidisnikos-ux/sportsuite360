@@ -47,7 +47,7 @@
   margin: 0;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  background: rgba(13, 115, 119, 0.12);
+  background: var(--brand-soft);
   color: var(--brand-dark);
   font-weight: 650;
 }
@@ -356,5 +356,5 @@
 }
 
 .diag-fix {
-  color: #17362e;
+  color: var(--muted);
 }

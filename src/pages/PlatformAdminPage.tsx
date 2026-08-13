@@ -17,13 +17,16 @@ import {
   endPreview,
   getAcademyModulesForClub,
   getPreviewClubId,
+  APPEARANCE_THEMES,
   loadPlatformConfig,
   resetFinanceCatalogDefaults,
   saveFinanceCatalogAsDefaults,
   savePlatformConfig,
+  setAppearanceTheme,
   updateAppLogo,
   startPreview,
   type AcademyModuleId,
+  type AppearanceTheme,
   type ClubPermission,
   type ClubRole,
   type PlatformConfig,
@@ -474,6 +477,70 @@ export function PlatformAdminPage() {
                 <RecordsRow title="Logo">
                   {config.appLogoUrl ? 'Ορισμένο' : 'Προεπιλογή (SS)'}
                 </RecordsRow>
+              </RecordsTable>
+            }
+          />
+
+          <AdminRow
+            title="Εμφάνιση εφαρμογής"
+            description="Επιλέξτε πώς φαίνεται όλη η εφαρμογή για όλους τους συλλόγους: κλασική (όπως τώρα) ή Navy + Amber."
+            entry={
+              <div className="entry-form admin-entry appearance-theme-picker">
+                {APPEARANCE_THEMES.map((theme) => {
+                  const selected =
+                    (config.appearanceTheme ?? 'classic') === theme.id;
+                  return (
+                    <label
+                      key={theme.id}
+                      className={`appearance-theme-option${selected ? ' is-selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="appearance-theme"
+                        value={theme.id}
+                        checked={selected}
+                        onChange={() => {
+                          const next = setAppearanceTheme(theme.id as AppearanceTheme);
+                          setConfig(next);
+                          flash(
+                            theme.id === 'navy-amber'
+                              ? 'Ενεργό θέμα: Navy + Amber.'
+                              : 'Ενεργό θέμα: Κλασική εμφάνιση.',
+                          );
+                        }}
+                      />
+                      <div>
+                        <strong>{theme.label}</strong>
+                        <span>{theme.description}</span>
+                        <div className="appearance-theme-swatches" aria-hidden>
+                          {theme.id === 'classic' ? (
+                            <>
+                              <i style={{ background: '#0d7377' }} />
+                              <i style={{ background: '#eef3f1' }} />
+                              <i style={{ background: '#e8a838' }} />
+                            </>
+                          ) : (
+                            <>
+                              <i style={{ background: '#0b1f3a' }} />
+                              <i style={{ background: '#f4f6f8' }} />
+                              <i style={{ background: '#d4a017' }} />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            }
+            records={
+              <RecordsTable>
+                <RecordsRow title="Ενεργό">
+                  {(config.appearanceTheme ?? 'classic') === 'navy-amber'
+                    ? 'Navy + Amber'
+                    : 'Κλασική'}
+                </RecordsRow>
+                <RecordsRow title="Εμβέλεια">Όλη η εφαρμογή (login, shell, modules)</RecordsRow>
               </RecordsTable>
             }
           />

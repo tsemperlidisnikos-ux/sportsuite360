@@ -49,6 +49,27 @@ export const studentSchema = z.object({
       medical: z.boolean(),
     })
     .optional(),
+  placeOfBirth: z.string().optional(),
+  nationality: z.string().optional(),
+  communicationLanguage: z.string().optional(),
+  county: z.string().optional(),
+  jerseyNumber: z.string().optional(),
+  position: z.string().optional(),
+  athleticLevel: z.string().optional(),
+  athleticStartDate: z.string().optional(),
+  coachName: z.string().optional(),
+  emergencyName: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+  emergencyRelation: z.string().optional(),
+  emergencyAltPhone: z.string().optional(),
+  doctorName: z.string().optional(),
+  doctorPhone: z.string().optional(),
+  bloodType: z.string().optional(),
+  allergies: z.string().optional(),
+  chronicConditions: z.string().optional(),
+  medication: z.string().optional(),
+  registrationExpires: z.string().optional(),
+  autoRenewal: z.boolean().optional(),
 });
 
 export const coachSchema = z.object({
@@ -186,9 +207,12 @@ export const associationSchema = z.object({
   name: z.string().min(2, 'Το όνομα συλλόγου είναι υποχρεωτικό'),
   city: z.string().optional().default(''),
   phone: z.string().optional().default(''),
-  email: z.string().email('Μη έγκυρο email').or(z.literal('')).optional().default(''),
+  email: z
+    .union([z.literal(''), z.string().email('Μη έγκυρο email')])
+    .optional()
+    .default(''),
   address: z.string().optional().default(''),
-  active: z.boolean().default(true),
+  active: z.coerce.boolean().default(true),
 });
 
 export type AssociationInput = z.infer<typeof associationSchema>;
@@ -206,6 +230,9 @@ export const announcementSchema = z.object({
   targetType: z.enum(['club', 'team']).default('club'),
   targetId: z.string().nullable().optional().default(null),
   highPriority: z.boolean().optional().default(false),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal'),
+  status: z.enum(['draft', 'published']).optional().default('published'),
+  createdBy: z.string().optional().default(''),
   imageUrl: z.string().nullable().optional().default(null),
   visibleFrom: z.string().optional().default(''),
   visibleUntil: z.string().optional().default(''),
@@ -220,7 +247,7 @@ export const announcementSchema = z.object({
   recipientIds: z
     .array(
       z.object({
-        kind: z.enum(['athlete', 'coach', 'staff']),
+        kind: z.enum(['athlete', 'coach', 'staff', 'parent']),
         id: z.string(),
       }),
     )
@@ -259,6 +286,12 @@ export const warehouseProductSchema = z.object({
   sizeGroup: z.enum(['kids', 'adult', '']).optional().default(''),
   notes: z.string().optional().default(''),
   stockQty: z.coerce.number().int().min(0).optional().default(0),
+  brand: z.string().optional().default(''),
+  barcode: z.string().optional().default(''),
+  color: z.string().optional().default(''),
+  costPrice: z.coerce.number().min(0).optional().default(0),
+  minStock: z.coerce.number().int().min(0).optional().default(5),
+  imageUrl: z.string().nullable().optional().default(null),
 });
 
 export type WarehouseProductInput = z.infer<typeof warehouseProductSchema>;
@@ -278,6 +311,9 @@ export const partnerBusinessSchema = z.object({
   status: z.enum(['active', 'inactive']),
   categories: z.string().optional().default(''),
   isSponsor: z.boolean().optional().default(false),
+  address: z.string().optional().default(''),
+  logoUrl: z.string().nullable().optional().default(null),
+  favorite: z.boolean().optional().default(false),
 });
 
 export type PartnerBusinessInput = z.infer<typeof partnerBusinessSchema>;
@@ -286,6 +322,8 @@ export const partnerOfferSchema = z.object({
   name: z.string().min(1, 'Το όνομα είναι υποχρεωτικό'),
   businessId: z.string().min(1, 'Επιλέξτε επιχείρηση'),
   status: z.enum(['active', 'inactive']),
+  discountText: z.string().optional().default(''),
+  conditions: z.string().optional().default(''),
 });
 
 export type PartnerOfferInput = z.infer<typeof partnerOfferSchema>;
@@ -313,6 +351,7 @@ export const galleryPhotoSchema = z.object({
   imageUrl: z.string().min(1, 'Επιλέξτε φωτογραφία'),
   caption: z.string().optional().default(''),
   fileName: z.string().optional().default(''),
+  album: z.string().optional().default(''),
 });
 
 export type GalleryPhotoInput = z.infer<typeof galleryPhotoSchema>;

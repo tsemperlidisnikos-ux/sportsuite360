@@ -52,7 +52,7 @@ export function BudgetPanel({ onSaved }: { onSaved: () => void }) {
   const categories = type === 'income' ? incomeCategories : expenseCategories;
 
   const clubs = useMemo(
-    () => (data.associations ?? []).filter((a) => a.active),
+    () => (data.associations ?? []).filter((a) => a.active !== false),
     [data.associations],
   );
   const sports = useMemo(() => (data.sports ?? []).filter((s) => s.active), [data.sports]);

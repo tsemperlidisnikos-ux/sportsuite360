@@ -24,9 +24,11 @@ import { StatCard } from '../components/ui/StatCard';
 import { useAppData } from '../hooks/useAppData';
 import { getSession } from '../auth/auth';
 import {
+  getAppearanceTheme,
   getPreviewClubId,
   getScfModulesForClub,
   SCF_MODULES,
+  type AppearanceTheme,
   type ScfModuleId,
 } from '../platform/platformConfig';
 import {
@@ -38,7 +40,22 @@ import {
 
 type Tab = 'analysis' | 'revenues' | 'expenses' | 'budget' | 'reports' | 'accounts';
 
-const pieColors = ['#0d7377', '#14919b', '#c45c26', '#e8a838', '#2f4858', '#6b8f71'];
+function chartColors(theme: AppearanceTheme) {
+  if (theme === 'navy-amber') {
+    return {
+      pie: ['#0b1f3a', '#d4a017', '#c45c26', '#3b82f6', '#64748b', '#067647'],
+      revenue: '#0b1f3a',
+      expense: '#c45c26',
+      grid: 'rgba(11, 31, 58, 0.1)',
+    };
+  }
+  return {
+    pie: ['#0d7377', '#14919b', '#c45c26', '#e8a838', '#2f4858', '#6b8f71'],
+    revenue: '#0d7377',
+    expense: '#c45c26',
+    grid: 'rgba(26, 36, 33, 0.08)',
+  };
+}
 
 const TAB_TO_SCF: Record<Exclude<Tab, 'accounts'>, ScfModuleId> = {
   analysis: 'dashboard',
@@ -65,7 +82,7 @@ export function FinancePage() {
       ['expenses', 'Έξοδα'],
       ['accounts', 'Ταμεία'],
       ['budget', 'Προϋπολογισμός'],
-      ['reports', 'Reports'],
+      ['reports', 'Αναφορές'],
     ] as const
   ).filter(([id]) => {
     if (id === 'accounts') return true;
@@ -75,9 +92,17 @@ export function FinancePage() {
   });
 
   const [tab, setTab] = useState<Tab>('analysis');
+  const [appearance, setAppearance] = useState(() => getAppearanceTheme());
   const [summary, setSummary] = useState<Awaited<
     ReturnType<typeof financeService.getFinanceSummary>
   >['data']>();
+  const colors = useMemo(() => chartColors(appearance), [appearance]);
+
+  useEffect(() => {
+    const sync = () => setAppearance(getAppearanceTheme());
+    window.addEventListener('academyhub-platform-updated', sync);
+    return () => window.removeEventListener('academyhub-platform-updated', sync);
+  }, []);
 
   useEffect(() => {
     if (!availableTabs.some(([id]) => id === tab)) {
@@ -113,10 +138,10 @@ export function FinancePage() {
     })) ?? [];
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg finance-page">
       <PageHeader
         title="Οικονομικά"
-        subtitle="Έσοδα, έξοδα και ανάλυση ταμείου της ακαδημίας."
+        subtitle="Έσοδα, έξοδα, προϋπολογισμός και αναφορές της ακαδημίας."
       />
 
       <div className="tabs">
@@ -168,13 +193,13 @@ export function FinancePage() {
               ) : (
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={monthlyChart}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,36,33,0.08)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
                     <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                     <Legend />
-                    <Bar dataKey="revenue" name="Έσοδα" fill="#0d7377" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="expense" name="Έξοδα" fill="#c45c26" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="revenue" name="Έσοδα" fill={colors.revenue} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="expense" name="Έξοδα" fill={colors.expense} radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -196,7 +221,7 @@ export function FinancePage() {
                     <PieChart>
                       <Pie data={revenuePie} dataKey="value" nameKey="name" outerRadius={95} label>
                         {revenuePie.map((_, index) => (
-                          <Cell key={index} fill={pieColors[index % pieColors.length]} />
+                          <Cell key={index} fill={colors.pie[index % colors.pie.length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
@@ -219,7 +244,7 @@ export function FinancePage() {
                     <PieChart>
                       <Pie data={expensePie} dataKey="value" nameKey="name" outerRadius={95} label>
                         {expensePie.map((_, index) => (
-                          <Cell key={index} fill={pieColors[(index + 2) % pieColors.length]} />
+                          <Cell key={index} fill={colors.pie[(index + 2) % colors.pie.length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />

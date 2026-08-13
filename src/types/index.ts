@@ -84,6 +84,27 @@ export interface Student {
     communication: boolean;
     medical: boolean;
   };
+  placeOfBirth?: string;
+  nationality?: string;
+  communicationLanguage?: string;
+  county?: string;
+  jerseyNumber?: string;
+  position?: string;
+  athleticLevel?: string;
+  athleticStartDate?: string;
+  coachName?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelation?: string;
+  emergencyAltPhone?: string;
+  doctorName?: string;
+  doctorPhone?: string;
+  bloodType?: string;
+  allergies?: string;
+  chronicConditions?: string;
+  medication?: string;
+  registrationExpires?: string;
+  autoRenewal?: boolean;
 }
 
 export interface Coach {
@@ -210,6 +231,8 @@ export interface StaffMember {
   role: 'admin' | 'coach' | 'secretariat';
   active: boolean;
   hireDate: string;
+  teamLabel?: string;
+  photoUrl?: string | null;
 }
 
 export interface Association {
@@ -229,12 +252,15 @@ export interface SportItem {
 }
 
 export type AnnouncementAudienceRole = 'athletes' | 'coaches' | 'staff' | 'parents';
-export type AnnouncementRecipientKind = 'athlete' | 'coach' | 'staff';
+export type AnnouncementRecipientKind = 'athlete' | 'coach' | 'staff' | 'parent';
 
 export interface AnnouncementRecipient {
   kind: AnnouncementRecipientKind;
   id: string;
 }
+
+export type AnnouncementPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type AnnouncementStatus = 'draft' | 'published';
 
 export interface Announcement {
   id: string;
@@ -244,6 +270,9 @@ export interface Announcement {
   targetType: 'club' | 'team';
   targetId: string | null;
   highPriority?: boolean;
+  priority?: AnnouncementPriority;
+  status?: AnnouncementStatus;
+  createdBy?: string;
   imageUrl?: string | null;
   visibleFrom?: string;
   visibleUntil?: string;
@@ -281,6 +310,14 @@ export interface WarehouseProduct {
   /** Τρέχον απόθεμα τεμαχίων. */
   stockQty: number;
   createdAt: string;
+  brand?: string;
+  barcode?: string;
+  color?: string;
+  /** Κόστος κτήσης ανά τεμάχιο. */
+  costPrice?: number;
+  /** Ελάχιστο απόθεμα για ειδοποίηση. */
+  minStock?: number;
+  imageUrl?: string | null;
 }
 
 export type StockMovementType = 'in' | 'out' | 'adjust';
@@ -307,6 +344,9 @@ export interface PartnerBusiness {
   lastModifiedBy: string;
   lastModifiedAt: string;
   createdAt: string;
+  address?: string;
+  logoUrl?: string | null;
+  favorite?: boolean;
 }
 
 export interface PartnerOffer {
@@ -315,6 +355,8 @@ export interface PartnerOffer {
   businessId: string;
   status: PartnerStatus;
   createdAt: string;
+  discountText?: string;
+  conditions?: string;
 }
 
 export type SizeChartCategory = 'kids' | 'men' | 'women';
@@ -381,6 +423,7 @@ export interface GalleryPhoto {
   caption: string;
   fileName: string;
   createdAt: string;
+  album?: string;
 }
 
 /** Σύνδεση λογαριασμού γονέα με αθλητή. */

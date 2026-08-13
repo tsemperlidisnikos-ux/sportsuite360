@@ -11,6 +11,7 @@ import { getPreviewClubId } from '../platform/platformConfig';
 import { settleVivaReturn } from '../utils/vivaSettle';
 import { formatCurrency, formatDate } from '../utils/labels';
 import { localDateIso } from '../utils/dates';
+import { announcementVisibleToParent } from '../utils/announcementAudience';
 
 function athleteBalance(
   athleteId: string,
@@ -101,15 +102,18 @@ export function ParentPortalPage() {
   }, [data.attendance, athleteIds]);
 
   const announcements = useMemo(() => {
-    const audienceOk = (roles: string[] | undefined) => {
-      if (!roles || roles.length === 0) return true;
-      return roles.includes('parents') || roles.includes('athletes');
-    };
+    if (!session) return [];
+    const linkedIds = linkedAthletes.map((a) => a.id);
+    const linkedClasses = linkedAthletes
+      .map((a) => a.classId)
+      .filter(Boolean) as string[];
     return (data.announcements ?? [])
-      .filter((a) => audienceOk(a.audienceRoles as string[] | undefined))
+      .filter((a) =>
+        announcementVisibleToParent(a, session.id, linkedIds, linkedClasses),
+      )
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 8);
-  }, [data.announcements]);
+  }, [data.announcements, linkedAthletes, session]);
 
   const classNameById = useMemo(() => {
     const map = new Map<string, string>();

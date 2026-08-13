@@ -1,20 +1,23 @@
 import { useMemo, useState } from 'react';
-import { Building2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Filter,
+  MapPin,
+  Percent,
+  Plus,
+  Star,
+  Tag,
+} from 'lucide-react';
 import * as partnerService from '../api/services/partnerBusinessesService';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
-import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import type { PartnerBusinessInput, PartnerOfferInput } from '../schemas';
-import type { PartnerBusiness, PartnerOffer, PartnerStatus } from '../types';
-import { localDateIso } from '../utils/dates';
+import type { PartnerBusiness, PartnerOffer } from '../types';
 
-type Tab = 'businesses' | 'offers' | 'sponsors';
+type ViewTab = 'all' | 'offers' | 'recent';
 
-const STATUS_LABELS: Record<PartnerStatus, string> = {
-  active: 'Ενεργή',
-  inactive: 'Ανενεργή',
-};
+const PAGE_SIZE = 6;
 
 const emptyBusiness: PartnerBusinessInput = {
   name: '',
@@ -22,32 +25,33 @@ const emptyBusiness: PartnerBusinessInput = {
   status: 'active',
   categories: '',
   isSponsor: false,
+  address: '',
+  logoUrl: null,
+  favorite: false,
 };
 
 const emptyOffer: PartnerOfferInput = {
   name: '',
   businessId: '',
   status: 'active',
+  discountText: '',
+  conditions: '',
 };
 
-function formatDate(value: string): string {
-  if (!value) return '—';
-  const datePart = value.slice(0, 10);
-  const [y, m, d] = datePart.split('-');
-  if (!y || !m || !d) return value;
-  return `${d}/${m}/${y}`;
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 export function PartnerBusinessesPage() {
   const { data, refresh } = useAppData();
-  const [tab, setTab] = useState<Tab>('businesses');
-
-  const [statusFilter, setStatusFilter] = useState('');
+  const [tab, setTab] = useState<ViewTab>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [appliedStatus, setAppliedStatus] = useState('');
-  const [appliedCategory, setAppliedCategory] = useState('');
-  const [search, setSearch] = useState('');
-  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
 
   const [businessOpen, setBusinessOpen] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<PartnerBusiness | null>(null);
@@ -56,88 +60,61 @@ export function PartnerBusinessesPage() {
   const [businessSaving, setBusinessSaving] = useState(false);
 
   const [offerOpen, setOfferOpen] = useState(false);
-  const [editingOffer, setEditingOffer] = useState<PartnerOffer | null>(null);
   const [offerForm, setOfferForm] = useState<PartnerOfferInput>(emptyOffer);
   const [offerError, setOfferError] = useState('');
   const [offerSaving, setOfferSaving] = useState(false);
-
-  const [sponsorsOpen, setSponsorsOpen] = useState(false);
-  const [sponsorDraft, setSponsorDraft] = useState<string[]>([]);
-  const [sponsorsSaving, setSponsorsSaving] = useState(false);
+  const [offerBusinessId, setOfferBusinessId] = useState<string | null>(null);
 
   const businesses = useMemo(
     () => [...(data.partnerBusinesses ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'el')),
     [data.partnerBusinesses],
   );
   const offers = useMemo(
-    () =>
-      [...(data.partnerOffers ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    () => [...(data.partnerOffers ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [data.partnerOffers],
   );
-  const businessById = useMemo(
-    () => new Map(businesses.map((item) => [item.id, item])),
-    [businesses],
-  );
-  const offerCountByBusiness = useMemo(() => {
-    const map = new Map<string, number>();
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of businesses) {
+      for (const part of b.categories.split(/[,;/|]/)) {
+        const c = part.trim();
+        if (c) set.add(c);
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'el'));
+  }, [businesses]);
+
+  const offerByBusiness = useMemo(() => {
+    const map = new Map<string, PartnerOffer>();
     for (const offer of offers) {
-      map.set(offer.businessId, (map.get(offer.businessId) ?? 0) + 1);
+      if (offer.status !== 'active') continue;
+      if (!map.has(offer.businessId)) map.set(offer.businessId, offer);
     }
     return map;
   }, [offers]);
 
-  const filteredBusinesses = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const cat = appliedCategory.trim().toLowerCase();
-    return businesses.filter((item) => {
-      if (appliedStatus && item.status !== appliedStatus) return false;
-      if (cat && !item.categories.toLowerCase().includes(cat)) return false;
-      if (!q) return true;
-      return (
-        item.name.toLowerCase().includes(q) ||
-        item.url.toLowerCase().includes(q) ||
-        item.categories.toLowerCase().includes(q) ||
-        item.lastModifiedBy.toLowerCase().includes(q)
+  const filtered = useMemo(() => {
+    let list = businesses.filter((b) => b.status === 'active');
+    if (categoryFilter) {
+      list = list.filter((b) =>
+        b.categories.toLowerCase().includes(categoryFilter.toLowerCase()),
       );
-    });
-  }, [businesses, search, appliedStatus, appliedCategory]);
+    }
+    if (tab === 'offers') {
+      list = list.filter((b) => offerByBusiness.has(b.id));
+    }
+    if (tab === 'recent') {
+      list = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+    return list;
+  }, [businesses, categoryFilter, tab, offerByBusiness]);
 
-  const filteredOffers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return offers.filter((item) => {
-      if (!q) return true;
-      const affiliate = businessById.get(item.businessId)?.name ?? '';
-      return (
-        item.name.toLowerCase().includes(q) ||
-        affiliate.toLowerCase().includes(q) ||
-        STATUS_LABELS[item.status].toLowerCase().includes(q)
-      );
-    });
-  }, [offers, search, businessById]);
-
-  const sponsors = useMemo(
-    () => businesses.filter((item) => item.isSponsor),
-    [businesses],
-  );
-
-  const pageTitle =
-    tab === 'offers' ? 'Προσφορές' : tab === 'sponsors' ? 'Χορηγοί' : 'Συμβεβλημένες Επιχειρήσεις';
-
-  const visibleBusinesses = filteredBusinesses.slice(0, pageSize);
-  const visibleOffers = filteredOffers.slice(0, pageSize);
-
-  function applyFilters() {
-    setAppliedStatus(statusFilter);
-    setAppliedCategory(categoryFilter);
-  }
-
-  function resetFilters() {
-    setStatusFilter('');
-    setCategoryFilter('');
-    setAppliedStatus('');
-    setAppliedCategory('');
-    setSearch('');
-  }
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const from = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(safePage * PAGE_SIZE, filtered.length);
 
   function openCreateBusiness() {
     setEditingBusiness(null);
@@ -154,6 +131,9 @@ export function PartnerBusinessesPage() {
       status: item.status,
       categories: item.categories,
       isSponsor: item.isSponsor,
+      address: item.address ?? '',
+      logoUrl: item.logoUrl ?? null,
+      favorite: item.favorite ?? false,
     });
     setBusinessError('');
     setBusinessOpen(true);
@@ -174,29 +154,34 @@ export function PartnerBusinessesPage() {
     refresh();
   }
 
-  async function handleDeleteBusiness(id: string) {
-    if (!confirm('Διαγραφή επιχείρησης; Θα διαγραφούν και οι προσφορές της.')) return;
-    await partnerService.deletePartnerBusiness(id);
+  async function toggleFavorite(item: PartnerBusiness) {
+    await partnerService.updatePartnerBusiness(item.id, {
+      name: item.name,
+      url: item.url,
+      status: item.status,
+      categories: item.categories,
+      isSponsor: item.isSponsor,
+      address: item.address ?? '',
+      logoUrl: item.logoUrl ?? null,
+      favorite: !item.favorite,
+    });
     refresh();
   }
 
-  function openCreateOffer() {
-    setEditingOffer(null);
-    setOfferForm({
-      ...emptyOffer,
-      businessId: businesses[0]?.id ?? '',
-    });
-    setOfferError('');
-    setOfferOpen(true);
-  }
-
-  function openEditOffer(item: PartnerOffer) {
-    setEditingOffer(item);
-    setOfferForm({
-      name: item.name,
-      businessId: item.businessId,
-      status: item.status,
-    });
+  function openOfferFor(businessId: string) {
+    const existing = offerByBusiness.get(businessId);
+    setOfferBusinessId(businessId);
+    setOfferForm(
+      existing
+        ? {
+            name: existing.name,
+            businessId,
+            status: existing.status,
+            discountText: existing.discountText ?? '',
+            conditions: existing.conditions ?? '',
+          }
+        : { ...emptyOffer, businessId },
+    );
     setOfferError('');
     setOfferOpen(true);
   }
@@ -204,8 +189,9 @@ export function PartnerBusinessesPage() {
   async function handleSaveOffer() {
     setOfferSaving(true);
     setOfferError('');
-    const result = editingOffer
-      ? await partnerService.updatePartnerOffer(editingOffer.id, offerForm)
+    const existing = offerBusinessId ? offerByBusiness.get(offerBusinessId) : undefined;
+    const result = existing
+      ? await partnerService.updatePartnerOffer(existing.id, offerForm)
       : await partnerService.createPartnerOffer(offerForm);
     setOfferSaving(false);
     if (!result.success) {
@@ -216,368 +202,167 @@ export function PartnerBusinessesPage() {
     refresh();
   }
 
-  async function handleDeleteOffer(id: string) {
-    if (!confirm('Διαγραφή προσφοράς;')) return;
-    await partnerService.deletePartnerOffer(id);
-    refresh();
-  }
-
-  function openSponsorsManager() {
-    setSponsorDraft(sponsors.map((item) => item.id));
-    setSponsorsOpen(true);
-  }
-
-  async function handleSaveSponsors() {
-    setSponsorsSaving(true);
-    const result = await partnerService.setPartnerBusinessSponsors(sponsorDraft);
-    setSponsorsSaving(false);
-    if (!result.success) return;
-    setSponsorsOpen(false);
-    refresh();
-  }
-
-  function toggleSponsorDraft(id: string) {
-    setSponsorDraft((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  }
-
   return (
-    <div className="stack-lg">
-      <PageHeader title={pageTitle} />
+    <div className="pb-page">
+      <header className="pb-head">
+        <div>
+          <h1>Συμβεβλημένες Επιχειρήσεις</h1>
+          <p>Αποκλειστικές προσφορές και προνόμια για τα μέλη του συλλόγου μας.</p>
+        </div>
+        <Button type="button" onClick={openCreateBusiness}>
+          <Plus size={16} /> Νέος συνεργάτης
+        </Button>
+      </header>
 
-      <div className="tabs">
-        {(
-          [
-            ['businesses', 'Επιχειρήσεις'],
-            ['offers', 'Προσφορές'],
-            ['sponsors', 'Χορηγοί'],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={`tab ${tab === id ? 'active' : ''}`}
-            onClick={() => {
-              setTab(id);
-              setSearch('');
+      <div className="pb-toolbar">
+        <div className="pb-tabs" role="tablist">
+          {(
+            [
+              ['all', 'Όλες'],
+              ['offers', 'Προσφορές'],
+              ['recent', 'Πρόσφατα'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={tab === id ? 'is-active' : ''}
+              onClick={() => {
+                setTab(id);
+                setPage(1);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="pb-category">
+          <Filter size={15} aria-hidden />
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setPage(1);
             }}
           >
-            {label}
-          </button>
-        ))}
+            <option value="">Όλες οι κατηγορίες</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {tab === 'businesses' ? (
-        <section className="panel stack-md">
-          <div className="panel-head">
-            <h3>Επιχειρήσεις</h3>
-            <Button type="button" onClick={openCreateBusiness}>
-              <Plus size={16} /> Δημιουργία νέας
-            </Button>
-          </div>
+      {pageRows.length === 0 ? (
+        <div className="pb-empty panel">
+          <p>Δεν υπάρχουν συνεργάτες με αυτά τα κριτήρια.</p>
+          <Button type="button" onClick={openCreateBusiness}>
+            <Plus size={16} /> Νέος συνεργάτης
+          </Button>
+        </div>
+      ) : (
+        <div className="pb-grid">
+          {pageRows.map((item) => {
+            const offer = offerByBusiness.get(item.id);
+            const category = item.categories.split(/[,;/|]/)[0]?.trim() || 'Συνεργάτης';
+            return (
+              <article key={item.id} className="pb-card panel">
+                <div className="pb-card-top">
+                  <div className="pb-logo" aria-hidden>
+                    {item.logoUrl ? <img src={item.logoUrl} alt="" /> : initials(item.name)}
+                  </div>
+                  <div className="pb-card-meta">
+                    <span className="pb-cat">{category}</span>
+                    <strong>{item.name}</strong>
+                    {item.address ? (
+                      <span className="pb-addr">
+                        <MapPin size={13} /> {item.address}
+                      </span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className={`pb-fav${item.favorite ? ' is-on' : ''}`}
+                    aria-label="Αγαπημένο"
+                    onClick={() => void toggleFavorite(item)}
+                  >
+                    <Star size={16} fill={item.favorite ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
 
-          <div className="toolbar">
-            <label className="field">
-              <span className="field-label">Κατάσταση</span>
-              <select
-                className="field-input"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="">Όλες</option>
-                <option value="active">Ενεργή</option>
-                <option value="inactive">Ανενεργή</option>
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Κατηγορίες</span>
-              <input
-                className="field-input"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                placeholder="π.χ. ένδυση"
-              />
-            </label>
-            <Button type="button" onClick={applyFilters}>
-              Προβολή
-            </Button>
+                <div className="pb-offer">
+                  <span className="pb-offer-icon">
+                    <Tag size={14} />
+                  </span>
+                  <div>
+                    <strong>
+                      {offer?.discountText || offer?.name || 'Χωρίς ενεργή προσφορά'}
+                    </strong>
+                    <span>
+                      {offer?.conditions ||
+                        (offer ? 'Ισχύει για όλα τα μέλη' : 'Προσθέστε προσφορά για τα μέλη')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pb-card-footer">
+                  <button type="button" className="pb-link" onClick={() => openOfferFor(item.id)}>
+                    Προβολή προσφοράς <ArrowRight size={14} />
+                  </button>
+                  <button type="button" className="pb-edit" onClick={() => openEditBusiness(item)}>
+                    Επεξεργασία
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="pb-pager">
+        <span>
+          Εμφάνιση {from}-{to} από {filtered.length} συνεργάτες
+        </span>
+        <div className="pb-pager-btns">
+          <button
+            type="button"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            ‹
+          </button>
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((n) => (
             <button
+              key={n}
               type="button"
-              className="btn btn-secondary"
-              onClick={resetFilters}
-              aria-label="Ανανέωση φίλτρων"
-              title="Ανανέωση"
+              className={n === safePage ? 'is-active' : ''}
+              onClick={() => setPage(n)}
             >
-              <RefreshCw size={16} />
+              {n}
             </button>
-          </div>
-
-          <div className="partner-table-controls">
-            <label className="partner-page-size">
-              Δείξε{' '}
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-              >
-                {[10, 25, 50, 100].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>{' '}
-              εγγραφές
-            </label>
-            <label className="partner-search">
-              Αναζήτηση:
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder=""
-              />
-            </label>
-          </div>
-
-          <div className="table-wrap">
-            {visibleBusinesses.length === 0 ? (
-              <div className="empty-state">
-                <Building2 size={28} />
-                <h3>Δεν υπάρχουν δεδομένα στον πίνακα</h3>
-                <p>Πάτα «Δημιουργία νέας» για την πρώτη επιχείρηση.</p>
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Όνομα</th>
-                    <th>URL</th>
-                    <th>Κατάσταση</th>
-                    <th>Κατηγορίες</th>
-                    <th>Τελευταία τροποποίηση από</th>
-                    <th>Προσφορές</th>
-                    <th>Χορηγός</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleBusinesses.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.name}</strong>
-                      </td>
-                      <td>
-                        {item.url ? (
-                          <a href={item.url} target="_blank" rel="noreferrer">
-                            {item.url}
-                          </a>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>{STATUS_LABELS[item.status]}</td>
-                      <td>{item.categories || '—'}</td>
-                      <td>
-                        {item.lastModifiedBy}
-                        <div className="match-print-details">
-                          {formatDate(item.lastModifiedAt || localDateIso())}
-                        </div>
-                      </td>
-                      <td>{offerCountByBusiness.get(item.id) ?? 0}</td>
-                      <td>{item.isSponsor ? 'Ναι' : 'Όχι'}</td>
-                      <td className="row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => openEditBusiness(item)}
-                          aria-label="Επεξεργασία"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => void handleDeleteBusiness(item.id)}
-                          aria-label="Διαγραφή"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <p className="partner-table-footer">
-            Εμφανίζονται {visibleBusinesses.length === 0 ? 0 : 1} έως {visibleBusinesses.length} από{' '}
-            {filteredBusinesses.length} εγγραφές
-          </p>
-        </section>
-      ) : null}
-
-      {tab === 'offers' ? (
-        <section className="panel stack-md">
-          <div className="panel-head">
-            <h3>Προσφορές</h3>
-            <Button type="button" onClick={openCreateOffer} disabled={businesses.length === 0}>
-              <Plus size={16} /> Δημιουργία νέας
-            </Button>
-          </div>
-
-          <div className="partner-table-controls">
-            <label className="partner-page-size">
-              Δείξε{' '}
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-              >
-                {[10, 25, 50, 100].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>{' '}
-              εγγραφές
-            </label>
-            <label className="partner-search">
-              Αναζήτηση:
-              <input value={search} onChange={(e) => setSearch(e.target.value)} />
-            </label>
-          </div>
-
-          <div className="table-wrap">
-            {visibleOffers.length === 0 ? (
-              <div className="empty-state">
-                <h3>Δεν υπάρχουν δεδομένα στον πίνακα</h3>
-                <p>
-                  {businesses.length === 0
-                    ? 'Πρώτα δημιούργησε μια επιχείρηση.'
-                    : 'Πάτα «Δημιουργία νέας» για την πρώτη προσφορά.'}
-                </p>
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Όνομα</th>
-                    <th>Affiliate</th>
-                    <th>Ημ/νία δημιουργίας</th>
-                    <th>Κατάσταση</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleOffers.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.name}</strong>
-                      </td>
-                      <td>{businessById.get(item.businessId)?.name ?? '—'}</td>
-                      <td>{formatDate(item.createdAt)}</td>
-                      <td>{STATUS_LABELS[item.status]}</td>
-                      <td className="row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => openEditOffer(item)}
-                          aria-label="Επεξεργασία"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => void handleDeleteOffer(item.id)}
-                          aria-label="Διαγραφή"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <p className="partner-table-footer">
-            Εμφανίζονται {visibleOffers.length === 0 ? 0 : 1} έως {visibleOffers.length} από{' '}
-            {filteredOffers.length} εγγραφές
-          </p>
-        </section>
-      ) : null}
-
-      {tab === 'sponsors' ? (
-        <section className="panel stack-md">
-          <div className="panel-head">
-            <h3>Χορηγοί</h3>
-            <Button type="button" variant="secondary" onClick={openSponsorsManager}>
-              <Plus size={16} /> Διαχείριση Χορηγών
-            </Button>
-          </div>
-
-          {sponsors.length === 0 ? (
-            <div className="empty-state">
-              <h3>Δεν υπάρχουν επιχειρήσεις στη λίστα χορηγών</h3>
-              <p>Επίλεξε επιχειρήσεις από τη διαχείριση χορηγών.</p>
-              <Button type="button" onClick={openSponsorsManager}>
-                Διαχείριση Χορηγών
-              </Button>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Όνομα</th>
-                    <th>URL</th>
-                    <th>Κατηγορίες</th>
-                    <th>Κατάσταση</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sponsors.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.name}</strong>
-                      </td>
-                      <td>{item.url || '—'}</td>
-                      <td>{item.categories || '—'}</td>
-                      <td>{STATUS_LABELS[item.status]}</td>
-                      <td className="row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => openEditBusiness(item)}
-                          aria-label="Επεξεργασία"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      ) : null}
+          ))}
+          <button
+            type="button"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            ›
+          </button>
+        </div>
+      </div>
 
       <Modal
         open={businessOpen}
-        title={editingBusiness ? 'Επεξεργασία επιχείρησης' : 'Νέα επιχείρηση'}
+        title={editingBusiness ? 'Επεξεργασία συνεργάτη' : 'Νέος συνεργάτης'}
         onClose={() => setBusinessOpen(false)}
-        wide
         footer={
           <>
             <Button variant="secondary" type="button" onClick={() => setBusinessOpen(false)}>
               Άκυρο
             </Button>
-            <Button
-              type="button"
-              disabled={businessSaving}
-              onClick={() => void handleSaveBusiness()}
-            >
+            <Button type="button" disabled={businessSaving} onClick={() => void handleSaveBusiness()}>
               Αποθήκευση
             </Button>
           </>
@@ -585,13 +370,28 @@ export function PartnerBusinessesPage() {
       >
         <div className="stack-md">
           <label className="field">
-            <span className="field-label">
-              Όνομα <span className="req">*</span>
-            </span>
+            <span className="field-label">Όνομα</span>
             <input
               className="field-input"
               value={businessForm.name}
               onChange={(e) => setBusinessForm({ ...businessForm, name: e.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Κατηγορία</span>
+            <input
+              className="field-input"
+              value={businessForm.categories}
+              onChange={(e) => setBusinessForm({ ...businessForm, categories: e.target.value })}
+              placeholder="π.χ. Γυμναστήρια"
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Διεύθυνση</span>
+            <input
+              className="field-input"
+              value={businessForm.address ?? ''}
+              onChange={(e) => setBusinessForm({ ...businessForm, address: e.target.value })}
             />
           </label>
           <label className="field">
@@ -600,46 +400,23 @@ export function PartnerBusinessesPage() {
               className="field-input"
               value={businessForm.url}
               onChange={(e) => setBusinessForm({ ...businessForm, url: e.target.value })}
-              placeholder="https://"
             />
           </label>
-          <div className="product-form-row product-form-row--2">
-            <label className="field">
-              <span className="field-label">Κατάσταση</span>
-              <select
-                className="field-input"
-                value={businessForm.status}
-                onChange={(e) =>
-                  setBusinessForm({
-                    ...businessForm,
-                    status: e.target.value as PartnerStatus,
-                  })
-                }
-              >
-                <option value="active">Ενεργή</option>
-                <option value="inactive">Ανενεργή</option>
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Κατηγορίες</span>
-              <input
-                className="field-input"
-                value={businessForm.categories}
-                onChange={(e) =>
-                  setBusinessForm({ ...businessForm, categories: e.target.value })
-                }
-              />
-            </label>
-          </div>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={Boolean(businessForm.isSponsor)}
+          <label className="field">
+            <span className="field-label">Κατάσταση</span>
+            <select
+              className="field-input"
+              value={businessForm.status}
               onChange={(e) =>
-                setBusinessForm({ ...businessForm, isSponsor: e.target.checked })
+                setBusinessForm({
+                  ...businessForm,
+                  status: e.target.value as PartnerBusiness['status'],
+                })
               }
-            />
-            <span>Χορηγός</span>
+            >
+              <option value="active">Ενεργή</option>
+              <option value="inactive">Ανενεργή</option>
+            </select>
           </label>
           {businessError ? <p className="form-error">{businessError}</p> : null}
         </div>
@@ -647,7 +424,7 @@ export function PartnerBusinessesPage() {
 
       <Modal
         open={offerOpen}
-        title={editingOffer ? 'Επεξεργασία προσφοράς' : 'Νέα προσφορά'}
+        title="Προσφορά συνεργάτη"
         onClose={() => setOfferOpen(false)}
         footer={
           <>
@@ -655,16 +432,14 @@ export function PartnerBusinessesPage() {
               Άκυρο
             </Button>
             <Button type="button" disabled={offerSaving} onClick={() => void handleSaveOffer()}>
-              Αποθήκευση
+              <Percent size={14} /> Αποθήκευση
             </Button>
           </>
         }
       >
         <div className="stack-md">
           <label className="field">
-            <span className="field-label">
-              Όνομα <span className="req">*</span>
-            </span>
+            <span className="field-label">Τίτλος προσφοράς</span>
             <input
               className="field-input"
               value={offerForm.name}
@@ -672,77 +447,25 @@ export function PartnerBusinessesPage() {
             />
           </label>
           <label className="field">
-            <span className="field-label">
-              Affiliate <span className="req">*</span>
-            </span>
-            <select
+            <span className="field-label">Έκπτωση (εμφάνιση)</span>
+            <input
               className="field-input"
-              value={offerForm.businessId}
-              onChange={(e) => setOfferForm({ ...offerForm, businessId: e.target.value })}
-            >
-              <option value="">—</option>
-              {businesses.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              value={offerForm.discountText ?? ''}
+              onChange={(e) => setOfferForm({ ...offerForm, discountText: e.target.value })}
+              placeholder="π.χ. 20% έκπτωση"
+            />
           </label>
           <label className="field">
-            <span className="field-label">Κατάσταση</span>
-            <select
+            <span className="field-label">Όροι</span>
+            <input
               className="field-input"
-              value={offerForm.status}
-              onChange={(e) =>
-                setOfferForm({ ...offerForm, status: e.target.value as PartnerStatus })
-              }
-            >
-              <option value="active">Ενεργή</option>
-              <option value="inactive">Ανενεργή</option>
-            </select>
+              value={offerForm.conditions ?? ''}
+              onChange={(e) => setOfferForm({ ...offerForm, conditions: e.target.value })}
+              placeholder="π.χ. σε όλα τα μηνιαία πακέτα"
+            />
           </label>
           {offerError ? <p className="form-error">{offerError}</p> : null}
         </div>
-      </Modal>
-
-      <Modal
-        open={sponsorsOpen}
-        title="Διαχείριση Χορηγών"
-        onClose={() => setSponsorsOpen(false)}
-        footer={
-          <>
-            <Button variant="secondary" type="button" onClick={() => setSponsorsOpen(false)}>
-              Άκυρο
-            </Button>
-            <Button
-              type="button"
-              disabled={sponsorsSaving}
-              onClick={() => void handleSaveSponsors()}
-            >
-              Αποθήκευση
-            </Button>
-          </>
-        }
-      >
-        {businesses.length === 0 ? (
-          <p className="muted">Δεν υπάρχουν επιχειρήσεις για επιλογή.</p>
-        ) : (
-          <div className="stack-sm">
-            {businesses.map((item) => (
-              <label key={item.id} className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={sponsorDraft.includes(item.id)}
-                  onChange={() => toggleSponsorDraft(item.id)}
-                />
-                <span>
-                  {item.name}
-                  {item.categories ? ` — ${item.categories}` : ''}
-                </span>
-              </label>
-            ))}
-          </div>
-        )}
       </Modal>
     </div>
   );

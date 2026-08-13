@@ -116,6 +116,7 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
     'schedule',
     'attendance',
     'announcements',
+    'settings',
   ],
   secretariat: [
     'calendar',
@@ -135,8 +136,8 @@ export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> =
     'finance',
   ],
   staff: ['calendar'],
-  athlete: [],
-  parent: [],
+  athlete: ['schedule', 'attendance', 'fees', 'announcements', 'settings'],
+  parent: ['fees', 'announcements', 'settings'],
 };
 
 export type BackupFrequency = 'daily' | 'weekly' | 'monthly';
@@ -192,6 +193,33 @@ export function defaultBackupSchedules(): PlatformBackupSchedules {
   };
 }
 
+/** Εμφάνιση εφαρμογής — ορίζεται από Platform Admin. */
+export type AppearanceTheme = 'classic' | 'navy-amber';
+
+export const APPEARANCE_THEMES: Array<{
+  id: AppearanceTheme;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: 'classic',
+    label: 'Κλασική (τρέχουσα)',
+    description: 'Teal / mint εμφάνιση όπως σήμερα.',
+  },
+  {
+    id: 'navy-amber',
+    label: 'Navy + Amber',
+    description: 'Σκούρο navy + amber (όπως το mockup παρουσιών), σε όλη την εφαρμογή.',
+  },
+];
+
+export function sanitizeAppearanceTheme(value: unknown): AppearanceTheme {
+  if (value === 'classic') return 'classic';
+  if (value === 'navy-amber') return 'navy-amber';
+  /* Default for new / unset configs: Navy + Amber redesign */
+  return 'navy-amber';
+}
+
 export type PlatformConfig = {
   scfModulesByClub: Record<string, ScfModuleId[]>;
   academyModulesByClub: Record<string, AcademyModuleId[]>;
@@ -204,6 +232,8 @@ export type PlatformConfig = {
   seasons: string[];
   appLogoUrl?: string | null;
   appName?: string;
+  /** classic = υπάρχον UI · navy-amber = νέο finance-dense look */
+  appearanceTheme?: AppearanceTheme;
   backupSchedules?: PlatformBackupSchedules;
 };
 
@@ -336,6 +366,7 @@ export function defaultPlatformConfig(): PlatformConfig {
     seasons: ['2025–2026', '2026–2027'],
     appLogoUrl: null,
     appName: 'SPORTSUITE 360',
+    appearanceTheme: 'navy-amber',
     backupSchedules: defaultBackupSchedules(),
   };
 }
@@ -482,6 +513,7 @@ export function loadPlatformConfig(): PlatformConfig {
           ),
           appLogoUrl: parsed.appLogoUrl ?? base.appLogoUrl,
           appName: parsed.appName ?? base.appName,
+          appearanceTheme: sanitizeAppearanceTheme(parsed.appearanceTheme),
           backupSchedules: sanitizeBackupSchedules(parsed.backupSchedules),
         };
         localStorage.setItem(CONFIG_KEY, JSON.stringify(migrated));
@@ -518,6 +550,7 @@ export function loadPlatformConfig(): PlatformConfig {
           .clubRolePermissions,
       ),
       backupSchedules: sanitizeBackupSchedules(parsed.backupSchedules),
+      appearanceTheme: sanitizeAppearanceTheme(parsed.appearanceTheme),
       incomeCategories,
       expenseCategories,
       incomeDescriptions: resolveCatalogDescriptions(
@@ -571,7 +604,12 @@ function resolveCatalogDescriptions(
 }
 
 export function savePlatformConfig(config: PlatformConfig): void {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  const next: PlatformConfig = {
+    ...config,
+    appearanceTheme: sanitizeAppearanceTheme(config.appearanceTheme),
+  };
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
+  applyAppearanceTheme(next.appearanceTheme);
   window.dispatchEvent(new CustomEvent('academyhub-platform-updated'));
 }
 
@@ -581,6 +619,48 @@ export function getAppName(): string {
 
 export function getAppLogoUrl(): string | null {
   return loadPlatformConfig().appLogoUrl ?? null;
+}
+
+export function getAppearanceTheme(): AppearanceTheme {
+  return sanitizeAppearanceTheme(loadPlatformConfig().appearanceTheme);
+}
+
+export function applyAppearanceTheme(theme?: AppearanceTheme): void {
+  if (typeof document === 'undefined') return;
+  const resolved = sanitizeAppearanceTheme(theme ?? getAppearanceTheme());
+  document.documentElement.setAttribute('data-appearance', resolved);
+}
+
+export function setAppearanceTheme(theme: AppearanceTheme): PlatformConfig {
+  const next: PlatformConfig = {
+    ...loadPlatformConfig(),
+    appearanceTheme: sanitizeAppearanceTheme(theme),
+  };
+  savePlatformConfig(next);
+  return next;
+}
+
+const APPEARANCE_ROLLOUT_KEY = 'academyhub-navy-amber-rollout-v1';
+
+/** Εφαρμόζει το θέμα στην εκκίνηση και σε κάθε platform update. */
+export function startAppearanceTheme(): void {
+  try {
+    /* One-time rollout: activate Navy + Amber across the app (can revert in Platform Admin). */
+    if (!localStorage.getItem(APPEARANCE_ROLLOUT_KEY)) {
+      const next: PlatformConfig = {
+        ...loadPlatformConfig(),
+        appearanceTheme: 'navy-amber',
+      };
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
+      localStorage.setItem(APPEARANCE_ROLLOUT_KEY, '1');
+    }
+  } catch {
+    /* ignore */
+  }
+  applyAppearanceTheme();
+  window.addEventListener('academyhub-platform-updated', () => {
+    applyAppearanceTheme();
+  });
 }
 
 export function updateAppLogo(logoUrl: string | null): PlatformConfig {

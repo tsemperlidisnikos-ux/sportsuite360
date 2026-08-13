@@ -21,15 +21,17 @@ function studentContactEmails(student: Student): string[] {
   return uniqueEmails([student.motherEmail, student.fatherEmail, student.email]);
 }
 
+function idsOf(recipients: AnnouncementRecipient[], kind: AnnouncementRecipient['kind']): string[] {
+  return recipients.filter((r) => r.kind === kind).map((r) => r.id);
+}
+
 function athleteIdsForAnnouncement(
   input: Pick<AnnouncementInput, 'classIds' | 'recipientIds' | 'targetType' | 'targetId'>,
   data: ReturnType<typeof getData>,
 ): string[] {
-  const recipientAthleteIds = (input.recipientIds ?? [])
-    .filter((r: AnnouncementRecipient) => r.kind === 'athlete')
-    .map((r) => r.id);
-
-  if (recipientAthleteIds.length > 0) return [...new Set(recipientAthleteIds)];
+  const recipients = input.recipientIds ?? [];
+  const specificAthletes = idsOf(recipients, 'athlete');
+  if (specificAthletes.length > 0) return [...new Set(specificAthletes)];
 
   const classIds = input.classIds ?? [];
   if (classIds.length > 0) {
@@ -59,20 +61,23 @@ export function resolveAnnouncementEmails(
 ): string[] {
   const data = getData();
   const roles = new Set<AnnouncementAudienceRole>(input.audienceRoles ?? []);
+  const recipients = input.recipientIds ?? [];
   const emails: Array<string | undefined | null> = [];
+
+  const wholeClub = roles.size === 0 && recipients.length === 0 && (input.classIds ?? []).length === 0;
+  const wantAthletes = wholeClub || roles.has('athletes') || idsOf(recipients, 'athlete').length > 0;
+  const wantParents = wholeClub || roles.has('parents') || idsOf(recipients, 'parent').length > 0;
+  const wantCoaches = wholeClub || roles.has('coaches') || idsOf(recipients, 'coach').length > 0;
+  const wantStaff = wholeClub || roles.has('staff') || idsOf(recipients, 'staff').length > 0;
+
   const athleteIds = athleteIdsForAnnouncement(input, data);
   const athleteSet = new Set(athleteIds);
 
-  const wantAthletes = roles.size === 0 || roles.has('athletes');
-  const wantParents = roles.size === 0 || roles.has('parents');
-  const wantCoaches = roles.size === 0 || roles.has('coaches');
-  const wantStaff = roles.size === 0 || roles.has('staff');
-
-  if (wantAthletes || wantParents) {
+  if (wantAthletes || (wantParents && idsOf(recipients, 'parent').length === 0)) {
     for (const student of data.students) {
       if (!athleteSet.has(student.id)) continue;
       if (wantAthletes) emails.push(student.email);
-      if (wantParents) {
+      if (wantParents && idsOf(recipients, 'parent').length === 0) {
         emails.push(student.motherEmail, student.fatherEmail);
         for (const link of data.parentLinks ?? []) {
           if (link.athleteId !== student.id) continue;
@@ -83,23 +88,25 @@ export function resolveAnnouncementEmails(
     }
   }
 
-  const recipients = input.recipientIds ?? [];
-  if (wantCoaches || recipients.some((r) => r.kind === 'coach')) {
-    const coachIds = new Set(
-      recipients.filter((r) => r.kind === 'coach').map((r) => r.id),
-    );
+  const specificParents = idsOf(recipients, 'parent');
+  if (specificParents.length > 0) {
+    for (const parentId of specificParents) {
+      const parent = getUsers().find((u) => u.id === parentId && u.active);
+      if (parent?.email) emails.push(parent.email);
+    }
+  }
+
+  if (wantCoaches) {
+    const coachIds = new Set(idsOf(recipients, 'coach'));
     for (const coach of data.coaches) {
       if (!coach.active) continue;
       if (coachIds.size > 0 && !coachIds.has(coach.id)) continue;
-      if (coachIds.size === 0 && recipients.length > 0 && !wantCoaches) continue;
       emails.push(coach.email);
     }
   }
 
-  if (wantStaff || recipients.some((r) => r.kind === 'staff')) {
-    const staffIds = new Set(
-      recipients.filter((r) => r.kind === 'staff').map((r) => r.id),
-    );
+  if (wantStaff) {
+    const staffIds = new Set(idsOf(recipients, 'staff'));
     for (const member of data.staff ?? []) {
       if (staffIds.size > 0 && !staffIds.has(member.id)) continue;
       emails.push(member.email);

@@ -159,18 +159,56 @@ export function AppLayout() {
     };
   }, [session, platformTick, clubTick, usersTick]);
 
+  const roleNavLabels = useMemo((): Partial<Record<AcademyModuleId, string>> => {
+    if (session?.role === 'athlete') {
+      return {
+        dashboard: 'Αρχική',
+        schedule: 'Προπονήσεις',
+        attendance: 'Παρουσίες',
+        fees: 'Οικονομικά',
+        announcements: 'Ανακοινώσεις',
+        settings: 'Ρυθμίσεις',
+      };
+    }
+    if (session?.role === 'coach') {
+      return {
+        dashboard: 'Αρχική',
+        classes: 'Οι Τάξεις μου',
+        trainings: 'Προπονήσεις',
+        attendance: 'Απουσίες / Παρουσίες',
+        announcements: 'Ανακοινώσεις',
+        athletes: 'Αθλητές',
+        schedule: 'Πρόγραμμα',
+        settings: 'Ρυθμίσεις',
+      };
+    }
+    if (session?.role === 'parent') {
+      return { dashboard: 'Αρχική' };
+    }
+    return {};
+  }, [session?.role]);
+
   const visibleAcademy = academyItems
     .filter((item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id))
     .map((item) => {
-      if (item.id !== 'dashboard') return item;
-      if (session?.role === 'parent') return { ...item, label: 'Αρχική γονέα' };
-      if (session?.role === 'coach') return { ...item, label: 'Αρχική προπονητή' };
-      if (session?.role === 'athlete') return { ...item, label: 'Αρχική αθλητή' };
-      return item;
+      const label = roleNavLabels[item.id];
+      return label ? { ...item, label } : item;
     });
   const visibleAnalysis = analysisItems.filter(
     (item) => enabledModules.has(item.id) && userCanAccessModule(accessUser, item.id),
   );
+
+  const headerGreeting = useMemo(() => {
+    if (!session) return null;
+    if (session.role === 'coach') return 'Καλωσήρθες, Coach!';
+    if (session.role === 'athlete') {
+      const first = (session.fullName ?? '').trim().split(/\s+/)[0] || 'αθλητή';
+      const hour = new Date().getHours();
+      const hello = hour < 12 ? 'Καλημέρα' : hour < 18 ? 'Καλησπέρα' : 'Καληνύχτα';
+      return `${hello}, ${first}!`;
+    }
+    return null;
+  }, [session]);
 
   function handleLogout() {
     endPreview();
@@ -242,9 +280,16 @@ export function AppLayout() {
 
           <div>
             <strong>{appName}</strong>
+            {session?.role === 'athlete' ? (
+              <span className="app-header-portal">ATHLETE PORTAL</span>
+            ) : session?.role === 'coach' ? (
+              <span className="app-header-portal">COACH PORTAL</span>
+            ) : null}
             {logoError ? <em className="app-logo-error">{logoError}</em> : null}
           </div>
         </div>
+
+        {headerGreeting ? <p className="app-header-greeting">{headerGreeting}</p> : null}
 
         <div className="app-header-user">
           <div>
@@ -292,7 +337,11 @@ export function AppLayout() {
                 <img src={club.logoUrl} alt={club.name} />
               </div>
             ) : null}
-            <p className="nav-section">Ακαδημία</p>
+            <p className="nav-section">
+              {session?.role === 'athlete' || session?.role === 'coach' || session?.role === 'parent'
+                ? 'Μενού'
+                : 'Ακαδημία'}
+            </p>
             {visibleAcademy.map((item) => (
               <NavLink
                 key={item.to}

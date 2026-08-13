@@ -10,6 +10,8 @@ export const staffSchema = z.object({
   phone: z.string().optional().default(''),
   role: z.enum(['admin', 'coach', 'secretariat']),
   active: z.boolean().default(true),
+  teamLabel: z.string().optional().default(''),
+  photoUrl: z.string().nullable().optional().default(null),
 });
 
 export type StaffInput = z.infer<typeof staffSchema>;

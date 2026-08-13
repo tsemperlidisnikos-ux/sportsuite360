@@ -213,7 +213,9 @@ function AssociationSelect({
 }) {
   const { data } = useAppData();
   const options = useMemo(() => {
-    const fromClubs = (data.associations ?? []).filter((a) => a.active).map((a) => a.name);
+    const fromClubs = (data.associations ?? [])
+      .filter((a) => a.active !== false)
+      .map((a) => a.name);
     const fromAthletes = data.students
       .map((s) => s.clubName)
       .filter((n): n is string => Boolean(n && n.trim()));
@@ -293,7 +295,7 @@ function ResultsModal({
       open={open}
       title={title}
       onClose={onClose}
-      wide
+      fullscreen
       className="prints-results-modal"
       footer={
         <>

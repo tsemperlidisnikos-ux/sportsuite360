@@ -17,7 +17,13 @@ function toAnnouncement(
     targetType: classIds.length === 1 ? 'team' : parsed.targetType,
     targetId: classIds.length === 1 ? classIds[0] : parsed.targetId || null,
     createdAt,
-    highPriority: parsed.highPriority ?? false,
+    highPriority:
+      parsed.highPriority ||
+      parsed.priority === 'high' ||
+      parsed.priority === 'urgent',
+    priority: parsed.priority ?? (parsed.highPriority ? 'high' : 'normal'),
+    status: parsed.status ?? 'published',
+    createdBy: parsed.createdBy ?? '',
     imageUrl: parsed.imageUrl ?? null,
     visibleFrom: parsed.visibleFrom ?? '',
     visibleUntil: parsed.visibleUntil ?? '',

@@ -11,6 +11,9 @@ export interface ClubSmtpSettings {
   username: string;
   password: string;
   fromName: string;
+  fromEmail: string;
+  security: 'starttls' | 'ssl' | 'none';
+  requireAuth: boolean;
 }
 
 export interface ClubSmtpSendLog {
@@ -53,6 +56,12 @@ export interface Club {
   athleteLicenseLimit: number;
   athleteLicenseUsed: number;
   logoUrl?: string | null;
+  vatNumber?: string;
+  taxOffice?: string;
+  address?: string;
+  foundedYear?: string;
+  website?: string;
+  email?: string;
   smtp?: ClubSmtpSettings;
   smtpSendLog?: ClubSmtpSendLog[];
   viva?: ClubVivaSettings;
@@ -237,6 +246,44 @@ export function updateClubLogo(
   return ok(clubs[index]);
 }
 
+export type ClubProfileInput = {
+  name: string;
+  vatNumber?: string;
+  taxOffice?: string;
+  address?: string;
+  foundedYear?: string;
+  website?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+};
+
+export function updateClubProfile(
+  clubId: string,
+  input: ClubProfileInput,
+): ApiResult<Club> {
+  const clubs = getClubs();
+  const index = clubs.findIndex((c) => c.id === clubId);
+  if (index < 0) return fail('Ο σύλλογος δεν βρέθηκε');
+  const name = input.name.trim();
+  if (name.length < 2) return fail('Το όνομα συλλόγου είναι υποχρεωτικό');
+  clubs[index] = {
+    ...clubs[index],
+    name,
+    vatNumber: (input.vatNumber ?? '').trim(),
+    taxOffice: (input.taxOffice ?? '').trim(),
+    address: (input.address ?? '').trim(),
+    foundedYear: (input.foundedYear ?? '').trim(),
+    website: (input.website ?? '').trim(),
+    phone: (input.phone ?? '').trim(),
+    email: (input.email ?? '').trim(),
+    city: (input.city ?? clubs[index].city ?? '').trim(),
+  };
+  saveClubs(clubs);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+  return ok(clubs[index]);
+}
+
 export const clubSmtpSchema = z.object({
   enabled: z.boolean(),
   provider: z.enum(['gmail', 'custom']),
@@ -245,6 +292,9 @@ export const clubSmtpSchema = z.object({
   username: z.string().optional().default(''),
   password: z.string().optional().default(''),
   fromName: z.string().optional().default(''),
+  fromEmail: z.string().optional().default(''),
+  security: z.enum(['starttls', 'ssl', 'none']).optional().default('starttls'),
+  requireAuth: z.boolean().optional().default(true),
 });
 
 export type ClubSmtpInput = z.infer<typeof clubSmtpSchema>;
@@ -258,6 +308,9 @@ export function getDefaultClubSmtp(): ClubSmtpSettings {
     username: '',
     password: '',
     fromName: '',
+    fromEmail: '',
+    security: 'starttls',
+    requireAuth: true,
   };
 }
 
@@ -295,6 +348,9 @@ export function updateClubSmtp(
     username: data.username.trim(),
     password: data.password,
     fromName: data.fromName.trim(),
+    fromEmail: (data.fromEmail ?? '').trim(),
+    security: data.security ?? 'starttls',
+    requireAuth: data.requireAuth ?? true,
   };
 
   clubs[index] = { ...clubs[index], smtp };

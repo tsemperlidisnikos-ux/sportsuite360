@@ -1,34 +1,63 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { Flag, Megaphone, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import {
+  Bold,
+  CalendarClock,
+  Flag,
+  Italic,
+  Layers,
+  List,
+  ListOrdered,
+  MoreHorizontal,
+  Search,
+  Send,
+  Underline,
+  Users,
+  UserRound,
+  GraduationCap,
+} from 'lucide-react';
 import * as announcementsService from '../api/services/announcementsService';
 import * as notificationService from '../api/services/notificationService';
 import { getSession } from '../auth/auth';
 import { Button } from '../components/ui/Button';
-import { Modal } from '../components/ui/Modal';
-import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import type { AnnouncementInput } from '../schemas';
 import type {
   Announcement,
   AnnouncementAudienceRole,
+  AnnouncementPriority,
   AnnouncementRecipient,
+  AnnouncementRecipientKind,
 } from '../types';
+import { listParentRecipients } from '../utils/announcementAudience';
 
-const TEMPLATES_KEY = 'academyhub-announcement-templates';
+const PAGE_SIZE = 5;
 
-type MessageTemplate = {
-  id: string;
-  name: string;
-  title: string;
-  message: string;
-};
+type AudiencePicker = AnnouncementAudienceRole | 'classes' | null;
 
-const AUDIENCE_OPTIONS: Array<{ id: AnnouncementAudienceRole; label: string }> = [
-  { id: 'athletes', label: 'Αθλητές' },
-  { id: 'coaches', label: 'Προπονητές' },
-  { id: 'staff', label: 'Προσωπικό' },
-  { id: 'parents', label: 'Γονείς' },
+const AUDIENCE_OPTIONS: Array<{
+  id: AnnouncementAudienceRole;
+  label: string;
+  icon: typeof Users;
+  recipientKind: AnnouncementRecipientKind;
+}> = [
+  { id: 'parents', label: 'Γονείς', icon: Users, recipientKind: 'parent' },
+  { id: 'coaches', label: 'Προπονητές', icon: UserRound, recipientKind: 'coach' },
+  { id: 'athletes', label: 'Αθλητές', icon: GraduationCap, recipientKind: 'athlete' },
 ];
+
+const PRIORITY_OPTIONS: Array<{ id: AnnouncementPriority; label: string }> = [
+  { id: 'low', label: 'Χαμηλή' },
+  { id: 'normal', label: 'Κανονική' },
+  { id: 'high', label: 'Υψηλή' },
+  { id: 'urgent', label: 'Επείγουσα' },
+];
+
+const PRIORITY_LABELS: Record<AnnouncementPriority, string> = {
+  low: 'Χαμηλή',
+  normal: 'Κανονική',
+  high: 'Υψηλή',
+  urgent: 'Επείγουσα',
+};
 
 const emptyForm: AnnouncementInput = {
   title: '',
@@ -36,6 +65,9 @@ const emptyForm: AnnouncementInput = {
   targetType: 'club',
   targetId: null,
   highPriority: false,
+  priority: 'normal',
+  status: 'published',
+  createdBy: '',
   imageUrl: null,
   visibleFrom: '',
   visibleUntil: '',
@@ -60,270 +92,132 @@ function htmlToPlain(html: string): string {
   return (el.innerText || el.textContent || '').trim();
 }
 
-function loadTemplates(): MessageTemplate[] {
-  try {
-    const raw = localStorage.getItem(TEMPLATES_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as MessageTemplate[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveTemplates(items: MessageTemplate[]) {
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(items));
-}
-
-function createTemplateId() {
-  return `tpl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function recipientKey(item: AnnouncementRecipient): string {
-  return `${item.kind}:${item.id}`;
+function resolvePriority(item: Announcement): AnnouncementPriority {
+  if (item.priority) return item.priority;
+  return item.highPriority ? 'high' : 'normal';
 }
 
 export function AnnouncementsPage() {
   const { data, refresh } = useAppData();
-  const [open, setOpen] = useState(false);
+  const session = getSession();
+  const composeRef = useRef<HTMLElement | null>(null);
+  const messageRef = useRef<HTMLTextAreaElement | null>(null);
+
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [form, setForm] = useState<AnnouncementInput>(emptyForm);
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
-  const [templates, setTemplates] = useState<MessageTemplate[]>(() => loadTemplates());
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [templateName, setTemplateName] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-  const [wholeClub, setWholeClub] = useState(true);
-  const [highlightAvailableClasses, setHighlightAvailableClasses] = useState<string[]>([]);
-  const [highlightSelectedClasses, setHighlightSelectedClasses] = useState<string[]>([]);
-  const [highlightAvailableAthletes, setHighlightAvailableAthletes] = useState<string[]>([]);
-  const [highlightSelectedAthletes, setHighlightSelectedAthletes] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
+
+  const [audienceFilter, setAudienceFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pickerOpen, setPickerOpen] = useState<AudiencePicker>(null);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [classesEnabled, setClassesEnabled] = useState(false);
+
   useEffect(() => {
-    setTemplates(loadTemplates());
-  }, [open]);
+    setForm((prev) => ({
+      ...prev,
+      createdBy: session?.fullName || 'Διαχειριστής',
+    }));
+  }, [session?.fullName]);
+
+  const coachOptions = useMemo(
+    () =>
+      (data.coaches ?? [])
+        .filter((c) => c.active)
+        .map((c) => ({
+          id: c.id,
+          label: `${c.lastName} ${c.firstName}`.trim(),
+          hint: c.email,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'el')),
+    [data.coaches],
+  );
+
+  const athleteOptions = useMemo(() => {
+    const classFilter = form.classIds ?? [];
+    return (data.students ?? [])
+      .filter((s) => s.status !== 'inactive')
+      .filter((s) => (classFilter.length === 0 ? true : s.classId && classFilter.includes(s.classId)))
+      .map((s) => ({
+        id: s.id,
+        label: `${s.lastName} ${s.firstName}`.trim(),
+        hint: data.classes.find((c) => c.id === s.classId)?.name ?? '',
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'el'));
+  }, [data.students, data.classes, form.classIds]);
+
+  const parentOptions = useMemo(() => listParentRecipients(), [data.parentLinks, data.students]);
+
+  const classOptions = useMemo(
+    () =>
+      (data.classes ?? [])
+        .map((c) => ({
+          id: c.id,
+          label: c.name,
+          hint: c.ageGroup || c.sport || '',
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'el')),
+    [data.classes],
+  );
 
   const announcements = useMemo(
     () =>
-      [...(data.announcements ?? [])].sort((a, b) =>
-        b.createdAt.localeCompare(a.createdAt),
-      ),
+      [...(data.announcements ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [data.announcements],
   );
 
-  const selectedClassIds = form.classIds ?? [];
-  const selectedRecipientKeys = useMemo(
-    () => new Set((form.recipientIds ?? []).map(recipientKey)),
-    [form.recipientIds],
-  );
-
-  const recipientsByClass = useMemo(() => {
-    return selectedClassIds
-      .map((classId) => {
-        const academyClass = data.classes.find((c) => c.id === classId);
-        if (!academyClass) return null;
-        const athletes = data.students
-          .filter((s) => s.classId === classId && s.status !== 'inactive')
-          .map((s) => ({
-            kind: 'athlete' as const,
-            id: s.id,
-            label: `${s.lastName} ${s.firstName}`.trim(),
-            className: academyClass.name,
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label, 'el'));
-        return { classId, className: academyClass.name, athletes };
-      })
-      .filter(Boolean) as Array<{
-      classId: string;
-      className: string;
-      athletes: Array<{ kind: 'athlete'; id: string; label: string; className: string }>;
-    }>;
-  }, [selectedClassIds, data.classes, data.students]);
-
-  const availableClasses = useMemo(
-    () =>
-      data.classes
-        .filter((c) => !selectedClassIds.includes(c.id))
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name, 'el')),
-    [data.classes, selectedClassIds],
-  );
-
-  const selectedClasses = useMemo(
-    () =>
-      data.classes
-        .filter((c) => selectedClassIds.includes(c.id))
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name, 'el')),
-    [data.classes, selectedClassIds],
-  );
-
-  const availableAthletes = useMemo(() => {
-    const selectedKeys = selectedRecipientKeys;
-    return recipientsByClass
-      .flatMap((group) =>
-        group.athletes
-          .filter((a) => !selectedKeys.has(`athlete:${a.id}`))
-          .map((a) => ({ ...a, classId: group.classId })),
-      )
-      .sort((a, b) => a.label.localeCompare(b.label, 'el'));
-  }, [recipientsByClass, selectedRecipientKeys]);
-
-  const selectedAthletes = useMemo(() => {
-    return (form.recipientIds ?? [])
-      .map((r) => {
-        const student = data.students.find((s) => s.id === r.id);
-        if (!student) return null;
-        const academyClass = data.classes.find((c) => c.id === student.classId);
-        return {
-          kind: 'athlete' as const,
-          id: student.id,
-          label: `${student.lastName} ${student.firstName}`.trim(),
-          className: academyClass?.name ?? '',
-          classId: student.classId ?? '',
-        };
-      })
-      .filter(Boolean) as Array<{
-      kind: 'athlete';
-      id: string;
-      label: string;
-      className: string;
-      classId: string;
-    }>;
-  }, [form.recipientIds, data.students, data.classes]);
-
-  function clearShuttleHighlights() {
-    setHighlightAvailableClasses([]);
-    setHighlightSelectedClasses([]);
-    setHighlightAvailableAthletes([]);
-    setHighlightSelectedAthletes([]);
-  }
-
-  function toggleHighlight(list: string[], id: string): string[] {
-    return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-  }
-
-  function syncClassSelection(classIds: string[]) {
-    setWholeClub(false);
-    setForm((prev) => {
-      const recipientIds = (prev.recipientIds ?? []).filter((r) => {
-        if (r.kind !== 'athlete') return true;
-        const student = data.students.find((s) => s.id === r.id);
-        return student?.classId ? classIds.includes(student.classId) : false;
-      });
-      const names = data.classes
-        .filter((c) => classIds.includes(c.id))
-        .map((c) => c.name);
-      return {
-        ...prev,
-        classIds,
-        recipientIds,
-        targetType: classIds.length === 1 ? 'team' : 'club',
-        targetId: classIds.length === 1 ? classIds[0] : null,
-        teamsLabel: names.join(', '),
-        showTo: names.join(', ') || 'Ολόκληρος σύλλογος',
-      };
-    });
-  }
-
-  function moveClassesToSelected() {
-    if (highlightAvailableClasses.length === 0) return;
-    const next = [...new Set([...selectedClassIds, ...highlightAvailableClasses])];
-    syncClassSelection(next);
-    setHighlightAvailableClasses([]);
-  }
-
-  function moveClassesToAvailable() {
-    if (highlightSelectedClasses.length === 0) return;
-    const remove = new Set(highlightSelectedClasses);
-    const next = selectedClassIds.filter((id) => !remove.has(id));
-    syncClassSelection(next);
-    setHighlightSelectedClasses([]);
-    setHighlightAvailableAthletes([]);
-    setHighlightSelectedAthletes([]);
-  }
-
-  function moveAthletesToSelected() {
-    if (highlightAvailableAthletes.length === 0) return;
-    setWholeClub(false);
-    setForm((prev) => {
-      const current = prev.recipientIds ?? [];
-      const existing = new Set(current.map(recipientKey));
-      const added = highlightAvailableAthletes
-        .filter((id) => !existing.has(`athlete:${id}`))
-        .map((id) => ({ kind: 'athlete' as const, id }));
-      return { ...prev, recipientIds: [...current, ...added] };
-    });
-    setHighlightAvailableAthletes([]);
-  }
-
-  function moveAthletesToAvailable() {
-    if (highlightSelectedAthletes.length === 0) return;
-    const remove = new Set(highlightSelectedAthletes);
-    setForm((prev) => ({
-      ...prev,
-      recipientIds: (prev.recipientIds ?? []).filter((r) => !remove.has(r.id)),
-    }));
-    setHighlightSelectedAthletes([]);
-  }
-  function describeAudience(item: Announcement): string {
-    const parts: string[] = [];
-    const roles = (item.audienceRoles ?? [])
-      .map((role) => AUDIENCE_OPTIONS.find((o) => o.id === role)?.label)
-      .filter(Boolean);
-    if (roles.length > 0) parts.push(roles.join(', '));
-
-    const classNames = (item.classIds ?? [])
-      .map((id) => data.classes.find((c) => c.id === id)?.name)
-      .filter(Boolean);
-    if (classNames.length > 0) parts.push(classNames.join(', '));
-    else if (item.targetType === 'team' && item.targetId) {
-      const name = data.classes.find((c) => c.id === item.targetId)?.name;
-      if (name) parts.push(name);
-    }
-
-    const people = (item.recipientIds ?? [])
-      .map((r) => {
-        if (r.kind === 'athlete') {
-          const s = data.students.find((x) => x.id === r.id);
-          return s ? `${s.lastName} ${s.firstName}`.trim() : null;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return announcements.filter((item) => {
+      if (item.status === 'draft') return false;
+      const priority = resolvePriority(item);
+      if (priorityFilter && priority !== priorityFilter) return false;
+      if (audienceFilter) {
+        const roles = item.audienceRoles ?? [];
+        if (roles.length > 0 && !roles.includes(audienceFilter as AnnouncementAudienceRole)) {
+          return false;
         }
-        if (r.kind === 'coach') {
-          const c = data.coaches.find((x) => x.id === r.id);
-          return c ? `${c.lastName} ${c.firstName}`.trim() : null;
-        }
-        const staff = data.staff.find((x) => x.id === r.id);
-        return staff?.fullName ?? null;
-      })
-      .filter(Boolean);
-    if (people.length > 0) parts.push(people.join(', '));
+      }
+      if (!q) return true;
+      const hay = `${item.title} ${htmlToPlain(item.message)}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [announcements, audienceFilter, priorityFilter, query]);
 
-    if (item.teamsLabel?.trim() && classNames.length === 0) parts.push(item.teamsLabel.trim());
-    if (parts.length === 0) {
-      if (item.targetType === 'club') return 'Ολόκληρος σύλλογος';
-      return item.showTo?.trim() || 'Όλοι';
-    }
-    return parts.join(' · ');
-  }
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const from = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(safePage * PAGE_SIZE, filtered.length);
 
-  function openCreate() {
+  function resetCompose() {
     setEditing(null);
-    setForm(emptyForm);
-    setWholeClub(true);
-    setSelectedTemplateId('');
-    setTemplateName('');
+    setForm({
+      ...emptyForm,
+      createdBy: session?.fullName || 'Διαχειριστής',
+      priority: 'normal',
+      status: 'published',
+    });
+    setScheduleMode('now');
+    setSendEmail(false);
     setError('');
-    clearShuttleHighlights();
-    setOpen(true);
+    setPickerOpen(null);
+    setPickerQuery('');
+    setClassesEnabled(false);
+  }
+
+  function focusCompose() {
+    resetCompose();
+    composeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function openEdit(item: Announcement) {
-    const classIds =
-      item.classIds ??
-      (item.targetType === 'team' && item.targetId ? [item.targetId] : []);
-    const recipients = item.recipientIds ?? [];
     setEditing(item);
     setForm({
       title: item.title,
@@ -331,6 +225,9 @@ export function AnnouncementsPage() {
       targetType: item.targetType,
       targetId: item.targetId,
       highPriority: item.highPriority ?? false,
+      priority: resolvePriority(item),
+      status: item.status ?? 'published',
+      createdBy: item.createdBy || session?.fullName || 'Διαχειριστής',
       imageUrl: item.imageUrl ?? null,
       visibleFrom: item.visibleFrom ?? '',
       visibleUntil: item.visibleUntil ?? '',
@@ -338,590 +235,666 @@ export function AnnouncementsPage() {
       sportCategories: item.sportCategories ?? '',
       teamsLabel: item.teamsLabel ?? '',
       audienceRoles: item.audienceRoles ?? [],
-      classIds,
-      recipientIds: recipients,
+      classIds: item.classIds ?? [],
+      recipientIds: item.recipientIds ?? [],
     });
-    setWholeClub(classIds.length === 0 && recipients.length === 0);
-    setSelectedTemplateId('');
-    setTemplateName('');
+    setClassesEnabled((item.classIds ?? []).length > 0);
+    setScheduleMode(item.visibleFrom ? 'later' : 'now');
     setError('');
-    clearShuttleHighlights();
-    setOpen(true);
+    setMenuId(null);
+    setPickerOpen(null);
+    setPickerQuery('');
+    composeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function closeModal() {
-    setOpen(false);
-    setError('');
-    setDragOver(false);
-    clearShuttleHighlights();
+  function recipientCount(kind: AnnouncementRecipientKind): number {
+    return (form.recipientIds ?? []).filter((r) => r.kind === kind).length;
   }
 
-  function applyTemplate(id: string) {
-    setSelectedTemplateId(id);
-    const template = templates.find((t) => t.id === id);
-    if (!template) return;
-    setForm((prev) => ({
-      ...prev,
-      title: template.title,
-      message: template.message,
-    }));
-    setTemplateName(template.name);
-  }
+  function toggleAudience(role: AnnouncementAudienceRole) {
+    const option = AUDIENCE_OPTIONS.find((o) => o.id === role);
+    const active = (form.audienceRoles ?? []).includes(role);
 
-  function handleSaveTemplate() {
-    const name = templateName.trim();
-    if (!name) {
-      setError('Συμπληρώστε όνομα προτύπου');
-      return;
-    }
-    if (!form.message.trim()) {
-      setError('Το μήνυμα είναι υποχρεωτικό για αποθήκευση προτύπου');
-      return;
-    }
-    setError('');
-    const next: MessageTemplate = {
-      id: selectedTemplateId || createTemplateId(),
-      name,
-      title: form.title.trim(),
-      message: form.message.trim(),
-    };
-    const updated = selectedTemplateId
-      ? templates.map((t) => (t.id === selectedTemplateId ? next : t))
-      : [...templates, next];
-    saveTemplates(updated);
-    setTemplates(updated);
-    setSelectedTemplateId(next.id);
-  }
-
-  function readImageFile(file: File) {
-    if (!file.type.startsWith('image/')) {
-      setError('Επιλέξτε αρχείο εικόνας.');
-      return;
-    }
-    setError('');
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((prev) => ({ ...prev, imageUrl: String(reader.result) }));
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    readImageFile(file);
-  }
-
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setDragOver(false);
-    const file = event.dataTransfer.files?.[0];
-    if (!file) return;
-    readImageFile(file);
-  }
-
-  function toggleWholeClub(checked: boolean) {
-    setWholeClub(checked);
-    clearShuttleHighlights();
-    if (checked) {
+    if (!active) {
       setForm((prev) => ({
         ...prev,
-        targetType: 'club',
-        targetId: null,
-        classIds: [],
-        recipientIds: [],
-        teamsLabel: '',
-        showTo: 'Ολόκληρος σύλλογος',
+        audienceRoles: [...(prev.audienceRoles ?? []), role],
       }));
-    }
-  }
-
-  async function handleSave() {
-    const message = form.message.trim();
-    if (!message) {
-      setError('Το μήνυμα είναι υποχρεωτικό');
+      setPickerOpen(role);
+      setPickerQuery('');
       return;
     }
-    if (!form.title.trim()) {
+
+    if (pickerOpen === role) {
+      setForm((prev) => ({
+        ...prev,
+        audienceRoles: (prev.audienceRoles ?? []).filter((r) => r !== role),
+        recipientIds: (prev.recipientIds ?? []).filter((r) => r.kind !== option?.recipientKind),
+      }));
+      setPickerOpen(null);
+      setPickerQuery('');
+      return;
+    }
+
+    setPickerOpen(role);
+    setPickerQuery('');
+  }
+
+  function toggleClassesTarget() {
+    if (!classesEnabled) {
+      setClassesEnabled(true);
+      setPickerOpen('classes');
+      setPickerQuery('');
+      return;
+    }
+
+    if (pickerOpen === 'classes') {
+      setClassesEnabled(false);
+      setForm((f) => ({ ...f, classIds: [] }));
+      setPickerOpen(null);
+      setPickerQuery('');
+      return;
+    }
+
+    setPickerOpen('classes');
+    setPickerQuery('');
+  }
+
+  function toggleRecipient(kind: AnnouncementRecipientKind, id: string) {
+    setForm((prev) => {
+      const current = prev.recipientIds ?? [];
+      const exists = current.some((r) => r.kind === kind && r.id === id);
+      const next: AnnouncementRecipient[] = exists
+        ? current.filter((r) => !(r.kind === kind && r.id === id))
+        : [...current, { kind, id }];
+      return { ...prev, recipientIds: next };
+    });
+  }
+
+  function toggleClassId(classId: string) {
+    setForm((prev) => {
+      const current = prev.classIds ?? [];
+      const next = current.includes(classId)
+        ? current.filter((id) => id !== classId)
+        : [...current, classId];
+      return { ...prev, classIds: next };
+    });
+  }
+
+  function isRecipientSelected(kind: AnnouncementRecipientKind, id: string): boolean {
+    return (form.recipientIds ?? []).some((r) => r.kind === kind && r.id === id);
+  }
+
+  function setPriority(priority: AnnouncementPriority) {
+    setForm((prev) => ({
+      ...prev,
+      priority,
+      highPriority: priority === 'high' || priority === 'urgent',
+    }));
+  }
+
+  function wrapMessage(prefix: string, suffix = prefix) {
+    const el = messageRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const value = form.message;
+    const selected = value.slice(start, end) || 'κείμενο';
+    const next = value.slice(0, start) + prefix + selected + suffix + value.slice(end);
+    setForm((prev) => ({ ...prev, message: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+    });
+  }
+
+  async function persist(status: 'draft' | 'published') {
+    const message = form.message.trim();
+    const title = form.title.trim();
+    if (!title) {
       setError('Ο τίτλος είναι υποχρεωτικός');
       return;
     }
-    if (!wholeClub && (form.classIds ?? []).length === 0) {
-      setError('Επιλέξτε τουλάχιστον ένα τμήμα ή ολόκληρο τον σύλλογο');
+    if (!message) {
+      setError('Το περιεχόμενο είναι υποχρεωτικό');
       return;
     }
 
     setSaving(true);
     setError('');
-    const classIds = wholeClub ? [] : form.classIds ?? [];
-    const recipientIds = wholeClub ? [] : form.recipientIds ?? [];
-    const classNames = data.classes
-      .filter((c) => classIds.includes(c.id))
-      .map((c) => c.name);
-    const peopleLabels = recipientIds
-      .map((r) => {
-        const s = data.students.find((x) => x.id === r.id);
-        return s ? `${s.lastName} ${s.firstName}`.trim() : null;
-      })
-      .filter(Boolean) as string[];
 
-    const showParts = [
-      ...(classNames.length && recipientIds.length === 0 ? classNames : []),
-      ...peopleLabels,
-    ];
+    const priority = form.priority ?? 'normal';
+    const roles = form.audienceRoles ?? [];
+    const classIds = form.classIds ?? [];
+    const recipientIds = form.recipientIds ?? [];
+    const audienceLabels: string[] = [];
+    for (const role of roles) {
+      const base = AUDIENCE_OPTIONS.find((o) => o.id === role)?.label ?? role;
+      const kind = AUDIENCE_OPTIONS.find((o) => o.id === role)?.recipientKind;
+      const count = kind ? recipientIds.filter((r) => r.kind === kind).length : 0;
+      audienceLabels.push(count > 0 ? `${base} (${count})` : base);
+    }
+    if (classIds.length > 0) {
+      audienceLabels.push(
+        classIds.length === 1
+          ? classOptions.find((c) => c.id === classIds[0])?.label ?? 'Τμήμα'
+          : `Τμήματα (${classIds.length})`,
+      );
+    }
 
     const payload: AnnouncementInput = {
       ...form,
-      title: form.title.trim(),
+      title,
       message,
+      priority,
+      status,
+      highPriority: priority === 'high' || priority === 'urgent',
+      createdBy: session?.fullName || form.createdBy || 'Διαχειριστής',
+      audienceRoles: roles,
       classIds,
-      audienceRoles: form.audienceRoles ?? [],
       recipientIds,
       targetType: classIds.length === 1 ? 'team' : 'club',
       targetId: classIds.length === 1 ? classIds[0] : null,
-      teamsLabel: classNames.join(', '),
-      showTo: wholeClub
-        ? 'Ολόκληρος σύλλογος'
-        : showParts.join(', ') || classNames.join(', ') || 'Όλοι',
+      showTo: audienceLabels.length > 0 ? audienceLabels.join(', ') : 'Ολόκληρος σύλλογος',
+      visibleFrom: scheduleMode === 'later' ? form.visibleFrom || '' : '',
     };
+
     const result = editing
       ? await announcementsService.updateAnnouncement(editing.id, payload)
       : await announcementsService.createAnnouncement(payload);
+
     if (!result.success) {
       setSaving(false);
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
       return;
     }
 
-    if (sendEmail && !editing) {
-      const session = getSession();
+    if (status === 'published' && sendEmail && !editing) {
       const clubId = session?.clubId;
-      if (!clubId) {
-        setSaving(false);
-        setError('Δεν βρέθηκε σύλλογος για αποστολή email.');
-        return;
+      if (clubId) {
+        const emails = notificationService.resolveAnnouncementEmails(payload);
+        if (emails.length > 0) {
+          await notificationService.sendAnnouncementEmails({
+            clubId,
+            title: payload.title,
+            message: payload.message,
+            emails,
+          });
+        }
       }
-      const emails = notificationService.resolveAnnouncementEmails(payload);
-      if (emails.length === 0) {
-        setSaving(false);
-        setError('Η ανακοίνωση αποθηκεύτηκε, αλλά δεν βρέθηκαν έγκυρα email παραληπτών.');
-        closeModal();
-        refresh();
-        return;
-      }
-      const mail = await notificationService.sendAnnouncementEmails({
-        clubId,
-        title: payload.title,
-        message: payload.message,
-        emails,
-      });
-      setSaving(false);
-      if (mail.data?.failed.length) {
-        setError(
-          `Αποθηκεύτηκε. Στάλθηκαν ${mail.data.sent.length}/${emails.length}. Αποτυχίες: ${mail.data.failed
-            .slice(0, 3)
-            .map((f) => f.email)
-            .join(', ')}`,
-        );
-      }
-      closeModal();
-      refresh();
-      return;
     }
 
     setSaving(false);
-    closeModal();
+    resetCompose();
     refresh();
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Διαγραφή ανακοίνωσης;')) return;
     await announcementsService.deleteAnnouncement(id);
+    setMenuId(null);
     refresh();
   }
 
-  return (
-    <div className="stack-lg">
-      <PageHeader
-        title="Ανακοινώσεις"
-        subtitle="Ανακοινώσεις προς αθλητές και τμήματα."
-        actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus size={16} /> Νέα ανακοίνωση
-          </Button>
-        }
-      />
+  function audienceRolesOf(item: Announcement): AnnouncementAudienceRole[] {
+    if (item.audienceRoles && item.audienceRoles.length > 0) return item.audienceRoles;
+    return ['parents', 'coaches', 'athletes'];
+  }
 
-      <section className="panel table-wrap">
-        {announcements.length === 0 ? (
-          <div className="empty-state">
-            <Megaphone size={28} />
-            <p>Δεν υπάρχουν ακόμη ανακοινώσεις.</p>
+  return (
+    <div className="ann-page">
+      <header className="ann-page-head">
+        <div>
+          <h1>Ανακοινώσεις</h1>
+          <p>Δημιουργία και αποστολή ανακοινώσεων σε γονείς, προπονητές και αθλητές.</p>
+        </div>
+        <Button type="button" onClick={focusCompose}>
+          <Send size={16} /> Νέα Ανακοίνωση
+        </Button>
+      </header>
+
+      <section className="ann-compose panel" ref={composeRef}>
+        <h2>{editing ? 'Επεξεργασία ανακοίνωσης' : 'Νέα ανακοίνωση'}</h2>
+        <div className="ann-compose-grid">
+          <div className="ann-compose-main">
+            <label className="ann-field">
+              <span className="ann-label">Τίτλος *</span>
+              <input
+                value={form.title}
+                placeholder="Πληκτρολογήστε τίτλο ανακοίνωσης"
+                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </label>
+
+            <div className="ann-field">
+              <span className="ann-label">Περιεχόμενο *</span>
+              <div className="ann-editor">
+                <div className="ann-editor-toolbar" role="toolbar" aria-label="Μορφοποίηση">
+                  <button type="button" onClick={() => wrapMessage('**', '**')} aria-label="Έντονα">
+                    <Bold size={15} />
+                  </button>
+                  <button type="button" onClick={() => wrapMessage('_', '_')} aria-label="Πλάγια">
+                    <Italic size={15} />
+                  </button>
+                  <button type="button" onClick={() => wrapMessage('__', '__')} aria-label="Υπογράμμιση">
+                    <Underline size={15} />
+                  </button>
+                  <button type="button" onClick={() => wrapMessage('\n- ', '')} aria-label="Λίστα">
+                    <List size={15} />
+                  </button>
+                  <button type="button" onClick={() => wrapMessage('\n1. ', '')} aria-label="Αρίθμηση">
+                    <ListOrdered size={15} />
+                  </button>
+                </div>
+                <textarea
+                  ref={messageRef}
+                  className="ann-message-textarea"
+                  rows={8}
+                  placeholder="Γράψτε το περιεχόμενο της ανακοίνωσης..."
+                  value={form.message}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                    setForm((prev) => ({ ...prev, message: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
           </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Ημερομηνία</th>
-                <th>Τίτλος</th>
-                <th>Στόχος</th>
-                <th>Μήνυμα</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {announcements.map((item) => (
-                <tr key={item.id}>
-                  <td>{formatDate(item.createdAt)}</td>
-                  <td>
-                    {item.highPriority ? <Flag size={14} className="ann-priority-icon" /> : null}{' '}
-                    {item.title}
-                  </td>
-                  <td>{describeAudience(item)}</td>
-                  <td className="announcement-message-cell">
-                    <span>{htmlToPlain(item.message).slice(0, 120)}</span>
-                  </td>
-                  <td className="row-actions">
+
+          <aside className="ann-compose-side">
+            <div className="ann-side-block">
+              <span className="ann-label">Ακροατήριο</span>
+              <div className="ann-audience-toggles">
+                {AUDIENCE_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const active = (form.audienceRoles ?? []).includes(option.id);
+                  const count = recipientCount(option.recipientKind);
+                  return (
                     <button
+                      key={option.id}
                       type="button"
-                      className="icon-btn"
-                      aria-label="Επεξεργασία"
-                      onClick={() => openEdit(item)}
+                      className={`ann-audience-btn${active ? ' is-active' : ''}${
+                        pickerOpen === option.id ? ' is-open' : ''
+                      }`}
+                      onClick={() => toggleAudience(option.id)}
                     >
-                      <Pencil size={16} />
+                      <Icon size={16} />
+                      <span className="ann-audience-btn-label">
+                        {option.label}
+                        {active ? (
+                          <em>{count > 0 ? `${count} επιλεγμένοι` : 'Όλοι'}</em>
+                        ) : null}
+                      </span>
                     </button>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      aria-label="Διαγραφή"
-                      onClick={() => void handleDelete(item.id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                  );
+                })}
+                <button
+                  type="button"
+                  className={`ann-audience-btn${classesEnabled ? ' is-active' : ''}${
+                    pickerOpen === 'classes' ? ' is-open' : ''
+                  }`}
+                  onClick={toggleClassesTarget}
+                >
+                  <Layers size={16} />
+                  <span className="ann-audience-btn-label">
+                    Τμήματα
+                    {classesEnabled ? (
+                      <em>
+                        {(form.classIds ?? []).length > 0
+                          ? `${(form.classIds ?? []).length} επιλεγμένα`
+                          : 'Επιλογή'}
+                      </em>
+                    ) : null}
+                  </span>
+                </button>
+              </div>
+
+              {pickerOpen ? (
+                <div className="ann-audience-picker">
+                  <label className="ann-audience-search">
+                    <Search size={14} aria-hidden />
+                    <input
+                      type="search"
+                      placeholder="Αναζήτηση..."
+                      value={pickerQuery}
+                      onChange={(e) => setPickerQuery(e.target.value)}
+                    />
+                  </label>
+                  <div className="ann-audience-list" role="group">
+                    {(() => {
+                      const q = pickerQuery.trim().toLowerCase();
+                      if (pickerOpen === 'classes') {
+                        const rows = classOptions.filter(
+                          (row) =>
+                            !q ||
+                            row.label.toLowerCase().includes(q) ||
+                            row.hint.toLowerCase().includes(q),
+                        );
+                        if (rows.length === 0) {
+                          return <p className="ann-hint">Δεν βρέθηκαν τμήματα.</p>;
+                        }
+                        return rows.map((row) => {
+                          const checked = (form.classIds ?? []).includes(row.id);
+                          return (
+                            <label key={row.id} className={`ann-pick-row${checked ? ' is-on' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleClassId(row.id)}
+                              />
+                              <span>
+                                <strong>{row.label}</strong>
+                                {row.hint ? <em>{row.hint}</em> : null}
+                              </span>
+                            </label>
+                          );
+                        });
+                      }
+
+                      const option = AUDIENCE_OPTIONS.find((o) => o.id === pickerOpen);
+                      if (!option) return null;
+                      const kind = option.recipientKind;
+                      const rows =
+                        kind === 'coach'
+                          ? coachOptions
+                          : kind === 'athlete'
+                            ? athleteOptions
+                            : parentOptions.map((p) => ({
+                                id: p.id,
+                                label: p.label,
+                                hint: p.email,
+                              }));
+                      const filteredRows = rows.filter(
+                        (row) =>
+                          !q ||
+                          row.label.toLowerCase().includes(q) ||
+                          (row.hint || '').toLowerCase().includes(q),
+                      );
+                      if (filteredRows.length === 0) {
+                        return (
+                          <p className="ann-hint">
+                            {kind === 'parent'
+                              ? 'Δεν υπάρχουν συνδεδεμένοι γονείς. Χωρίς επιλογή → όλοι οι γονείς.'
+                              : 'Δεν βρέθηκαν εγγραφές.'}
+                          </p>
+                        );
+                      }
+                      return filteredRows.map((row) => {
+                        const checked = isRecipientSelected(kind, row.id);
+                        return (
+                          <label key={row.id} className={`ann-pick-row${checked ? ' is-on' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleRecipient(kind, row.id)}
+                            />
+                            <span>
+                              <strong>{row.label}</strong>
+                              {row.hint ? <em>{row.hint}</em> : null}
+                            </span>
+                          </label>
+                        );
+                      });
+                    })()}
+                  </div>
+                  <p className="ann-hint">
+                    Χωρίς τικ → όλη η κατηγορία
+                    {pickerOpen === 'classes' ? ' (όλα τα τμήματα αν δεν επιλέξετε).' : '.'}
+                  </p>
+                </div>
+              ) : (
+                <p className="ann-hint">
+                  Χωρίς επιλογή → ολόκληρος σύλλογος. Κλικ σε κατηγορία για συγκεκριμένους παραλήπτες.
+                </p>
+              )}
+            </div>
+
+            <div className="ann-side-block">
+              <span className="ann-label">Προτεραιότητα</span>
+              <div className="ann-priority-toggles">
+                {PRIORITY_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={`ann-priority-btn is-${option.id}${
+                      (form.priority ?? 'normal') === option.id ? ' is-active' : ''
+                    }`}
+                    onClick={() => setPriority(option.id)}
+                  >
+                    <Flag size={14} />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="ann-side-block">
+              <span className="ann-label">Προγραμματισμός</span>
+              <label className="ann-schedule-select">
+                <CalendarClock size={16} aria-hidden />
+                <select
+                  value={scheduleMode}
+                  onChange={(e) => setScheduleMode(e.target.value as 'now' | 'later')}
+                >
+                  <option value="now">Δημοσίευση τώρα</option>
+                  <option value="later">Προγραμματισμός</option>
+                </select>
+              </label>
+              {scheduleMode === 'later' ? (
+                <input
+                  type="datetime-local"
+                  className="ann-schedule-datetime"
+                  value={form.visibleFrom ?? ''}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, visibleFrom: e.target.value }))
+                  }
+                />
+              ) : null}
+            </div>
+
+            {!editing ? (
+              <label className="ann-email-check">
+                <input
+                  type="checkbox"
+                  checked={sendEmail}
+                  onChange={(e) => setSendEmail(e.target.checked)}
+                />
+                <span>Αποστολή και με email</span>
+              </label>
+            ) : null}
+          </aside>
+        </div>
+
+        {error ? <p className="form-error">{error}</p> : null}
+
+        <div className="ann-compose-actions">
+          {editing ? (
+            <button type="button" className="ann-draft-btn" onClick={resetCompose}>
+              Ακύρωση επεξεργασίας
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ann-draft-btn"
+            disabled={saving}
+            onClick={() => void persist('draft')}
+          >
+            Αποθήκευση ως πρόχειρο
+          </button>
+          <Button type="button" disabled={saving} onClick={() => void persist('published')}>
+            <Send size={16} /> {saving ? 'Αποστολή…' : 'Αποστολή'}
+          </Button>
+        </div>
       </section>
 
-      <Modal
-        open={open}
-        title={editing ? 'Επεξεργασία ανακοίνωσης' : 'Νέα ανακοίνωση'}
-        onClose={closeModal}
-        className="ann-compose-modal ann-compose-modal--wide"
-        fullscreen
-        footer={
-          <>
-            <Button type="button" disabled={saving} onClick={() => void handleSave()}>
-              {saving ? 'Δημοσίευση...' : 'Δημοσίευση'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={closeModal}>
-              Ακύρωση
-            </Button>
-          </>
-        }
-      >
-        <div className="ann-form ann-form--compose">
-          <label className="ann-field">
-            <span className="ann-label">Πρότυπα μηνυμάτων</span>
+      <section className="ann-list panel">
+        <div className="ann-list-head">
+          <h2>Λίστα ανακοινώσεων</h2>
+          <div className="ann-list-filters">
             <select
-              value={selectedTemplateId}
-              onChange={(e) => applyTemplate(e.target.value)}
+              value={audienceFilter}
+              onChange={(e) => {
+                setAudienceFilter(e.target.value);
+                setPage(1);
+              }}
             >
-              <option value="">Επίλεξε πρότυπο...</option>
-              {templates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
+              <option value="">Όλα τα ακροατήρια</option>
+              {AUDIENCE_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
                 </option>
               ))}
             </select>
-          </label>
-
-          <label className="ann-field">
-            <span className="ann-label">Τίτλος</span>
-            <input
-              value={form.title}
-              onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-            />
-          </label>
-
-          <label className="ann-field">
-            <span className="ann-label">Μήνυμα</span>
-            <textarea
-              className="ann-message-textarea"
-              rows={7}
-              value={form.message}
-              onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
-            />
-          </label>
-
-          {!editing ? (
-            <label className="admin-check" style={{ marginBottom: '0.75rem' }}>
-              <span>Αποστολή και με email (SMTP συλλόγου)</span>
-              <input
-                type="checkbox"
-                checked={sendEmail}
-                onChange={(e) => setSendEmail(e.target.checked)}
-              />
-            </label>
-          ) : null}
-
-          <div className="ann-image-field ann-image-field--compose">
-            <span className="ann-label">Εικόνα</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleImageChange}
-            />
-            {form.imageUrl ? (
-              <div className="ann-image-preview">
-                <img src={form.imageUrl} alt="Προεπισκόπηση" />
-                <button
-                  type="button"
-                  className="ann-image-remove"
-                  aria-label="Αφαίρεση εικόνας"
-                  onClick={() => setForm((prev) => ({ ...prev, imageUrl: null }))}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={`ann-image-dropzone${dragOver ? ' is-dragover' : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-              >
-                <button
-                  type="button"
-                  className="ann-image-upload"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={18} />
-                  Πατήστε εδώ ή σύρετε αρχεία...
-                </button>
-              </div>
-            )}
-            <p className="ann-hint">Μπορείτε να ανεβάσετε μόνο ένα αρχείο</p>
-          </div>
-
-          <div className="ann-field">
-            <span className="ann-label">Στόχος</span>
             <select
-              value={wholeClub ? 'club' : 'teams'}
+              value={priorityFilter}
               onChange={(e) => {
-                const isClub = e.target.value === 'club';
-                toggleWholeClub(isClub);
+                setPriorityFilter(e.target.value);
+                setPage(1);
               }}
             >
-              <option value="club">Ολόκληρος σύλλογος</option>
-              <option value="teams">Συγκεκριμένα τμήματα</option>
+              <option value="">Όλες οι προτεραιότητες</option>
+              {PRIORITY_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
             </select>
-          </div>
-
-          {!wholeClub ? (
-            <div className="ann-shuttle">
-              <div className="ann-shuttle-row">
-                <div className="ann-shuttle-box">
-                  <div className="ann-shuttle-head">Τμήματα</div>
-                  <ul className="ann-shuttle-list">
-                    {availableClasses.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          className={`ann-shuttle-item${highlightAvailableClasses.includes(item.id) ? ' is-active' : ''}`}
-                          onClick={() =>
-                            setHighlightAvailableClasses((prev) =>
-                              toggleHighlight(prev, item.id),
-                            )
-                          }
-                          onDoubleClick={() => {
-                            syncClassSelection([...selectedClassIds, item.id]);
-                            setHighlightAvailableClasses([]);
-                          }}
-                        >
-                          {item.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="ann-shuttle-actions">
-                  <button
-                    type="button"
-                    className="ann-shuttle-transfer"
-                    onClick={moveClassesToSelected}
-                    aria-label="Προσθήκη τμημάτων"
-                  >
-                    {'>>>>'}
-                  </button>
-                  <button
-                    type="button"
-                    className="ann-shuttle-transfer"
-                    onClick={moveClassesToAvailable}
-                    aria-label="Αφαίρεση τμημάτων"
-                  >
-                    {'<<<<'}
-                  </button>
-                </div>
-
-                <div className="ann-shuttle-box">
-                  <div className="ann-shuttle-head">Για νέα ανακοίνωση</div>
-                  <ul className="ann-shuttle-list">
-                    {selectedClasses.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          className={`ann-shuttle-item${highlightSelectedClasses.includes(item.id) ? ' is-active' : ''}`}
-                          onClick={() =>
-                            setHighlightSelectedClasses((prev) =>
-                              toggleHighlight(prev, item.id),
-                            )
-                          }
-                          onDoubleClick={() => {
-                            syncClassSelection(
-                              selectedClassIds.filter((id) => id !== item.id),
-                            );
-                            setHighlightSelectedClasses([]);
-                          }}
-                        >
-                          {item.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="ann-shuttle-row">
-                <div className="ann-shuttle-box">
-                  <div className="ann-shuttle-head">Αθλητές επιλ. τμημάτων</div>
-                  <ul className="ann-shuttle-list">
-                    {availableAthletes.map((person) => (
-                      <li key={person.id}>
-                        <button
-                          type="button"
-                          className={`ann-shuttle-item${highlightAvailableAthletes.includes(person.id) ? ' is-active' : ''}`}
-                          onClick={() =>
-                            setHighlightAvailableAthletes((prev) =>
-                              toggleHighlight(prev, person.id),
-                            )
-                          }
-                          onDoubleClick={() => {
-                            setForm((prev) => ({
-                              ...prev,
-                              recipientIds: [
-                                ...(prev.recipientIds ?? []),
-                                { kind: 'athlete', id: person.id },
-                              ],
-                            }));
-                            setHighlightAvailableAthletes([]);
-                          }}
-                        >
-                          <span className="ann-shuttle-item-meta">{person.className}</span>
-                          <span className="ann-shuttle-item-name">{person.label}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="ann-shuttle-actions">
-                  <button
-                    type="button"
-                    className="ann-shuttle-transfer"
-                    onClick={moveAthletesToSelected}
-                    aria-label="Προσθήκη αθλητών"
-                  >
-                    {'>>>>'}
-                  </button>
-                  <button
-                    type="button"
-                    className="ann-shuttle-transfer"
-                    onClick={moveAthletesToAvailable}
-                    aria-label="Αφαίρεση αθλητών"
-                  >
-                    {'<<<<'}
-                  </button>
-                </div>
-
-                <div className="ann-shuttle-box">
-                  <div className="ann-shuttle-head">Για ανακοίνωση</div>
-                  <ul className="ann-shuttle-list">
-                    {selectedAthletes.map((person) => (
-                      <li key={person.id}>
-                        <button
-                          type="button"
-                          className={`ann-shuttle-item${highlightSelectedAthletes.includes(person.id) ? ' is-active' : ''}`}
-                          onClick={() =>
-                            setHighlightSelectedAthletes((prev) =>
-                              toggleHighlight(prev, person.id),
-                            )
-                          }
-                          onDoubleClick={() => {
-                            setForm((prev) => ({
-                              ...prev,
-                              recipientIds: (prev.recipientIds ?? []).filter(
-                                (r) => r.id !== person.id,
-                              ),
-                            }));
-                            setHighlightSelectedAthletes([]);
-                          }}
-                        >
-                          <span className="ann-shuttle-item-meta">{person.className}</span>
-                          <span className="ann-shuttle-item-name">{person.label}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <p className="ann-hint">
-                Επίλεξε τμήματα και αθλητές και μετακίνησέ τους με τα βελάκια. Αν δεν επιλέξεις
-                αθλητές, η ανακοίνωση πάει σε όλα τα επιλεγμένα τμήματα.
-              </p>
-            </div>
-          ) : null}
-
-          <label className="ann-field">
-            <span className="ann-label">Προγραμματισμός αποστολής</span>
-            <input
-              type="datetime-local"
-              value={form.visibleFrom ?? ''}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, visibleFrom: e.target.value }))
-              }
-            />
-            <span className="ann-hint">Άφησέ το κενό για άμεση δημοσίευση.</span>
-          </label>
-
-          <div className="ann-template-save-row">
-            <label className="ann-field">
-              <span className="ann-label">Όνομα προτύπου</span>
+            <label className="ann-search">
+              <Search size={15} aria-hidden />
               <input
-                value={templateName}
-                placeholder="π.χ. Υπενθύμιση προπόνησης"
-                onChange={(e) => setTemplateName(e.target.value)}
+                type="search"
+                placeholder="Αναζήτηση..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
               />
             </label>
-            <Button type="button" variant="secondary" onClick={handleSaveTemplate}>
-              Αποθήκευση προτύπου
-            </Button>
           </div>
-
-          {error ? <p className="form-error">{error}</p> : null}
         </div>
-      </Modal>
+
+        {pageRows.length === 0 ? (
+          <p className="ann-empty">Δεν υπάρχουν ανακοινώσεις με αυτά τα κριτήρια.</p>
+        ) : (
+          <div className="table-wrap ann-table-wrap">
+            <table className="ann-table">
+              <thead>
+                <tr>
+                  <th>Τίτλος</th>
+                  <th>Ακροατήριο</th>
+                  <th>Προτεραιότητα</th>
+                  <th>Δημοσίευση</th>
+                  <th>Δημιουργός</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((item) => {
+                  const priority = resolvePriority(item);
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="ann-title-cell">
+                          <i className={`ann-dot is-${priority}`} aria-hidden />
+                          <div>
+                            <strong>{item.title}</strong>
+                            <span>{htmlToPlain(item.message).slice(0, 90)}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="ann-role-pills">
+                          {audienceRolesOf(item).map((role) => {
+                            const kind = AUDIENCE_OPTIONS.find((o) => o.id === role)?.recipientKind;
+                            const count = kind
+                              ? (item.recipientIds ?? []).filter((r) => r.kind === kind).length
+                              : 0;
+                            return (
+                              <span key={role} className={`ann-role-pill is-${role}`}>
+                                {AUDIENCE_OPTIONS.find((o) => o.id === role)?.label ?? role}
+                                {count > 0 ? ` · ${count}` : ''}
+                              </span>
+                            );
+                          })}
+                          {(item.classIds ?? []).length > 0 ? (
+                            <span className="ann-role-pill is-classes">
+                              Τμήματα · {(item.classIds ?? []).length}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`ann-priority-label is-${priority}`}>
+                          <Flag size={13} />
+                          {PRIORITY_LABELS[priority]}
+                        </span>
+                      </td>
+                      <td>{formatDate(item.visibleFrom || item.createdAt)}</td>
+                      <td>{item.createdBy || 'Διαχειριστής'}</td>
+                      <td className="ann-row-actions">
+                        <div className="ann-menu-wrap">
+                          <button
+                            type="button"
+                            className="ann-menu-btn"
+                            aria-label="Ενέργειες"
+                            onClick={() => setMenuId(menuId === item.id ? null : item.id)}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                          {menuId === item.id ? (
+                            <div className="ann-menu">
+                              <button type="button" onClick={() => openEdit(item)}>
+                                Επεξεργασία
+                              </button>
+                              <button type="button" onClick={() => void handleDelete(item.id)}>
+                                Διαγραφή
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="ann-pager">
+          <span>
+            {from}-{to} από {filtered.length}
+          </span>
+          <div className="ann-pager-btns">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              ‹
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .slice(0, 5)
+              .map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={n === safePage ? 'is-active' : ''}
+                  onClick={() => setPage(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

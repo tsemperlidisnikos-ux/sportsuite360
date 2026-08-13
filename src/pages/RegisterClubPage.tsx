@@ -1,152 +1,335 @@
 import { type FormEvent, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import {
+  CalendarDays,
+  CreditCard,
+  Lock,
+  MessagesSquare,
+  Trophy,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { isAuthenticated } from '../auth/auth';
-import { registerClub } from '../auth/clubs';
-import { clearDataCache } from '../data/repository';
-import { resetClubStore } from '../data/store';
-import { endPreview } from '../platform/platformConfig';
+
+const WAITLIST_KEY = 'sportsuite360-academy-waitlist-v1';
+
+const FEATURES = [
+  { icon: Users, title: 'ΟΡΓΑΝΩΣΗ', subtitle: 'Αθλητές & Ομάδες' },
+  { icon: CalendarDays, title: 'ΠΡΟΠΟΝΗΣΕΙΣ', subtitle: 'Πρόγραμμα & Παρουσίες' },
+  { icon: Trophy, title: 'ΑΓΩΝΕΣ', subtitle: 'Αποτελέσματα & Βαθμολογίες' },
+  { icon: CreditCard, title: 'ΠΛΗΡΩΜΕΣ', subtitle: 'Συνδρομές & Ειδοποιήσεις' },
+  { icon: MessagesSquare, title: 'ΕΠΙΚΟΙΝΩΝΙΑ', subtitle: 'Ανακοινώσεις & Μηνύματα' },
+] as const;
+
+const SPORT_OPTIONS = [
+  'Ποδόσφαιρο',
+  'Μπάσκετ',
+  'Βόλεϊ',
+  'Χάντμπολ',
+  'Κολύμβηση',
+  'Τένις',
+  'Άλλο',
+];
+
+const INTEREST_OPTIONS = [
+  'Οργάνωση ακαδημίας / προπονήσεις / πληρωμές',
+  'Οικονομικά & συνδρομές',
+  'Παρουσίες & πρόγραμμα',
+  'Επικοινωνία με γονείς',
+  'Αγώνες & στατιστικά',
+];
+
+const LEVEL_OPTIONS = [
+  { id: 'academies', label: 'Ακαδημίες' },
+  { id: 'pre', label: 'Προαγωνιστικό' },
+  { id: 'comp', label: 'Αγωνιστικό' },
+] as const;
+
+type WaitlistEntry = {
+  id: string;
+  clubName: string;
+  adminFullName: string;
+  email: string;
+  phone: string;
+  sport: string;
+  levels: string[];
+  interest: string;
+  createdAt: string;
+};
+
+function saveWaitlistEntry(entry: Omit<WaitlistEntry, 'id' | 'createdAt'>) {
+  try {
+    const raw = localStorage.getItem(WAITLIST_KEY);
+    const list: WaitlistEntry[] = raw ? (JSON.parse(raw) as WaitlistEntry[]) : [];
+    list.push({
+      ...entry,
+      id: `wl_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    });
+    localStorage.setItem(WAITLIST_KEY, JSON.stringify(list));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function Req({ children }: { children: string }) {
+  return (
+    <span className="ssr-label">
+      {children} <span className="ssr-req" aria-hidden>*</span>
+    </span>
+  );
+}
 
 export function RegisterClubPage() {
-  const navigate = useNavigate();
   const [clubName, setClubName] = useState('');
-  const [city, setCity] = useState('');
-  const [phone, setPhone] = useState('');
   const [adminFullName, setAdminFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [sport, setSport] = useState('');
+  const [levels, setLevels] = useState<string[]>(['academies']);
+  const [interest, setInterest] = useState(INTEREST_OPTIONS[0]);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
 
   if (isAuthenticated()) {
     return <Navigate to="/" replace />;
   }
 
+  function toggleLevel(id: string) {
+    setLevels((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!acceptedTerms) {
+      setError('Απαιτείται αποδοχή Όρων Χρήσης και Πολιτικής Απορρήτου.');
+      return;
+    }
+    if (!sport) {
+      setError('Επίλεξε άθλημα.');
+      return;
+    }
     setSaving(true);
     setError('');
-    void (async () => {
-      const result = await registerClub({
-        clubName,
-        city,
-        phone,
-        adminFullName,
-        email,
-        password,
-        confirmPassword,
-      });
-      setSaving(false);
-      if (!result.success) {
-        setError(result.error ?? 'Αποτυχία εγγραφής');
-        return;
-      }
-      const clubId = result.data?.club.id;
-      if (clubId) {
-        resetClubStore(clubId);
-      }
-      endPreview();
-      clearDataCache();
-      window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
-      navigate('/', { replace: true });
-    })();
+    const ok = saveWaitlistEntry({
+      clubName: clubName.trim(),
+      adminFullName: adminFullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      sport,
+      levels,
+      interest,
+    });
+    setSaving(false);
+    if (!ok) {
+      setError('Αποτυχία αποθήκευσης. Δοκίμασε ξανά.');
+      return;
+    }
+    setDone(true);
   }
 
   return (
-    <div className="login-page">
-      <form className="login-card login-card-wide" onSubmit={handleSubmit}>
-        <div className="login-brand">
-          <span className="brand-mark">SS</span>
-          <div>
-            <strong>SPORTSUITE 360</strong>
-            <span>Νέα εγγραφή συλλόγου</span>
+    <div className="ssr-page">
+      <div className="ssr-bg" aria-hidden>
+        <div className="ssr-bg-photo" />
+        <div className="ssr-bg-arcs" />
+        <div className="ssr-bg-fade" />
+      </div>
+
+      <div className="ssr-layout">
+        <aside className="ssr-left">
+          <div className="ssr-logo">
+            <span className="ssr-logo-name">SPORTSUITE</span>
+            <span className="ssr-logo-360">360</span>
           </div>
+
+          <h1 className="ssr-headline">
+            Η ΠΛΗΡΗΣ ΣΟΥΙΤΑ ΔΙΑΧΕΙΡΙΣΗΣ
+            <span className="ssr-headline-accent">ΑΘΛΗΤΙΚΩΝ ΑΚΑΔΗΜΙΩΝ</span>
+          </h1>
+
+          <p className="ssr-lead">
+            Οργάνωσε την ακαδημία σου: αθλητές, προπονήσεις, αγώνες, επικοινωνία και
+            πληρωμές σε ένα σύγχρονο περιβάλλον.
+          </p>
+
+          <ul className="ssr-features">
+            {FEATURES.map(({ icon: Icon, title, subtitle }) => (
+              <li key={title}>
+                <Icon size={26} strokeWidth={1.9} aria-hidden />
+                <strong>{title}</strong>
+                <span>{subtitle}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="ssr-callout">
+            <CalendarDays size={22} aria-hidden />
+            <div>
+              <strong>ΞΕΚΙΝΑΜΕ ΣΥΝΤΟΜΑ</strong>
+              <p>Άφησε τα στοιχεία σου για να είσαι από τους πρώτους που θα το δοκιμάσουν.</p>
+            </div>
+          </div>
+        </aside>
+
+        <div className="ssr-right">
+          {done ? (
+            <div className="ssr-card ssr-card--success">
+              <div className="ssr-card-icon" aria-hidden>
+                <UserPlus size={24} strokeWidth={2.2} />
+              </div>
+              <h2>Είσαι στη λίστα!</h2>
+              <p>
+                Ευχαριστούμε. Θα επικοινωνήσουμε στο <strong>{email}</strong> όταν ανοίξει η
+                δωρεάν δοκιμή.
+              </p>
+              <Link className="ssr-submit" to="/login">
+                Μετάβαση στη σύνδεση
+              </Link>
+            </div>
+          ) : (
+            <form className="ssr-card" onSubmit={handleSubmit}>
+              <header className="ssr-card-head">
+                <div className="ssr-card-icon" aria-hidden>
+                  <UserPlus size={24} strokeWidth={2.2} />
+                </div>
+                <h2>Εγγραφή ακαδημίας</h2>
+                <p>Συμπλήρωσε τη φόρμα για να μπεις στη λίστα αναμονής για τη δωρεάν δοκιμή.</p>
+              </header>
+
+              <label className="ssr-field">
+                <Req>Όνομα ακαδημίας</Req>
+                <input
+                  type="text"
+                  value={clubName}
+                  onChange={(e) => setClubName(e.target.value)}
+                  placeholder="Π.χ. Α.Ο. Νίκη"
+                  required
+                />
+              </label>
+
+              <div className="ssr-grid-2">
+                <label className="ssr-field">
+                  <Req>Ονοματεπώνυμο υπευθύνου</Req>
+                  <input
+                    type="text"
+                    value={adminFullName}
+                    onChange={(e) => setAdminFullName(e.target.value)}
+                    placeholder="Π.χ. Γιάννης Παπαδόπουλος"
+                    required
+                  />
+                </label>
+                <label className="ssr-field">
+                  <Req>Email επικοινωνίας</Req>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@academy.gr"
+                    required
+                  />
+                </label>
+              </div>
+
+              <div className="ssr-grid-2">
+                <label className="ssr-field">
+                  <Req>Τηλέφωνο επικοινωνίας</Req>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="69XXXXXXXX"
+                    required
+                  />
+                </label>
+                <label className="ssr-field">
+                  <Req>Άθλημα</Req>
+                  <select value={sport} onChange={(e) => setSport(e.target.value)} required>
+                    <option value="">Επιλέξτε άθλημα</option>
+                    {SPORT_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <fieldset className="ssr-levels">
+                <legend>
+                  Επίπεδο τμημάτων <span className="ssr-req" aria-hidden>*</span>
+                </legend>
+                <div className="ssr-levels-row">
+                  {LEVEL_OPTIONS.map((opt) => (
+                    <label key={opt.id} className="ssr-check">
+                      <input
+                        type="checkbox"
+                        checked={levels.includes(opt.id)}
+                        onChange={() => toggleLevel(opt.id)}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <label className="ssr-field">
+                <Req>Ενδιαφέρομαι κυρίως για</Req>
+                <select value={interest} onChange={(e) => setInterest(e.target.value)} required>
+                  {INTEREST_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="ssr-trial">
+                <CalendarDays size={20} aria-hidden />
+                <p>
+                  <strong>Δωρεάν δοκιμή</strong>
+                  Οι επιλεγμένες ακαδημίες θα έχουν δωρεάν πρόσβαση για 30 ημέρες.
+                </p>
+              </div>
+
+              <label className="ssr-terms">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                />
+                <span>
+                  Διάβασα και αποδέχομαι τους{' '}
+                  <button type="button" className="ssr-link">
+                    Όρους Χρήσης
+                  </button>{' '}
+                  και την{' '}
+                  <button type="button" className="ssr-link">
+                    Πολιτική Απορρήτου
+                  </button>
+                  .
+                </span>
+              </label>
+
+              {error ? <p className="ssr-error">{error}</p> : null}
+
+              <button type="submit" className="ssr-submit" disabled={saving}>
+                {saving ? 'ΑΠΟΣΤΟΛΗ…' : 'ΕΓΓΡΑΦΗ ΣΤΗ ΛΙΣΤΑ ΑΝΑΜΟΝΗΣ'}
+              </button>
+
+              <p className="ssr-secure">
+                <Lock size={13} aria-hidden />
+                Τα στοιχεία σας είναι ασφαλή και δεν θα κοινοποιηθούν
+              </p>
+            </form>
+          )}
         </div>
-
-        <label>
-          <span>Όνομα συλλόγου</span>
-          <input
-            type="text"
-            value={clubName}
-            onChange={(e) => setClubName(e.target.value)}
-            placeholder="π.χ. Α.Σ. ΑΠΟΛΛΩΝΙΑΔΑ"
-            required
-          />
-        </label>
-
-        <div className="login-grid-2">
-          <label>
-            <span>Πόλη</span>
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-          </label>
-          <label>
-            <span>Τηλέφωνο συλλόγου</span>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </label>
-        </div>
-
-        <label>
-          <span>Ονοματεπώνυμο διαχειριστή</span>
-          <input
-            type="text"
-            value={adminFullName}
-            onChange={(e) => setAdminFullName(e.target.value)}
-            required
-          />
-        </label>
-
-        <label>
-          <span>Email διαχειριστή</span>
-          <input
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-
-        <div className="login-grid-2">
-          <label>
-            <span>Κωδικός</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            <span>Επιβεβαίωση κωδικού</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </label>
-        </div>
-
-        {error ? <p className="form-error">{error}</p> : null}
-
-        <button type="submit" className="login-submit" disabled={saving}>
-          {saving ? 'Εγγραφή...' : 'Εγγραφή συλλόγου'}
-        </button>
-
-        <p className="login-footer-link">
-          Έχετε ήδη λογαριασμό; <Link to="/login">Σύνδεση</Link>
-        </p>
-      </form>
+      </div>
     </div>
   );
 }

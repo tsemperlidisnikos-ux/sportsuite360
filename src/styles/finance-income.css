@@ -38,8 +38,8 @@
   min-width: 10rem;
   padding: 0.85rem 1rem;
   border-radius: 14px;
-  background: linear-gradient(145deg, #17362e, #215447);
-  color: #e9f7f0;
+  background: linear-gradient(145deg, var(--chrome-1), var(--brand-dark));
+  color: var(--chrome-fg);
 }
 
 .stat-pill span {
@@ -58,7 +58,7 @@
   padding: 1rem;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: linear-gradient(180deg, #f8fcfa, #ffffff);
+  background: linear-gradient(180deg, var(--bg), var(--surface));
 }
 
 .subcategory-bar {
@@ -71,7 +71,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
 }
 
 .ta-row {
@@ -86,8 +86,8 @@
 }
 
 .ta-header {
-  background: #17362e;
-  color: #e9f7f0;
+  background: var(--chrome-1);
+  color: var(--chrome-fg);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -104,7 +104,7 @@
   align-items: center;
   margin: 0;
   padding: 0.75rem 0.9rem;
-  background: #f3f8f5;
+  background: var(--bg);
   color: var(--ink);
   font-weight: 750;
   border-right: 1px solid var(--line);
@@ -125,9 +125,10 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.55rem 0.7rem;
-  background: #fff;
+  background: var(--field-bg, var(--surface));
   font: inherit;
   color: var(--ink);
+  color-scheme: inherit;
 }
 
 .ta-analysis textarea {
@@ -137,7 +138,13 @@
 
 .ta-analysis select:disabled {
   opacity: 0.65;
-  background: #f5f7f6;
+  background: var(--bg-deep);
+  color: var(--muted);
+}
+
+.ta-analysis option {
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .ta-amount {
@@ -163,7 +170,7 @@
 }
 
 .ta-hint--warn {
-  color: #b42318;
+  color: var(--danger, #b42318);
 }
 
 .ta-file input[type='file'] {
@@ -184,18 +191,19 @@
   margin: 0;
   padding: 0.85rem 1rem;
   border-radius: 12px;
-  background: rgba(13, 115, 119, 0.1);
-  color: #215447;
+  background: var(--brand-soft);
+  color: var(--ink);
   font-weight: 600;
 }
 
 .income-entry-list .data-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
   overflow: hidden;
+  color: var(--ink);
 }
 
 .income-entry-list .data-table th,
@@ -206,7 +214,7 @@
 }
 
 .income-entry-list .data-table th {
-  background: #f3f8f5;
+  background: var(--bg);
   font-size: 0.78rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -219,7 +227,7 @@
 
 .ta-total {
   font-size: 1.05rem;
-  color: var(--brand-dark, #095456);
+  color: var(--brand-dark);
 }
 
 .transport-group {
@@ -276,12 +284,14 @@
   padding: 1rem 1.1rem;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .report-templates-header h3 {
   margin: 0 0 0.35rem;
   font-size: 1rem;
+  color: var(--ink);
 }
 
 .report-templates-header p,
@@ -300,8 +310,8 @@
 .report-chip {
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
-  color: var(--muted);
+  background: var(--surface);
+  color: var(--ink);
   padding: 0.55rem 0.9rem;
   cursor: pointer;
   font: inherit;
@@ -309,8 +319,8 @@
 }
 
 .report-chip:hover {
-  border-color: var(--brand);
-  color: var(--brand-dark);
+  border-color: var(--accent, var(--brand));
+  color: var(--accent, var(--brand-dark));
 }
 
 .report-chip.is-active {
@@ -347,8 +357,8 @@
   min-width: 10rem;
   padding: 0.85rem 1rem;
   border-radius: 14px;
-  background: linear-gradient(145deg, #17362e, #215447);
-  color: #e9f7f0;
+  background: linear-gradient(145deg, var(--chrome-1), var(--brand-dark));
+  color: var(--chrome-fg);
 }
 
 .summary-card span {
@@ -382,7 +392,7 @@
 .budget-progress {
   height: 8px;
   border-radius: 999px;
-  background: #e6eee9;
+  background: var(--bg-deep);
   overflow: hidden;
 }
 
@@ -392,7 +402,7 @@
 }
 
 .budget-progress-bar.is-ok {
-  background: #0d7377;
+  background: var(--brand);
 }
 
 .budget-progress-bar.is-over {
@@ -408,18 +418,18 @@
 }
 
 .budget-status.is-pending {
-  background: #eef1f0;
-  color: #5b6b66;
+  background: var(--bg);
+  color: var(--muted);
 }
 
 .budget-status.is-good {
-  background: rgba(13, 115, 119, 0.12);
-  color: #0d7377;
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .budget-status.is-bad {
   background: rgba(196, 92, 38, 0.14);
-  color: #a5471f;
+  color: var(--danger, #a5471f);
 }
 
 .budget-hint {
@@ -438,7 +448,8 @@
   padding: 1rem;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .report-meta h3 {
@@ -453,12 +464,12 @@
 }
 
 .report-table .amount.income {
-  color: #1f6b45;
+  color: var(--positive);
   font-weight: 700;
 }
 
 .report-table .amount.expense {
-  color: #b42318;
+  color: var(--danger, #b42318);
   font-weight: 700;
 }
 

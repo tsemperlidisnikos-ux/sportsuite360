@@ -1,0 +1,2321 @@
+/**
+ * Navy + Amber theme — applied when html[data-appearance="navy-amber"].
+ * Covers shell, modules, portals, platform admin, and shared UI patterns.
+ */
+
+html[data-appearance='navy-amber'] {
+  --chip-bg: rgba(224, 177, 58, 0.14);
+  --amber-ink: #0b1f3a;
+}
+
+/* ---- Typography & density ---- */
+html[data-appearance='navy-amber'] .page-header h1,
+html[data-appearance='navy-amber'] .topbar h1,
+html[data-appearance='navy-amber'] h1 {
+  letter-spacing: -0.02em;
+}
+
+html[data-appearance='navy-amber'] .page-header p,
+html[data-appearance='navy-amber'] .lede {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] .eyebrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ---- Tables (all modules) ---- */
+html[data-appearance='navy-amber'] .table-wrap,
+html[data-appearance='navy-amber'] .panel .table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+html[data-appearance='navy-amber'] table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+html[data-appearance='navy-amber'] thead th {
+  background: var(--table-head-bg);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  padding: 0.7rem 0.85rem;
+}
+
+html[data-appearance='navy-amber'] tbody td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.7rem 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-appearance='navy-amber'] tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+html[data-appearance='navy-amber'] tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ---- Forms / fields ---- */
+html[data-appearance='navy-amber'] select,
+html[data-appearance='navy-amber'] .field-input,
+html[data-appearance='navy-amber'] .field select,
+html[data-appearance='navy-amber'] input[type='text'],
+html[data-appearance='navy-amber'] input[type='email'],
+html[data-appearance='navy-amber'] input[type='number'],
+html[data-appearance='navy-amber'] input[type='password'],
+html[data-appearance='navy-amber'] input[type='date'],
+html[data-appearance='navy-amber'] input[type='time'],
+html[data-appearance='navy-amber'] input[type='search'],
+html[data-appearance='navy-amber'] input[type='tel'],
+html[data-appearance='navy-amber'] input[type='url'],
+html[data-appearance='navy-amber'] textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--ink);
+}
+
+/* Native dropdown popup: force readable option colors (OS popup is often light). */
+html[data-appearance='navy-amber'] select option,
+html[data-appearance='navy-amber'] select optgroup {
+  background: #ffffff;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .field-input:focus,
+html[data-appearance='navy-amber'] input:focus,
+html[data-appearance='navy-amber'] select:focus,
+html[data-appearance='navy-amber'] textarea:focus {
+  outline: 2px solid rgba(212, 160, 23, 0.35);
+  border-color: var(--accent);
+  background: var(--field-bg);
+  color: var(--ink);
+}
+
+/* Attendance custom select: no nested border from global select rules */
+html[data-appearance='navy-amber'] .att-select select,
+html[data-appearance='navy-amber'] .att-select select:focus {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #f4f7fb !important;
+  padding: 0.7rem 0 !important;
+}
+
+html[data-appearance='navy-amber'] .att-select--date input[type='date'],
+html[data-appearance='navy-amber'] .att-select--date input[type='date']:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+html[data-appearance='navy-amber'] .att-select {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+html[data-appearance='navy-amber'] .att-select:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(224, 177, 58, 0.22);
+}
+
+html[data-appearance='navy-amber'] .field-label,
+html[data-appearance='navy-amber'] label > span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* White / light cards: re-scope tokens so labels & fields stay readable */
+html[data-appearance='navy-amber'] .login-card,
+html[data-appearance='navy-amber'] .ssr-card,
+html[data-appearance='navy-amber'] .training-modal,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal),
+html[data-appearance='navy-amber'] .modal-panel,
+html[data-appearance='navy-amber'] .modal-card,
+html[data-appearance='navy-amber'] .ui-modal,
+html[data-appearance='navy-amber'] .ann-modal,
+html[data-appearance='navy-amber'] .photos-modal,
+html[data-appearance='navy-amber'] .public-join-card,
+html[data-appearance='navy-amber'] .join-form {
+  --ink: #0b1f3a;
+  --muted: #445064;
+  --line: rgba(11, 31, 58, 0.18);
+  --field-bg: #ffffff;
+  --surface: #ffffff;
+  --bg: #eef2f7;
+  --bg-deep: #e2e8f0;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal {
+  --ink: #f4f7fb;
+  --muted: #b6c3d6;
+  --line: rgba(255, 255, 255, 0.12);
+  --field-bg: #0e1a2e;
+  --surface: #121f35;
+  background: #0a1424;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .modal-header,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .modal-footer {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .modal-header h2,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal #modal-title {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .field-label,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal label > span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .field > span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .settings-hint,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .muted,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section h3 {
+  color: #e8eef7 !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .settings-hint,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .muted {
+  color: #b6c3d6 !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip {
+  background: #15243c !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip span {
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip:has(input:checked),
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip.is-active {
+  background: rgba(224, 177, 58, 0.22) !important;
+  border-color: var(--accent) !important;
+}
+
+html[data-appearance='navy-amber'] .login-card label,
+html[data-appearance='navy-amber'] .login-card label > span,
+html[data-appearance='navy-amber'] .ssr-card label,
+html[data-appearance='navy-amber'] .ssr-card label > span,
+html[data-appearance='navy-amber'] .ssr-card .ssr-label,
+html[data-appearance='navy-amber'] .ssr-card .ssr-check,
+html[data-appearance='navy-amber'] .ssr-card .ssr-check span,
+html[data-appearance='navy-amber'] .ssr-card .ssr-terms,
+html[data-appearance='navy-amber'] .ssr-card .ssr-terms > span,
+html[data-appearance='navy-amber'] .ssr-card legend,
+html[data-appearance='navy-amber'] .ssr-card h2,
+html[data-appearance='navy-amber'] .training-modal label,
+html[data-appearance='navy-amber'] .training-modal label > span,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) label,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) label > span,
+html[data-appearance='navy-amber'] .public-join-card label,
+html[data-appearance='navy-amber'] .public-join-card label > span,
+html[data-appearance='navy-amber'] .join-form label,
+html[data-appearance='navy-amber'] .join-form label > span {
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .ssr-card .ssr-terms {
+  color: #445064;
+}
+
+html[data-appearance='navy-amber'] .ssr-card .ssr-secure {
+  color: #8b95a7;
+}
+
+html[data-appearance='navy-amber'] .ssr-card .ssr-link {
+  color: #c9971a;
+}
+
+html[data-appearance='navy-amber'] .login-card input,
+html[data-appearance='navy-amber'] .login-card select,
+html[data-appearance='navy-amber'] .login-card textarea,
+html[data-appearance='navy-amber'] .ssr-card input,
+html[data-appearance='navy-amber'] .ssr-card select,
+html[data-appearance='navy-amber'] .ssr-card textarea,
+html[data-appearance='navy-amber'] .training-modal input,
+html[data-appearance='navy-amber'] .training-modal select,
+html[data-appearance='navy-amber'] .training-modal textarea,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) input,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) select,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) textarea,
+html[data-appearance='navy-amber'] .photos-modal input,
+html[data-appearance='navy-amber'] .photos-modal select,
+html[data-appearance='navy-amber'] .photos-modal textarea,
+html[data-appearance='navy-amber'] .public-join-card input,
+html[data-appearance='navy-amber'] .public-join-card select,
+html[data-appearance='navy-amber'] .public-join-card textarea,
+html[data-appearance='navy-amber'] .join-form input,
+html[data-appearance='navy-amber'] .join-form select,
+html[data-appearance='navy-amber'] .join-form textarea {
+  background: #ffffff;
+  color: #0b1f3a;
+  border-color: #d7dee8;
+}
+
+html[data-appearance='navy-amber'] .login-card input:focus,
+html[data-appearance='navy-amber'] .login-card select:focus,
+html[data-appearance='navy-amber'] .login-card textarea:focus,
+html[data-appearance='navy-amber'] .ssr-card input:focus,
+html[data-appearance='navy-amber'] .ssr-card select:focus,
+html[data-appearance='navy-amber'] .ssr-card textarea:focus,
+html[data-appearance='navy-amber'] .training-modal input:focus,
+html[data-appearance='navy-amber'] .training-modal select:focus,
+html[data-appearance='navy-amber'] .training-modal textarea:focus,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) input:focus,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) select:focus,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) textarea:focus,
+html[data-appearance='navy-amber'] .public-join-card input:focus,
+html[data-appearance='navy-amber'] .public-join-card select:focus,
+html[data-appearance='navy-amber'] .public-join-card textarea:focus,
+html[data-appearance='navy-amber'] .join-form input:focus,
+html[data-appearance='navy-amber'] .join-form select:focus,
+html[data-appearance='navy-amber'] .join-form textarea:focus {
+  background: #ffffff;
+  color: #0b1f3a;
+  border-color: var(--accent);
+}
+
+/* ---- Buttons & links ---- */
+html[data-appearance='navy-amber'] .btn-primary,
+html[data-appearance='navy-amber'] .login-submit:not(.login-submit-secondary) {
+  background: var(--accent);
+  color: var(--amber-ink);
+  box-shadow: none;
+  font-weight: 800;
+}
+
+html[data-appearance='navy-amber'] .btn-primary:hover {
+  filter: brightness(0.96);
+}
+
+html[data-appearance='navy-amber'] .btn-secondary {
+  background: #0b1f3a;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+html[data-appearance='navy-amber'] .btn-secondary:hover {
+  background: #152a48;
+  color: #ffffff;
+}
+
+html[data-appearance='navy-amber'] .panel,
+html[data-appearance='navy-amber'] .stat-card,
+html[data-appearance='navy-amber'] .entity-card {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .login-form-panel,
+html[data-appearance='navy-amber'] .login-page--navy .login-form-panel {
+  background: #f7f8fa;
+}
+
+html[data-appearance='navy-amber'] .login-card,
+html[data-appearance='navy-amber'] .login-page--navy .login-card {
+  background: #fff;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .login-card-head h1,
+html[data-appearance='navy-amber'] .login-field > span,
+html[data-appearance='navy-amber'] .login-remember {
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .login-card-head p,
+html[data-appearance='navy-amber'] .login-demo-hint {
+  color: #5b6b7c;
+}
+
+html[data-appearance='navy-amber'] .tx-panel,
+html[data-appearance='navy-amber'] .tx-table-wrap,
+html[data-appearance='navy-amber'] .tx-form {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .tx-table th {
+  background: var(--table-head-bg);
+  color: var(--muted);
+}
+
+html[data-appearance='navy-amber'] .badge {
+  border: 1px solid transparent;
+}
+
+html[data-appearance='navy-amber'] .text-link,
+html[data-appearance='navy-amber'] a.text-link {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+/* Light surfaces keep classic blue links */
+html[data-appearance='navy-amber'] .login-card .text-link,
+html[data-appearance='navy-amber'] .ssr-card .text-link,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) .text-link,
+html[data-appearance='navy-amber'] .public-join-card .text-link,
+html[data-appearance='navy-amber'] .join-form .text-link {
+  color: #1d4ed8;
+}
+
+html[data-appearance='navy-amber'] .login-submit {
+  background: var(--accent);
+  color: var(--amber-ink);
+}
+
+/* ---- Badges / chips ---- */
+html[data-appearance='navy-amber'] .badge {
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+html[data-appearance='navy-amber'] .badge-active,
+html[data-appearance='navy-amber'] .badge-paid {
+  background: rgba(6, 118, 71, 0.12);
+  color: var(--positive);
+}
+
+html[data-appearance='navy-amber'] .badge-overdue,
+html[data-appearance='navy-amber'] .badge-inactive {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--danger);
+}
+
+html[data-appearance='navy-amber'] .badge-pending,
+html[data-appearance='navy-amber'] .badge-trial {
+  background: rgba(224, 177, 58, 0.22);
+  color: #f5d27a;
+}
+
+/* ---- Panels / cards / toolbar ---- */
+html[data-appearance='navy-amber'] .panel-head h2,
+html[data-appearance='navy-amber'] .dashboard-sport-title {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .toolbar,
+html[data-appearance='navy-amber'] .filters {
+  gap: 0.65rem;
+}
+
+html[data-appearance='navy-amber'] .stats-grid .stat-card {
+  border-left: 3px solid var(--brand);
+}
+
+html[data-appearance='navy-amber'] .stats-grid .stat-card.tone-positive,
+html[data-appearance='navy-amber'] .tone-positive.stat-card {
+  border-left-color: var(--positive);
+}
+
+html[data-appearance='navy-amber'] .money-strip-item {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+html[data-appearance='navy-amber'] .money-strip-item:first-child {
+  border-top: 3px solid var(--brand);
+}
+
+html[data-appearance='navy-amber'] .money-strip-item.is-accent {
+  border-top: 3px solid var(--accent);
+}
+
+html[data-appearance='navy-amber'] .money-strip-item.is-warn {
+  border-top: 3px solid var(--danger);
+}
+
+html[data-appearance='navy-amber'] .feed-list li {
+  border-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .quick-links a {
+  color: var(--brand);
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  background: var(--surface);
+}
+
+/* ---- Modal ---- */
+html[data-appearance='navy-amber'] .modal,
+html[data-appearance='navy-amber'] .modal-card,
+html[data-appearance='navy-amber'] [class*='modal'] .panel {
+  border-radius: var(--radius);
+  border-color: var(--line);
+}
+
+/* ---- Finance module ---- */
+html[data-appearance='navy-amber'] .finance-page,
+html[data-appearance='navy-amber'] .finance-shell,
+html[data-appearance='navy-amber'] .scf-page {
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .finance-tabs button,
+html[data-appearance='navy-amber'] .tabs button,
+html[data-appearance='navy-amber'] .segmented button {
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+html[data-appearance='navy-amber'] .finance-tabs button.active,
+html[data-appearance='navy-amber'] .tabs button.active,
+html[data-appearance='navy-amber'] .segmented button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .fi-card,
+html[data-appearance='navy-amber'] .finance-summary-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* ---- Athlete profile ---- */
+html[data-appearance='navy-amber'] .athlete-profile-page {
+  --ap-header: #0b1f3a;
+  --ap-header-end: #122846;
+  --ap-field-border: #d7dee8;
+  --ap-soft: #eef2f7;
+}
+
+html[data-appearance='navy-amber'] .athlete-profile-page .ap-header,
+html[data-appearance='navy-amber'] .ap-header {
+  background: linear-gradient(90deg, var(--ap-header), var(--ap-header-end));
+}
+
+/* ---- Portals (parent / coach / athlete) ---- */
+html[data-appearance='navy-amber'] .parent-portal .panel {
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .parent-portal-section h2 {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+html[data-appearance='navy-amber'] .parent-portal-list li {
+  border-color: var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+/* ---- Platform admin & platform pages ---- */
+html[data-appearance='navy-amber'] .platform-page,
+html[data-appearance='navy-amber'] .platform-admin-page {
+  background: transparent;
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .platform-topbar,
+html[data-appearance='navy-amber'] .platform-admin-header {
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .platform-topbar {
+  background: linear-gradient(90deg, var(--chrome-1), var(--chrome-2));
+  color: var(--chrome-fg);
+  border-radius: 0;
+  padding: 0.85rem 1.25rem;
+}
+
+html[data-appearance='navy-amber'] .platform-brand strong,
+html[data-appearance='navy-amber'] .platform-topbar strong {
+  color: var(--chrome-fg);
+}
+
+html[data-appearance='navy-amber'] .platform-logout {
+  background: rgba(180, 35, 24, 0.9);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-banner,
+html[data-appearance='navy-amber'] .platform-flash-ok {
+  background: rgba(212, 160, 23, 0.16);
+  color: #f4f7fb;
+  border: 1px solid rgba(212, 160, 23, 0.35);
+}
+
+html[data-appearance='navy-amber'] .admin-section-label {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .platform-admin-header h1 {
+  font-family: var(--font-display);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-header .lede,
+html[data-appearance='navy-amber'] .platform-admin-user {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .platform-packages-btn,
+html[data-appearance='navy-amber'] .platform-admin-page .btn-primary {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border: 0;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .btn-secondary {
+  background: #15243c;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+/* Admin board: full dark navy (no light title column) */
+html[data-appearance='navy-amber'] .admin-board {
+  background: #121f35;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-board-header {
+  background: #0b1f3a;
+  color: #e8eef7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .admin-board-header > div,
+html[data-appearance='navy-amber'] .admin-board-title,
+html[data-appearance='navy-amber'] .admin-board-entry,
+html[data-appearance='navy-amber'] .admin-board-records {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .admin-board-row {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #121f35;
+}
+
+html[data-appearance='navy-amber'] .admin-board-title {
+  background: #0e1a2e;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-board-title h3 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-board-title p {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .admin-board-entry,
+html[data-appearance='navy-amber'] .admin-board-records {
+  background: #121f35;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-entry,
+html[data-appearance='navy-amber'] .admin-entry .field,
+html[data-appearance='navy-amber'] .admin-entry-note,
+html[data-appearance='navy-amber'] .admin-check,
+html[data-appearance='navy-amber'] .admin-check span,
+html[data-appearance='navy-amber'] .admin-record-line {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-entry .field span,
+html[data-appearance='navy-amber'] .admin-entry-note {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .admin-entry input,
+html[data-appearance='navy-amber'] .admin-entry select,
+html[data-appearance='navy-amber'] .admin-entry textarea,
+html[data-appearance='navy-amber'] .admin-record-input,
+html[data-appearance='navy-amber'] .platform-admin-page .entry-form input,
+html[data-appearance='navy-amber'] .platform-admin-page .entry-form select,
+html[data-appearance='navy-amber'] .platform-admin-page .entry-form textarea {
+  background: #0e1a2e;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .admin-entry input:focus,
+html[data-appearance='navy-amber'] .admin-entry select:focus,
+html[data-appearance='navy-amber'] .admin-entry textarea:focus,
+html[data-appearance='navy-amber'] .admin-record-input:focus {
+  background: #0e1a2e;
+  color: #f4f7fb;
+  border-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .admin-entry option,
+html[data-appearance='navy-amber'] .platform-admin-page option {
+  background: #121f35;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .ta-table {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .ta-header {
+  background: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .ta-header .ta-title,
+html[data-appearance='navy-amber'] .platform-admin-page .ta-header .ta-analysis {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .ta-title {
+  background: #15243c;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .ta-analysis {
+  background: #0e1a2e;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .ta-row {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page a,
+html[data-appearance='navy-amber'] .platform-admin-page .text-link,
+html[data-appearance='navy-amber'] .platform-admin-page .btn-ghost {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .platform-admin-page .btn-danger,
+html[data-appearance='navy-amber'] .platform-admin-page .btn-red {
+  color: #fca5a5;
+}
+
+html[data-appearance='navy-amber'] .preview-banner {
+  background: #0b1f3a;
+  color: #f4f7fb;
+  border-bottom: 1px solid rgba(224, 177, 58, 0.35);
+}
+
+html[data-appearance='navy-amber'] .appearance-theme-option {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .appearance-theme-option strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .appearance-theme-option span {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .appearance-theme-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(224, 177, 58, 0.45);
+  background: rgba(224, 177, 58, 0.12);
+}
+
+html[data-appearance='navy-amber'] .admin-role-tabs button {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .admin-role-tabs button.active,
+html[data-appearance='navy-amber'] .admin-role-tabs button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #0b1f3a;
+  border-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .diag-card {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .diag-cat,
+html[data-appearance='navy-amber'] .diag-detail,
+html[data-appearance='navy-amber'] .diag-fix {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .diag-sev--critical {
+  background: rgba(240, 113, 103, 0.18);
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .diag-sev--warning {
+  background: rgba(224, 177, 58, 0.2);
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .diag-sev--info {
+  background: rgba(99, 120, 220, 0.2);
+  color: #b8c4ff;
+}
+
+html[data-appearance='navy-amber'] .diag-sev--ok {
+  background: rgba(61, 207, 142, 0.16);
+  color: #7dffc0;
+}
+
+html[data-appearance='navy-amber'] .platform-diagnostic .diag-progress {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-appearance='navy-amber'] .platform-diagnostic .diag-progress-bar {
+  background: var(--accent);
+}
+
+/* ---- Pricing / packages ---- */
+html[data-appearance='navy-amber'] .pricing-plans-grid {
+  background: var(--bg-deep);
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-card {
+  border-radius: 10px;
+  box-shadow: none;
+  border-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-card.is-popular {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-badge {
+  background: var(--accent);
+  color: var(--amber-ink);
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-cta {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-cta:hover {
+  filter: brightness(0.96);
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-check {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .pricing-plan-name-input,
+html[data-appearance='navy-amber'] .pricing-plan-price-display,
+html[data-appearance='navy-amber'] .pricing-plan-currency {
+  color: var(--ink);
+}
+
+/* ---- Announcements / photos / warehouse / prints ---- */
+html[data-appearance='navy-amber'] .announcement-card,
+html[data-appearance='navy-amber'] .photo-card,
+html[data-appearance='navy-amber'] .print-tile,
+html[data-appearance='navy-amber'] .prints-grid > *,
+html[data-appearance='navy-amber'] .entity-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .ann-field input,
+html[data-appearance='navy-amber'] .ann-field textarea,
+html[data-appearance='navy-amber'] .ann-field select,
+html[data-appearance='navy-amber'] .ann-form--compose .ann-field input,
+html[data-appearance='navy-amber'] .ann-form--compose .ann-field select,
+html[data-appearance='navy-amber'] .ann-form--compose .ann-field textarea {
+  background: var(--field-bg);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .ann-editor,
+html[data-appearance='navy-amber'] .ann-editor-toolbar {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .ann-label,
+html[data-appearance='navy-amber'] .ann-field > span,
+html[data-appearance='navy-amber'] .announcements-page h2,
+html[data-appearance='navy-amber'] .announcements-page .page-header h1 {
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .ann-page-head h1,
+html[data-appearance='navy-amber'] .ann-compose h2,
+html[data-appearance='navy-amber'] .ann-list-head h2,
+html[data-appearance='navy-amber'] .ann-audience-btn,
+html[data-appearance='navy-amber'] .ann-priority-btn,
+html[data-appearance='navy-amber'] .ann-draft-btn,
+html[data-appearance='navy-amber'] .ann-table td,
+html[data-appearance='navy-amber'] .ann-title-cell strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ann-page-head p,
+html[data-appearance='navy-amber'] .ann-hint,
+html[data-appearance='navy-amber'] .ann-title-cell span,
+html[data-appearance='navy-amber'] .ann-table th,
+html[data-appearance='navy-amber'] .ann-pager,
+html[data-appearance='navy-amber'] .ann-empty {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .ann-compose,
+html[data-appearance='navy-amber'] .ann-list {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .ann-field input,
+html[data-appearance='navy-amber'] .ann-field textarea,
+html[data-appearance='navy-amber'] .ann-field select,
+html[data-appearance='navy-amber'] .ann-schedule-datetime,
+html[data-appearance='navy-amber'] .ann-schedule-select,
+html[data-appearance='navy-amber'] .ann-list-filters select,
+html[data-appearance='navy-amber'] .ann-search,
+html[data-appearance='navy-amber'] .ann-audience-btn,
+html[data-appearance='navy-amber'] .ann-priority-btn,
+html[data-appearance='navy-amber'] .ann-menu-btn,
+html[data-appearance='navy-amber'] .ann-pager-btns button {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ann-field input::placeholder,
+html[data-appearance='navy-amber'] .ann-message-textarea::placeholder,
+html[data-appearance='navy-amber'] .ann-search input::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='navy-amber'] .ann-editor,
+html[data-appearance='navy-amber'] .ann-editor-toolbar {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ann-editor-toolbar {
+  background: #15243c;
+}
+
+html[data-appearance='navy-amber'] .ann-editor-toolbar button {
+  color: #e8eef7;
+}
+
+html[data-appearance='navy-amber'] .ann-audience-btn.is-active,
+html[data-appearance='navy-amber'] .ann-priority-btn.is-active {
+  border-color: var(--accent);
+  background: rgba(224, 177, 58, 0.16);
+}
+
+html[data-appearance='navy-amber'] .ann-table th {
+  background: #16243c;
+}
+
+html[data-appearance='navy-amber'] .ann-role-pill.is-parents {
+  background: #3b6fd9;
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .ann-role-pill.is-athletes {
+  background: #1f9d63;
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .ann-role-pill.is-coaches {
+  background: #7a4fd4;
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .ann-role-pill.is-classes {
+  background: var(--accent);
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .ann-audience-picker {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .ann-audience-search,
+html[data-appearance='navy-amber'] .ann-pick-row {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ann-audience-search {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+html[data-appearance='navy-amber'] .ann-pick-row em,
+html[data-appearance='navy-amber'] .ann-audience-btn-label em {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .ann-audience-btn.is-active .ann-audience-btn-label em {
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .ann-menu {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .ann-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ann-pager-btns button.is-active {
+  background: #e0b13a;
+  border-color: #e0b13a;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-label.is-normal {
+  color: #f0d078;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-label.is-high {
+  color: #f0a86a;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-label.is-urgent {
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-label.is-low {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-btn.is-low {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-btn.is-normal {
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-btn.is-high {
+  color: #f0a86a;
+}
+
+html[data-appearance='navy-amber'] .ann-priority-btn.is-urgent {
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .print-tile:hover,
+html[data-appearance='navy-amber'] .entity-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+/* ---- Calendar / schedule ---- */
+html[data-appearance='navy-amber'] .schedule-day,
+html[data-appearance='navy-amber'] .cal-cell,
+html[data-appearance='navy-amber'] .calendar-cell {
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .cal-event,
+html[data-appearance='navy-amber'] .calendar-event,
+html[data-appearance='navy-amber'] .schedule-slot {
+  background: rgba(224, 177, 58, 0.12);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .cal-main,
+html[data-appearance='navy-amber'] .cal-sidebar,
+html[data-appearance='navy-amber'] .cal-mini,
+html[data-appearance='navy-amber'] .cal-side-block {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .cal-weekday,
+html[data-appearance='navy-amber'] .cal-more,
+html[data-appearance='navy-amber'] .cal-mini-weekdays span {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .cal-cell.is-out,
+html[data-appearance='navy-amber'] .cal-mini-day.is-out {
+  color: #6b7c90;
+}
+
+html[data-appearance='navy-amber'] .cal-view-toggle button.is-active,
+html[data-appearance='navy-amber'] .cal-today-btn {
+  background: var(--accent);
+  color: #0b1f3a;
+  border-color: var(--accent);
+}
+
+/* ---- Register / public join ---- */
+html[data-appearance='navy-amber'] .register-page,
+html[data-appearance='navy-amber'] .public-join-page,
+html[data-appearance='navy-amber'] .join-page {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .register-page .login-card,
+html[data-appearance='navy-amber'] .public-join-page .login-card,
+html[data-appearance='navy-amber'] .join-form,
+html[data-appearance='navy-amber'] .public-join-card {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+html[data-appearance='navy-amber'] .public-join-hero,
+html[data-appearance='navy-amber'] .join-hero {
+  background: linear-gradient(165deg, var(--chrome-1), var(--chrome-3));
+  color: var(--chrome-fg);
+}
+
+/* ---- Settings ---- */
+html[data-appearance='navy-amber'] .settings-tabs button.active,
+html[data-appearance='navy-amber'] .settings-nav button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .settings-logo-preview {
+  border-color: var(--line);
+  background: var(--bg);
+}
+
+html[data-appearance='navy-amber'] .set-page-head h1,
+html[data-appearance='navy-amber'] .set-card h2,
+html[data-appearance='navy-amber'] .set-field > span,
+html[data-appearance='navy-amber'] .set-tabs > button.is-active,
+html[data-appearance='navy-amber'] .set-embed-head h2 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .set-tabs > button,
+html[data-appearance='navy-amber'] .set-tabs-more > button,
+html[data-appearance='navy-amber'] .set-card-lede {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .set-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .set-tabs > button.is-active,
+html[data-appearance='navy-amber'] .set-tabs-more > button.is-active {
+  color: #f4f7fb;
+  border-bottom-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .set-card {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .set-logo-drop {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .set-logo-drop span {
+  color: #9aa8bc;
+}
+
+html[data-appearance='navy-amber'] .set-field input,
+html[data-appearance='navy-amber'] .set-field select {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .set-eye {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .set-test-btn {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .set-test-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .set-save-bar .btn-primary {
+  background: var(--accent);
+  color: #0b1f3a;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Partners + Staff */
+html[data-appearance='navy-amber'] .pb-head h1,
+html[data-appearance='navy-amber'] .pb-card-meta strong,
+html[data-appearance='navy-amber'] .pb-offer strong,
+html[data-appearance='navy-amber'] .stf-head h1,
+html[data-appearance='navy-amber'] .stf-table td,
+html[data-appearance='navy-amber'] .stf-name-cell strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .pb-head p,
+html[data-appearance='navy-amber'] .pb-tabs button,
+html[data-appearance='navy-amber'] .pb-cat,
+html[data-appearance='navy-amber'] .pb-addr,
+html[data-appearance='navy-amber'] .pb-offer span,
+html[data-appearance='navy-amber'] .pb-pager,
+html[data-appearance='navy-amber'] .stf-head p,
+html[data-appearance='navy-amber'] .stf-table th,
+html[data-appearance='navy-amber'] .stf-muted,
+html[data-appearance='navy-amber'] .stf-pager {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .pb-tabs button.is-active {
+  color: #f4f7fb;
+  border-bottom-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .pb-card,
+html[data-appearance='navy-amber'] .stf-toolbar,
+html[data-appearance='navy-amber'] .stf-table-card {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .pb-category,
+html[data-appearance='navy-amber'] .pb-pager-btns button,
+html[data-appearance='navy-amber'] .stf-search,
+html[data-appearance='navy-amber'] .stf-toolbar select,
+html[data-appearance='navy-amber'] .stf-export,
+html[data-appearance='navy-amber'] .stf-menu-btn,
+html[data-appearance='navy-amber'] .stf-page-size select,
+html[data-appearance='navy-amber'] .stf-pager-btns button {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .pb-logo {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .pb-offer {
+  background: rgba(224, 177, 58, 0.16);
+}
+
+html[data-appearance='navy-amber'] .pb-link {
+  color: #f0d078;
+}
+
+html[data-appearance='navy-amber'] .stf-table th {
+  background: #16243c;
+}
+
+html[data-appearance='navy-amber'] .stf-head-icon {
+  background: rgba(224, 177, 58, 0.2);
+  color: #f0d078;
+}
+
+html[data-appearance='navy-amber'] .stf-avatar {
+  background: rgba(224, 177, 58, 0.18);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .stf-role.is-coach {
+  border-color: var(--accent);
+  color: #f0d078;
+}
+
+html[data-appearance='navy-amber'] .stf-role.is-admin {
+  border-color: #6b93f5;
+  color: #9bb6ff;
+}
+
+html[data-appearance='navy-amber'] .stf-role.is-secretariat {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .stf-status.is-active {
+  background: rgba(61, 207, 142, 0.16);
+  color: #7dffc0;
+  border-color: rgba(61, 207, 142, 0.4);
+}
+
+html[data-appearance='navy-amber'] .stf-status.is-inactive {
+  background: rgba(255, 255, 255, 0.08);
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .stf-menu {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .stf-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .pb-pager-btns button.is-active,
+html[data-appearance='navy-amber'] .stf-pager-btns button.is-active {
+  background: #e0b13a;
+  border-color: #e0b13a;
+  color: #0b1f3a;
+}
+
+/* ---- Misc chrome leftovers ---- */
+html[data-appearance='navy-amber'] .brand-mark {
+  background: linear-gradient(135deg, var(--accent), #e4b84a);
+  color: var(--amber-ink);
+  border-radius: 10px;
+}
+
+html[data-appearance='navy-amber'] .mobile-nav,
+html[data-appearance='navy-amber'] .sidebar-backdrop {
+  background: rgba(7, 21, 38, 0.45);
+}
+
+html[data-appearance='navy-amber'] .form-error {
+  color: var(--danger);
+}
+
+html[data-appearance='navy-amber'] .settings-success,
+html[data-appearance='navy-amber'] .platform-flash.platform-flash-ok {
+  background: rgba(6, 118, 71, 0.1);
+  color: var(--positive);
+  border-radius: 8px;
+}
+
+/* Dense page rhythm */
+html[data-appearance='navy-amber'] .stack-lg {
+  gap: 1rem;
+}
+
+html[data-appearance='navy-amber'] .grid-2,
+html[data-appearance='navy-amber'] .stats-grid {
+  gap: 0.85rem;
+}
+
+html[data-appearance='navy-amber'] .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-appearance='navy-amber'] .page-header h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .page-header p {
+  margin: 0.3rem 0 0;
+}
+
+html[data-appearance='navy-amber'] .page-header-actions .btn-primary {
+  background: var(--accent);
+  color: var(--amber-ink);
+}
+
+html[data-appearance='navy-amber'] .login-page--navy .login-card-wide,
+html[data-appearance='navy-amber'] .login-card-wide {
+  width: min(520px, 100%);
+}
+
+/* Platform users / packages pages that use .platform-page */
+html[data-appearance='navy-amber'] .platform-header h1 {
+  font-family: var(--font-display);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .platform-packages-btn {
+  background: var(--accent) !important;
+  color: var(--amber-ink) !important;
+  border: 0 !important;
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .packages-save,
+html[data-appearance='navy-amber'] .login-submit.packages-save {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border-radius: 8px;
+}
+
+/* Transactions — amber primary actions */
+html[data-appearance='navy-amber'] .tx-save-btn {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .tx-save-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+  background: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .tx-cancel-btn,
+html[data-appearance='navy-amber'] .tx-panel {
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .tx-panel {
+  box-shadow: none;
+}
+
+html[data-appearance='navy-amber'] .tx-balance-cell,
+html[data-appearance='navy-amber'] .tx-balance-col {
+  background: rgba(212, 160, 23, 0.14) !important;
+}
+
+/* Finance income/expense/budget/reports denser navy headers */
+html[data-appearance='navy-amber'] .income-entry-heading h2,
+html[data-appearance='navy-amber'] .report-meta h3 {
+  font-family: var(--font-display);
+}
+
+html[data-appearance='navy-amber'] .income-entry-heading .eyebrow {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .stat-pill,
+html[data-appearance='navy-amber'] .summary-card {
+  border-radius: 10px;
+}
+
+html[data-appearance='navy-amber'] .budget-progress-bar.is-ok {
+  background: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .budget-status.is-good {
+  background: rgba(224, 177, 58, 0.22);
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .budget-status.is-bad {
+  background: rgba(240, 113, 103, 0.16);
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .report-table .amount.expense {
+  color: var(--danger);
+}
+
+html[data-appearance='navy-amber'] .report-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .report-chip:hover {
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .prints-nav-item.active {
+  background: rgba(224, 177, 58, 0.18);
+  color: #f4f7fb;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+html[data-appearance='navy-amber'] .prints-page .page-panel,
+html[data-appearance='navy-amber'] .prints-main,
+html[data-appearance='navy-amber'] .prints-nav {
+  background: #121f35;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: none;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prints-page {
+  --color-surface: #121f35;
+  --color-bg-subtle: #0e1a2e;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-field-border: rgba(255, 255, 255, 0.14);
+  --color-text: #f4f7fb;
+  --color-text-muted: #b6c3d6;
+  --color-title: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prints-nav {
+  background: #0e1a2e;
+}
+
+html[data-appearance='navy-amber'] .prints-nav-item {
+  color: #c5d0e0;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-appearance='navy-amber'] .prints-nav-item:hover {
+  background: rgba(224, 177, 58, 0.1);
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .prints-registry-section h2,
+html[data-appearance='navy-amber'] .prints-filter-label {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prints-registry-desc,
+html[data-appearance='navy-amber'] .prints-placeholder-note {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .prints-results-modal-count {
+  color: #5b6b7c;
+}
+
+html[data-appearance='navy-amber'] .modal.prints-results-modal {
+  background: #fff;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .modal.prints-results-modal .modal-header h2,
+html[data-appearance='navy-amber'] .modal.prints-results-modal #modal-title {
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .modal.prints-results-modal .prints-results-table th {
+  background: #f1f5f9;
+  color: #0b1f3a;
+  border-color: #d7dee8;
+}
+
+html[data-appearance='navy-amber'] .modal.prints-results-modal .prints-results-table td {
+  background: #fff;
+  color: #0b1f3a;
+  border-color: #d7dee8;
+}
+
+html[data-appearance='navy-amber'] .modal.prints-results-modal .prints-results-empty {
+  color: #5b6b7c;
+}
+
+html[data-appearance='navy-amber'] .prints-placeholder-note {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .prints-filter-actions {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .prints-filter-input,
+html[data-appearance='navy-amber'] .prints-main input,
+html[data-appearance='navy-amber'] .prints-main select,
+html[data-appearance='navy-amber'] .prints-main textarea {
+  background: #0e1a2e;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .prints-filter-input:focus,
+html[data-appearance='navy-amber'] .prints-main input:focus,
+html[data-appearance='navy-amber'] .prints-main select:focus {
+  background: #0e1a2e;
+  color: #f4f7fb;
+  border-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .prints-main option {
+  background: #121f35;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prints-page .page-table th {
+  background: #15243c;
+  color: #c5d0e0;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .prints-page .page-table td {
+  background: #0e1a2e;
+  color: #f4f7fb;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Finance forms: never light text on white fields */
+html[data-appearance='navy-amber'] .finance-page,
+html[data-appearance='navy-amber'] .income-entry-panel,
+html[data-appearance='navy-amber'] .entry-form,
+html[data-appearance='navy-amber'] .ta-table,
+html[data-appearance='navy-amber'] .report-sheet,
+html[data-appearance='navy-amber'] .income-entry-list .data-table {
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .ta-analysis input,
+html[data-appearance='navy-amber'] .ta-analysis select,
+html[data-appearance='navy-amber'] .ta-analysis textarea,
+html[data-appearance='navy-amber'] .entry-form input,
+html[data-appearance='navy-amber'] .entry-form select,
+html[data-appearance='navy-amber'] .entry-form textarea,
+html[data-appearance='navy-amber'] .finance-page input,
+html[data-appearance='navy-amber'] .finance-page select,
+html[data-appearance='navy-amber'] .finance-page textarea {
+  background: var(--field-bg) !important;
+  color: var(--ink) !important;
+  border-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .ta-analysis option,
+html[data-appearance='navy-amber'] .entry-form option,
+html[data-appearance='navy-amber'] .finance-page option {
+  background: #121f35;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ta-title {
+  background: var(--bg-deep);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .income-entry-list .data-table td,
+html[data-appearance='navy-amber'] .income-entry-list .data-table th,
+html[data-appearance='navy-amber'] .report-table td,
+html[data-appearance='navy-amber'] .report-table th {
+  color: var(--ink);
+  background: transparent;
+}
+
+html[data-appearance='navy-amber'] .tabs {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .tabs .tab,
+html[data-appearance='navy-amber'] .finance-page .tab {
+  color: #e8eef7;
+  background: transparent;
+  border: 0;
+  opacity: 1;
+}
+
+html[data-appearance='navy-amber'] .tabs .tab:hover,
+html[data-appearance='navy-amber'] .finance-page .tab:hover {
+  color: #fff;
+  background: rgba(224, 177, 58, 0.14);
+}
+
+html[data-appearance='navy-amber'] .tabs .tab.active,
+html[data-appearance='navy-amber'] .finance-page .tab.active {
+  background: var(--accent);
+  color: #0b1f3a;
+  border-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .report-templates {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .report-templates-header h3 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .report-templates-header p,
+html[data-appearance='navy-amber'] .report-templates-header .muted-text,
+html[data-appearance='navy-amber'] .report-templates .muted,
+html[data-appearance='navy-amber'] .report-templates .muted-text {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .income-entry-heading h2,
+html[data-appearance='navy-amber'] .budget-results-title,
+html[data-appearance='navy-amber'] .ta-hint {
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .ta-hint {
+  color: var(--muted);
+}
+
+html[data-appearance='navy-amber'] .prints-page .btn-primary,
+html[data-appearance='navy-amber'] .prints-main .btn-primary {
+  background: var(--accent);
+  color: var(--amber-ink);
+}
+
+/* Athlete profile (νέος αθλητής / επεξεργασία) */
+html[data-appearance='navy-amber'] .athlete-profile-page {
+  --club-header: #0b1f3a;
+  --color-text-inverse: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .athlete-profile-page .page-panel {
+  box-shadow: none;
+  border-radius: 10px;
+  border-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .athlete-finance-header {
+  background: linear-gradient(135deg, #071526 0%, #0b1f3a 55%, #122846 100%);
+  border-radius: 10px 10px 0 0;
+}
+
+html[data-appearance='navy-amber'] .ap-page-header h1 {
+  font-family: var(--font-display);
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+html[data-appearance='navy-amber'] .ap-page-actions .btn-primary,
+html[data-appearance='navy-amber'] .athlete-profile-page .btn-primary {
+  background: var(--accent);
+  color: var(--amber-ink);
+  box-shadow: none;
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .athlete-profile-page .profile-row-input,
+html[data-appearance='navy-amber'] .athlete-profile-page input,
+html[data-appearance='navy-amber'] .athlete-profile-page select,
+html[data-appearance='navy-amber'] .athlete-profile-page textarea {
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .athlete-profile-page .profile-health-card-preview-btn {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .athlete-profile-page .text-link {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+html[data-appearance='navy-amber'] .ap-hero,
+html[data-appearance='navy-amber'] .ap-card,
+html[data-appearance='navy-amber'] .ap-reg-footer {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .ap-finance-wrap,
+html[data-appearance='navy-amber'] .ap-announcements-body {
+  background: #0e1a2e;
+  border-radius: 10px;
+}
+
+html[data-appearance='navy-amber'] .ap-finance-table th,
+html[data-appearance='navy-amber'] .ap-announcements-table th {
+  background: #15243c;
+  color: #c5d0e0;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .ap-finance-table td,
+html[data-appearance='navy-amber'] .ap-announcements-table td {
+  background: #0e1a2e;
+  color: #f4f7fb;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='navy-amber'] .ap-finance-table td:first-child,
+html[data-appearance='navy-amber'] .ap-finance-table thead tr:first-child th:first-child {
+  background: #0e1a2e;
+}
+
+html[data-appearance='navy-amber'] .ap-finance-table thead tr:first-child th:first-child {
+  background: #15243c;
+}
+
+html[data-appearance='navy-amber'] .ap-balance-col {
+  background: rgba(224, 177, 58, 0.12) !important;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ap-total-row td {
+  background: #15243c;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ap-empty-msg {
+  color: #9aa8bc;
+}
+
+html[data-appearance='navy-amber'] .ap-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .ap-tab {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .ap-tab:hover {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ap-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .ap-input,
+html[data-appearance='navy-amber'] .athlete-profile-page .ap-input {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ap-actions-btn,
+html[data-appearance='navy-amber'] .ap-pager-btn,
+html[data-appearance='navy-amber'] .ap-actions-dropdown {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ap-footer-actions {
+  background: linear-gradient(to top, #071526 60%, transparent);
+}
+
+html[data-appearance='navy-amber'] .ap-footer-actions .btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .ap-footer-actions .btn-primary {
+  background: var(--accent);
+  color: var(--amber-ink);
+}
+
+/* Staff / coaches / classes modals (Νέο μέλος προσωπικού κ.λπ.) */
+html[data-appearance='navy-amber'] .training-modal {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgba(11, 31, 58, 0.18);
+}
+
+html[data-appearance='navy-amber'] .training-modal h2 {
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-appearance='navy-amber'] .training-modal-fields input:focus,
+html[data-appearance='navy-amber'] .training-modal-fields select:focus,
+html[data-appearance='navy-amber'] .training-modal-fields textarea:focus {
+  outline: 2px solid rgba(212, 160, 23, 0.35);
+  border-color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .training-btn-save,
+html[data-appearance='navy-amber'] .trn-btn-primary {
+  background: var(--accent);
+  color: var(--amber-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .training-btn-save:hover:not(:disabled),
+html[data-appearance='navy-amber'] .trn-btn-primary:hover {
+  background: var(--accent);
+  filter: brightness(0.96);
+}
+
+html[data-appearance='navy-amber'] .training-btn-cancel {
+  border-radius: 8px;
+  background: #0b1f3a;
+  color: #f4f7fb;
+  border: 1px solid #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .training-btn-cancel:hover {
+  background: #152a48;
+  border-color: #152a48;
+  color: #ffffff;
+}
+
+html[data-appearance='navy-amber'] .training-modal .class-modal-hint,
+html[data-appearance='navy-amber'] .training-modal .muted,
+html[data-appearance='navy-amber'] .training-modal .settings-hint {
+  color: #445064;
+}
+
+html[data-appearance='navy-amber'] .training-modal-fields input,
+html[data-appearance='navy-amber'] .training-modal-fields select,
+html[data-appearance='navy-amber'] .training-modal-fields textarea {
+  border-color: rgba(11, 31, 58, 0.28);
+  background: #ffffff;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .training-modal-backdrop {
+  background: rgba(7, 21, 38, 0.55);
+}
+
+/* Parents page — dark surfaces, readable filters/status */
+html[data-appearance='navy-amber'] .parents-hero,
+html[data-appearance='navy-amber'] .parents-filters,
+html[data-appearance='navy-amber'] .parents-table-card {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .parents-hero p,
+html[data-appearance='navy-amber'] .parents-empty,
+html[data-appearance='navy-amber'] .parents-pager,
+html[data-appearance='navy-amber'] .parents-muted,
+html[data-appearance='navy-amber'] .parents-table th {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .parents-hero-icon {
+  background: rgba(224, 177, 58, 0.2);
+  color: #f0d078;
+}
+
+html[data-appearance='navy-amber'] .parents-search,
+html[data-appearance='navy-amber'] .parents-filter-field select,
+html[data-appearance='navy-amber'] .parents-reset,
+html[data-appearance='navy-amber'] .parents-menu-btn,
+html[data-appearance='navy-amber'] .parents-pager-btns button {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .parents-search input,
+html[data-appearance='navy-amber'] .parents-filter-field > span {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .parents-search input::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='navy-amber'] .parents-table th {
+  background: #16243c;
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .parents-table td {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .parents-status--active {
+  background: rgba(61, 207, 142, 0.18);
+  color: #7dffc0;
+}
+
+html[data-appearance='navy-amber'] .parents-status--pending {
+  background: rgba(224, 177, 58, 0.2);
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .parents-status--not_invited {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d7dee8;
+}
+
+html[data-appearance='navy-amber'] .parents-invite-btn {
+  background: var(--accent);
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .parents-menu {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .parents-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .parents-pager-btns button.is-active {
+  background: #e0b13a;
+  border-color: #e0b13a;
+  color: #0b1f3a;
+}
+
+/* Schedule / Πρόγραμμα — readable filters on dark theme */
+html[data-appearance='navy-amber'] .prog-toolbar,
+html[data-appearance='navy-amber'] .prog-board {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .prog-field > span,
+html[data-appearance='navy-amber'] .prog-week-nav strong,
+html[data-appearance='navy-amber'] .prog-legend li {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prog-hint {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .prog-field select,
+html[data-appearance='navy-amber'] .prog-week-nav,
+html[data-appearance='navy-amber'] .prog-today-btn {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prog-week-nav button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .prog-day-head,
+html[data-appearance='navy-amber'] .prog-time-gutter {
+  background: #0b1f3a;
+  color: #fff;
+}
+
+html[data-appearance='navy-amber'] .prog-time-col {
+  background: #101b2e;
+}
+
+html[data-appearance='navy-amber'] .prog-hour-label {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .prog-day-col {
+  background: #121f35;
+}
+
+html[data-appearance='navy-amber'] .prog-hour-line {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-appearance='navy-amber'] .prog-block.is-training {
+  background: #e0b13a;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .prog-block.is-match {
+  background: #f0d9a0;
+  border-color: #c9a85a;
+  color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .prog-block-time,
+html[data-appearance='navy-amber'] .prog-block-loc,
+html[data-appearance='navy-amber'] .prog-block-title,
+html[data-appearance='navy-amber'] .prog-block-edit {
+  color: #0b1f3a;
+}
+
+/* Warehouse / Αποθήκη */
+html[data-appearance='navy-amber'] .wh-page-head h1,
+html[data-appearance='navy-amber'] .wh-stat strong,
+html[data-appearance='navy-amber'] .wh-table td,
+html[data-appearance='navy-amber'] .wh-name-cell strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .wh-breadcrumb,
+html[data-appearance='navy-amber'] .wh-stat span,
+html[data-appearance='navy-amber'] .wh-stat em,
+html[data-appearance='navy-amber'] .wh-table th,
+html[data-appearance='navy-amber'] .wh-name-cell span,
+html[data-appearance='navy-amber'] .wh-pager,
+html[data-appearance='navy-amber'] .wh-empty {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .wh-stat,
+html[data-appearance='navy-amber'] .wh-toolbar,
+html[data-appearance='navy-amber'] .wh-table-card {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .wh-search,
+html[data-appearance='navy-amber'] .wh-toolbar select,
+html[data-appearance='navy-amber'] .wh-io-btn,
+html[data-appearance='navy-amber'] .wh-menu-btn,
+html[data-appearance='navy-amber'] .wh-page-size select,
+html[data-appearance='navy-amber'] .wh-pager-btns button {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .wh-search input::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='navy-amber'] .wh-table th {
+  background: #16243c;
+}
+
+html[data-appearance='navy-amber'] .wh-thumb {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .wh-num.is-ok {
+  color: #7dffc0;
+}
+
+html[data-appearance='navy-amber'] .wh-num.is-low {
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .wh-edit-btn {
+  background: rgba(224, 177, 58, 0.22);
+  color: #f0d078;
+}
+
+html[data-appearance='navy-amber'] .wh-menu {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='navy-amber'] .wh-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .wh-pager-btns button.is-active {
+  background: #e0b13a;
+  border-color: #e0b13a;
+  color: #0b1f3a;
+}
+
+/* Fee charge modal — keep labels/months readable on dark body (must beat white-modal label rules) */
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .field-label,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal label > span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .field > span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .admin-check,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .admin-check span,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .check-row,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .check-row span {
+  color: #e8eef7 !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .settings-hint,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .muted,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-note {
+  color: #b6c3d6 !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section h3 {
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip {
+  background: #15243c !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip:has(input:checked),
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-month-chip.is-active {
+  background: rgba(224, 177, 58, 0.24) !important;
+  border-color: var(--accent) !important;
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .field-input,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal select.field-input,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal input.field-input {
+  background: #0e1a2e !important;
+  color: #f4f7fb !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-hero .field-input,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-hero select,
+html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-hero input:not([type='checkbox']) {
+  background: #ffffff !important;
+  color: #0b1f3a !important;
+  border-color: #d7dee8 !important;
+}
+
+/* ========================================================================== */
+/* Contrast safety net (loaded last via main.tsx)                              */
+/* ========================================================================== */
+
+html[data-appearance='navy-amber'] .muted,
+html[data-appearance='navy-amber'] .stat-hint,
+html[data-appearance='navy-amber'] .stat-label {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] .page-header p,
+html[data-appearance='navy-amber'] .lede {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] thead th {
+  color: #e2e8f0;
+}
+
+html[data-appearance='navy-amber'] .btn-secondary {
+  background: #0b1f3a;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+html[data-appearance='navy-amber'] .btn-secondary:hover {
+  background: #152a48;
+  color: #ffffff;
+}
+
+/* Secondary buttons inside light modals/cards */
+html[data-appearance='navy-amber'] .login-card .btn-secondary,
+html[data-appearance='navy-amber'] .ssr-card .btn-secondary,
+html[data-appearance='navy-amber'] .training-modal .btn-secondary,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) .btn-secondary,
+html[data-appearance='navy-amber'] .public-join-card .btn-secondary,
+html[data-appearance='navy-amber'] .join-form .btn-secondary {
+  background: #0b1f3a;
+  color: #f4f7fb;
+  border-color: #0b1f3a;
+}
+
+html[data-appearance='navy-amber'] .stat-icon {
+  background: rgba(224, 177, 58, 0.16);
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .tone-positive .stat-icon {
+  background: rgba(61, 207, 142, 0.14);
+  color: var(--positive);
+}
+
+html[data-appearance='navy-amber'] .tone-danger .stat-icon,
+html[data-appearance='navy-amber'] .tone-negative .stat-icon {
+  background: rgba(240, 113, 103, 0.14);
+  color: var(--danger);
+}
+
+html[data-appearance='navy-amber'] .chip {
+  background: var(--field-bg);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .chip-on {
+  background: rgba(61, 207, 142, 0.16);
+  border-color: rgba(61, 207, 142, 0.35);
+  color: #7dffc0;
+}
+
+html[data-appearance='navy-amber'] .chip-off {
+  background: rgba(240, 113, 103, 0.14);
+  border-color: rgba(240, 113, 103, 0.3);
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .athlete-avatar {
+  background: rgba(224, 177, 58, 0.18);
+  border-color: rgba(224, 177, 58, 0.35);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] input::placeholder,
+html[data-appearance='navy-amber'] textarea::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='navy-amber'] .att-select--date input[type='date'],
+html[data-appearance='navy-amber'] .att-select--date input[type='date']:focus {
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='navy-amber'] .aport-pill,
+html[data-appearance='navy-amber'] .cport-role-pill,
+html[data-appearance='navy-amber'] .cport-toggle.is-on {
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .aport-pill {
+  background: rgba(224, 177, 58, 0.2);
+}
+
+html[data-appearance='navy-amber'] .athlete-profile-page .page-panel,
+html[data-appearance='navy-amber'] .athlete-profile-page .ap-panel {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+  --ink: #f4f7fb;
+  --muted: #b6c3d6;
+  --field-bg: #0e1a2e;
+  --line: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='navy-amber'] .ap-status-badge {
+  background: rgba(224, 177, 58, 0.22);
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .login-card .muted,
+html[data-appearance='navy-amber'] .ssr-card .muted,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) .muted,
+html[data-appearance='navy-amber'] .public-join-card .muted,
+html[data-appearance='navy-amber'] .join-form .muted,
+html[data-appearance='navy-amber'] .training-modal .class-modal-hint {
+  color: #445064;
+}
+
+html[data-appearance='navy-amber'] .login-card input::placeholder,
+html[data-appearance='navy-amber'] .ssr-card input::placeholder,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) input::placeholder,
+html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) textarea::placeholder {
+  color: #8b95a7;
+  opacity: 1;
+}
+

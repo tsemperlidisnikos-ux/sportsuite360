@@ -478,7 +478,8 @@ export function FeesPage() {
         open={panel === 'newCharge'}
         title="Νέα χρέωση"
         onClose={() => setPanel('list')}
-        wide
+        fullscreen
+        className="fee-charge-modal"
         footer={
           <>
             <Button variant="secondary" type="button" onClick={() => setPanel('list')}>
@@ -711,7 +712,8 @@ export function FeesPage() {
         open={panel === 'createCharges'}
         title="Δημιουργία χρεώσεων"
         onClose={() => setPanel('list')}
-        wide
+        fullscreen
+        className="fee-charge-modal"
         footer={
           <>
             <Button variant="secondary" type="button" onClick={() => setPanel('list')}>

@@ -41,7 +41,8 @@
   padding: 0.55rem 0.7rem;
   font: inherit;
   font-size: 0.92rem;
-  background: #fff;
+  background: var(--field-bg, #fff);
+  color: var(--ink);
 }
 
 .ann-message-textarea {
@@ -70,7 +71,7 @@
 }
 
 .ann-image-dropzone.is-dragover .ann-image-upload {
-  outline: 2px dashed #0d7377;
+  outline: 2px dashed var(--brand);
   outline-offset: 2px;
 }
 
@@ -84,7 +85,7 @@
   border-radius: 999px;
   gap: 0.65rem;
   font-size: 1.05rem;
-  background: #0d7377;
+  background: var(--brand);
   color: #fff;
   border: 0;
   font-weight: 700;
@@ -229,7 +230,7 @@
   padding: 0.45rem 0.7rem;
   border: 0;
   border-radius: 10px;
-  background: #0d7377;
+  background: var(--brand);
   color: #fff;
   font: inherit;
   font-size: 0.85rem;
@@ -708,5 +709,577 @@
     max-height: none;
     height: auto;
     overflow: visible;
+  }
+}
+
+/* ===== Announcements page mockup layout ===== */
+.ann-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--ink);
+}
+
+.ann-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.ann-page-head h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw, 1.9rem);
+  color: var(--ink);
+}
+
+.ann-page-head p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  max-width: 40rem;
+}
+
+.ann-compose,
+.ann-list {
+  padding: 1.1rem 1.15rem;
+}
+
+.ann-compose h2,
+.ann-list-head h2 {
+  margin: 0 0 0.95rem;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.ann-compose-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.85fr);
+  gap: 1.1rem;
+}
+
+.ann-compose-main,
+.ann-compose-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ann-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ann-label {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.ann-field input,
+.ann-field textarea,
+.ann-field select,
+.ann-schedule-datetime {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+}
+
+.ann-field input::placeholder,
+.ann-message-textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 90%, var(--ink));
+  opacity: 1;
+}
+
+.ann-editor {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--field-bg, var(--surface));
+}
+
+.ann-editor-toolbar {
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.4rem 0.45rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+}
+
+.ann-editor-toolbar button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ann-editor-toolbar button:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.ann-message-textarea {
+  width: 100%;
+  border: 0 !important;
+  border-radius: 0 !important;
+  min-height: 180px;
+  resize: vertical;
+  background: transparent !important;
+  color: var(--ink);
+  padding: 0.75rem !important;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.ann-side-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ann-audience-toggles,
+.ann-priority-toggles {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ann-audience-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ann-audience-btn-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.2;
+}
+
+.ann-audience-btn-label em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ann-audience-btn.is-active .ann-audience-btn-label em {
+  color: var(--accent, #e0b13a);
+}
+
+.ann-audience-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--field-bg, var(--surface)) 88%, transparent);
+}
+
+.ann-audience-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 34px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
+}
+
+.ann-audience-search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+  min-width: 0;
+}
+
+.ann-audience-list {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.ann-pick-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0.45rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.ann-pick-row:hover,
+.ann-pick-row.is-on {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.ann-pick-row input {
+  margin-top: 0.2rem;
+}
+
+.ann-pick-row span {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ann-pick-row strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.ann-pick-row em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ann-role-pill.is-classes {
+  background: #c9971a;
+  color: #0b1f3a;
+}
+
+.ann-priority-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.ann-audience-btn.is-active,
+.ann-audience-btn.is-open,
+.ann-priority-btn.is-active {
+  border-color: var(--accent, #e0b13a);
+  box-shadow: inset 0 0 0 1px var(--accent, #e0b13a);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.ann-priority-btn.is-low { color: var(--muted, #7b8794); }
+.ann-priority-btn.is-normal { color: var(--warn, #b8860b); }
+.ann-priority-btn.is-high { color: #f0a86a; }
+.ann-priority-btn.is-urgent { color: var(--danger, #c62828); }
+
+.ann-schedule-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
+  padding: 0 0.65rem;
+}
+
+.ann-schedule-select select {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.ann-email-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.ann-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ann-compose-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.ann-draft-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+
+.ann-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.ann-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ann-list-filters select,
+.ann-search {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
+  font: inherit;
+}
+
+.ann-list-filters select {
+  padding: 0.4rem 0.65rem;
+}
+
+.ann-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.65rem;
+  min-width: 180px;
+}
+
+.ann-search input {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+  width: 100%;
+}
+
+.ann-search input::placeholder {
+  color: color-mix(in srgb, var(--muted) 90%, var(--ink));
+  opacity: 1;
+}
+
+.ann-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ann-table th,
+.ann-table td {
+  padding: 0.85rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  color: var(--ink);
+}
+
+.ann-table th {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bg) 60%, var(--surface));
+}
+
+.ann-title-cell {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.ann-title-cell strong {
+  display: block;
+  color: var(--ink);
+}
+
+.ann-title-cell span {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ann-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: var(--accent, #e0b13a);
+  flex-shrink: 0;
+}
+
+.ann-dot.is-urgent { background: #e15b5b; }
+.ann-dot.is-high { background: #e08a3a; }
+.ann-dot.is-low { background: #8a96a6; }
+
+.ann-role-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.ann-role-pill {
+  display: inline-flex;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: #fff;
+}
+
+.ann-role-pill.is-parents { background: #2f6fed; }
+.ann-role-pill.is-athletes { background: #1f9d63; }
+.ann-role-pill.is-coaches { background: #7a4fd4; }
+.ann-role-pill.is-staff { background: #5b6b7c; }
+
+.ann-priority-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ann-priority-label.is-low { color: var(--muted, #8a96a6); }
+.ann-priority-label.is-normal { color: var(--warn, #c9a227); }
+.ann-priority-label.is-high { color: #e08a3a; }
+.ann-priority-label.is-urgent { color: #e15b5b; }
+
+.ann-menu-wrap { position: relative; display: inline-flex; }
+
+.ann-menu-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ann-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 6;
+  min-width: 150px;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: grid;
+}
+
+.ann-menu button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  font-weight: 650;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ann-menu button:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.ann-empty {
+  margin: 0;
+  padding: 1.25rem 0.25rem;
+  color: var(--muted);
+}
+
+.ann-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.ann-pager-btns {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.ann-pager-btns button {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ann-pager-btns button.is-active {
+  background: var(--accent, #e0b13a);
+  border-color: var(--accent, #e0b13a);
+  color: #0b1f3a;
+}
+
+.ann-pager-btns button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 980px) {
+  .ann-compose-grid {
+    grid-template-columns: 1fr;
   }
 }

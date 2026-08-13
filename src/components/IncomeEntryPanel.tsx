@@ -103,7 +103,7 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   );
 
   const clubs = useMemo(
-    () => (data.associations ?? []).filter((a) => a.active),
+    () => (data.associations ?? []).filter((a) => a.active !== false),
     [data.associations],
   );
   const sports = useMemo(() => (data.sports ?? []).filter((s) => s.active), [data.sports]);
