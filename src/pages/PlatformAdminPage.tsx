@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getSession, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { BackupSchedulePanel } from '../components/BackupSchedulePanel';
+import { LoginActivityPanel } from '../components/LoginActivityPanel';
 import { PlatformDiagnosticPanel } from '../components/PlatformDiagnosticPanel';
 import { Button } from '../components/ui/Button';
 import { createId, getData, mutateData, replaceAllClubsData, replaceData, resetData } from '../data/repository';
@@ -884,6 +885,25 @@ export function PlatformAdminPage() {
                 </RecordsRow>
                 <RecordsRow title="Εξαγωγή">
                   Λήψη αναφοράς TXT μετά την εκτέλεση.
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
+
+          <AdminRow
+            title="Ιστορικό εισόδων"
+            description="Ποιος συνδέθηκε, σε ποιον σύλλογο ανήκει ο λογαριασμός, ρόλος και ώρα. Αποθήκευση στο cloud."
+            entry={<LoginActivityPanel onSaved={flash} />}
+            records={
+              <RecordsTable>
+                <RecordsRow title="Καταγράφει">
+                  Επιτυχημένες συνδέσεις και impersonate από Platform Admin.
+                </RecordsRow>
+                <RecordsRow title="Πεδία">
+                  Όνομα, email, σύλλογος, ρόλος, τύπος (σύνδεση / impersonate), ώρα.
+                </RecordsRow>
+                <RecordsRow title="Αποθήκευση">
+                  Cloud durable store (Blob/Redis) + τοπικό αντίγραφο ασφαλείας.
                 </RecordsRow>
               </RecordsTable>
             }

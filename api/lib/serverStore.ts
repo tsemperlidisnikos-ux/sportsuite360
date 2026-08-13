@@ -76,6 +76,19 @@ export type RemoteRegistrationApplication = {
   athleteId?: string | null;
 };
 
+export type LoginActivityEvent = {
+  id: string;
+  at: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  role: string;
+  clubId: string | null;
+  clubName: string | null;
+  source: 'login' | 'impersonate';
+  userAgent?: string | null;
+};
+
 type GlobalStore = {
   settlements: VivaSettlement[];
   mirrors: Record<string, MirrorRecord>;
@@ -83,6 +96,7 @@ type GlobalStore = {
   notifyConfigs: Record<string, ClubNotifyConfig>;
   pendingApps: Record<string, RemoteRegistrationApplication[]>;
   accountBundle?: AccountBundle;
+  loginActivity?: LoginActivityEvent[];
 };
 
 const SETTLEMENTS_KEY = 'ss360:settlements';
@@ -93,6 +107,8 @@ const NOTIFY_PREFIX = 'ss360:notify:';
 const PENDING_APPS_PREFIX = 'ss360:pending-apps:';
 const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
 const ACCOUNT_BUNDLE_KEY = 'ss360:account-bundle';
+const LOGIN_ACTIVITY_KEY = 'ss360:login-activity';
+const LOGIN_ACTIVITY_MAX = 500;
 
 function memory(): GlobalStore {
   const g = globalThis as typeof globalThis & { __ss360?: GlobalStore };
@@ -103,11 +119,13 @@ function memory(): GlobalStore {
       publicClubs: {},
       notifyConfigs: {},
       pendingApps: {},
+      loginActivity: [],
     };
   }
   if (!g.__ss360.publicClubs) g.__ss360.publicClubs = {};
   if (!g.__ss360.notifyConfigs) g.__ss360.notifyConfigs = {};
   if (!g.__ss360.pendingApps) g.__ss360.pendingApps = {};
+  if (!g.__ss360.loginActivity) g.__ss360.loginActivity = [];
   return g.__ss360;
 }
 
@@ -324,4 +342,34 @@ export async function listPendingApplications(
 ): Promise<RemoteRegistrationApplication[]> {
   if (!isDurableKvEnabled()) return memory().pendingApps[clubId] ?? [];
   return (await kvGet<RemoteRegistrationApplication[]>(`${PENDING_APPS_PREFIX}${clubId}`)) ?? [];
+}
+
+async function readLoginActivity(): Promise<LoginActivityEvent[]> {
+  if (!isDurableKvEnabled()) return memory().loginActivity ?? [];
+  const raw = await kvGet<LoginActivityEvent[]>(LOGIN_ACTIVITY_KEY);
+  return Array.isArray(raw) ? raw : [];
+}
+
+async function writeLoginActivity(events: LoginActivityEvent[]): Promise<void> {
+  const next = events.slice(0, LOGIN_ACTIVITY_MAX);
+  if (!isDurableKvEnabled()) {
+    memory().loginActivity = next;
+    return;
+  }
+  await kvSet(LOGIN_ACTIVITY_KEY, next);
+}
+
+export async function appendLoginActivity(
+  event: LoginActivityEvent,
+): Promise<LoginActivityEvent[]> {
+  const prev = await readLoginActivity();
+  const next = [event, ...prev.filter((e) => e.id !== event.id)].slice(0, LOGIN_ACTIVITY_MAX);
+  await writeLoginActivity(next);
+  return next;
+}
+
+export async function listLoginActivity(limit = 100): Promise<LoginActivityEvent[]> {
+  const all = await readLoginActivity();
+  const capped = Math.min(Math.max(1, limit), LOGIN_ACTIVITY_MAX);
+  return all.slice(0, capped);
 }

@@ -1,3 +1,4 @@
+import { recordLoginActivity } from '../api/services/loginActivityService';
 import { hashPassword, isPasswordHashed, verifyPassword } from './password';
 
 export type UserRole =
@@ -180,6 +181,7 @@ export async function login(
   }
 
   setSessionFromUser(users[index]);
+  recordLoginActivity(users[index], 'login');
   return { success: true, data: users[index] };
 }
 
@@ -330,6 +332,7 @@ export function impersonateUser(
   const user = getUsers().find((u) => u.id === userId && u.active);
   if (!user) return { success: false, error: 'Ο χρήστης δεν βρέθηκε' };
   setSessionFromUser(user);
+  recordLoginActivity(user, 'impersonate');
   return { success: true, data: user };
 }
 

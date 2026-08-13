@@ -142,17 +142,43 @@ export function backfillPaymentAllocationsInData(data: AppData): string[] {
   return changed;
 }
 
-/** Τρέχει μία φορά όταν ανοίγει Finance/Συναλλαγές — παλιές + νέες. */
+function paymentNeedsMatching(
+  payment: AthleteTransaction,
+  transactions: AthleteTransaction[],
+): boolean {
+  if (payment.type !== 'payment') return false;
+  if (!payment.allocatesChargeId) return true;
+  return !transactions.some(
+    (c) => c.id === payment.allocatesChargeId && c.type === 'charge',
+  );
+}
+
+/** Τρέχει όταν ανοίγει Finance/Συναλλαγές — μόνο αν υπάρχει κάτι να αλλάξει. */
 export function ensureLegacyPaymentsMatched(): number {
   const data = getData();
-  const needs = (data.transactions ?? []).some((t) => {
-    if (t.type !== 'payment') return false;
-    if (!t.allocatesChargeId) return true;
-    return !(data.transactions ?? []).some(
-      (c) => c.id === t.allocatesChargeId && c.type === 'charge',
-    );
-  });
-  if (!needs) return 0;
+  const transactions = data.transactions ?? [];
+  const candidates = transactions.filter((t) => paymentNeedsMatching(t, transactions));
+  if (candidates.length === 0) return 0;
+
+  // Dry-run: αν δεν υπάρχει ανοιχτή χρέωση, ΜΗΝ καλείς mutateData
+  // (αλλιώς άπειρο loop version → λευκή οθόνη στα Οικονομικά).
+  const trial = structuredClone(transactions);
+  let canChange = false;
+  for (const payment of candidates) {
+    const live = trial.find((t) => t.id === payment.id);
+    if (!live) continue;
+    if (live.allocatesChargeId && !trial.some((c) => c.id === live.allocatesChargeId && c.type === 'charge')) {
+      live.allocatesChargeId = null;
+      canChange = true;
+    }
+    if (live.allocatesChargeId) continue;
+    const open = openChargesFor(live.athleteId, trial);
+    const target = pickChargeForPayment(live, open);
+    if (!target) continue;
+    live.allocatesChargeId = target.charge.id;
+    canChange = true;
+  }
+  if (!canChange) return 0;
 
   let count = 0;
   mutateData((draft) => {

@@ -6,6 +6,7 @@ import {
 } from '../api/services/athletePaymentRevenueBridge';
 import { ensureLegacyPaymentsMatched } from '../api/services/paymentMatchingService';
 import * as financeService from '../api/services/financeService';
+import { getData } from '../data/repository';
 import { Button } from './ui/Button';
 import { useAppData } from '../hooks/useAppData';
 import type { RevenueInput } from '../schemas';
@@ -78,9 +79,11 @@ export function IncomeEntryPanel({ onSaved }: { onSaved: () => void }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    ensureLegacyPaymentsMatched();
+    const matched = ensureLegacyPaymentsMatched();
+    const linkedBefore = getData().revenues.filter((r) => r.linkedTransactionId).length;
     ensureAthletePaymentRevenuesSynced();
-    refresh();
+    const linkedAfter = getData().revenues.filter((r) => r.linkedTransactionId).length;
+    if (matched > 0 || linkedAfter !== linkedBefore) refresh();
   }, [refresh]);
 
   const incomeCategories = useMemo(() => {
