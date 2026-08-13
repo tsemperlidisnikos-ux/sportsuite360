@@ -222,8 +222,19 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       setError(result.error ?? 'Αποτυχία πρόσκλησης');
       return;
     }
-    setMessage(`Προσκλήθηκε: ${result.data?.email} · κωδικός: ${password}`);
-    resetForm();
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(password);
+      copied = true;
+    } catch {
+      copied = false;
+    }
+    setMessage(
+      copied
+        ? `Προσκλήθηκε: ${result.data?.email}. Ο προσωρινός κωδικός αντιγράφηκε στο clipboard (δεν εμφανίζεται εδώ).`
+        : `Προσκλήθηκε: ${result.data?.email}. Αντιγράψτε τον κωδικό από το πεδίο πριν κλείσετε — δεν θα ξαναεμφανιστεί.`,
+    );
+    if (copied) resetForm();
     await refresh();
   }
 

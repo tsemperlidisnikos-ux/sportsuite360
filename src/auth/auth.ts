@@ -1,4 +1,5 @@
 import { recordLoginActivity } from '../api/services/loginActivityService';
+import { serverLogin, setSessionToken } from '../api/services/sessionService';
 import { hashPassword, isPasswordHashed, verifyPassword } from './password';
 
 export type UserRole =
@@ -27,33 +28,49 @@ export interface AppUser {
 const SESSION_KEY = 'academyhub-session-v1';
 const USERS_KEY = 'academyhub-users-v2';
 
-export const PLATFORM_ADMIN: AppUser = {
-  id: 'user_platform_admin',
-  email: 'tsemperlidis.nikos@gmail.com',
-  password: 'ntstgt160813',
-  fullName: 'Nikos Tsemperlidis',
-  role: 'platform_admin',
+/** Stable id for the primary platform admin account (no credentials in source). */
+export const PLATFORM_ADMIN_ID = 'user_platform_admin';
+
+/** @deprecated Use PLATFORM_ADMIN_ID — kept for older imports without password. */
+export const PLATFORM_ADMIN = {
+  id: PLATFORM_ADMIN_ID,
+  email: '',
+  password: '',
+  fullName: 'Platform Admin',
+  role: 'platform_admin' as const,
   active: true,
 };
 
-const APOLLON_ADMIN_EMAIL = 'apollon@patras.gr';
-const APOLLON_ADMIN_PASSWORD = '1234567890';
-
-const defaultUsers: AppUser[] = [PLATFORM_ADMIN];
-
-function findApollonClubId(): string | null {
+function readUsersRaw(): AppUser[] {
   try {
-    const raw = localStorage.getItem('academyhub-clubs-v1');
-    if (!raw) return null;
-    const clubs = JSON.parse(raw) as Array<{ id: string; name: string }>;
-    const club = clubs.find((c) => {
-      const name = (c.name ?? '').toLowerCase();
-      return name.includes('απολλων') || name.includes('απόλλων') || name.includes('apollon');
-    });
-    return club?.id ?? null;
+    const raw = localStorage.getItem(USERS_KEY);
+    if (raw) return JSON.parse(raw) as AppUser[];
+    const legacy = localStorage.getItem('academyhub-users-v1');
+    if (legacy) return JSON.parse(legacy) as AppUser[];
   } catch {
-    return null;
+    /* ignore */
   }
+  return [];
+}
+
+/**
+ * Dev-only bootstrap from .env.local (never shipped to production builds).
+ * VITE_BOOTSTRAP_PLATFORM_ADMIN_EMAIL / VITE_BOOTSTRAP_PLATFORM_ADMIN_PASSWORD
+ */
+function readDevBootstrapAdmin(): {
+  email: string;
+  password: string;
+  fullName: string;
+} | null {
+  if (!import.meta.env.DEV) return null;
+  const email = String(import.meta.env.VITE_BOOTSTRAP_PLATFORM_ADMIN_EMAIL ?? '')
+    .trim()
+    .toLowerCase();
+  const password = String(import.meta.env.VITE_BOOTSTRAP_PLATFORM_ADMIN_PASSWORD ?? '').trim();
+  if (!email || !password) return null;
+  const fullName =
+    String(import.meta.env.VITE_BOOTSTRAP_PLATFORM_ADMIN_NAME ?? '').trim() || 'Platform Admin';
+  return { email, password, fullName };
 }
 
 function setSessionFromUser(user: AppUser): void {
@@ -71,80 +88,62 @@ function setSessionFromUser(user: AppUser): void {
   );
 }
 
-/** Always keep a working platform admin account in localStorage. */
-export function ensurePlatformAdmin(): AppUser {
-  let users: AppUser[] = [];
-  try {
-    const raw = localStorage.getItem(USERS_KEY);
-    if (raw) {
-      users = JSON.parse(raw) as AppUser[];
-    } else {
-      const legacy = localStorage.getItem('academyhub-users-v1');
-      if (legacy) users = JSON.parse(legacy) as AppUser[];
+/**
+ * Normalize users store without embedding secrets in the client bundle.
+ * - Keeps existing platform_admin as-is (password never reset from source).
+ * - Does not seed club admins (e.g. Apollon) with hardcoded passwords.
+ * - In DEV only, can create the first platform_admin from bootstrap env vars.
+ */
+export function ensurePlatformAdmin(): AppUser | null {
+  const users = readUsersRaw();
+  let changed = false;
+
+  let admin =
+    users.find((u) => u.id === PLATFORM_ADMIN_ID) ??
+    users.find((u) => u.role === 'platform_admin') ??
+    null;
+
+  if (admin) {
+    if (!admin.active) {
+      admin = { ...admin, active: true };
+      changed = true;
     }
-  } catch {
-    users = [];
-  }
-
-  const existingAdmin = users.find((u) => u.id === PLATFORM_ADMIN.id);
-  const others = users.filter(
-    (u) => u.id !== PLATFORM_ADMIN.id && u.role !== 'platform_admin',
-  );
-
-  const apollonIndex = others.findIndex(
-    (u) => u.email.toLowerCase() === APOLLON_ADMIN_EMAIL,
-  );
-  const clubId = findApollonClubId();
-  if (apollonIndex >= 0) {
-    const prev = others[apollonIndex];
-    others[apollonIndex] = {
-      ...prev,
-      email: APOLLON_ADMIN_EMAIL,
-      password: isPasswordHashed(prev.password)
-        ? prev.password
-        : prev.password || APOLLON_ADMIN_PASSWORD,
-      active: true,
-      clubId: prev.clubId ?? clubId,
-    };
   } else {
-    others.push({
-      id: 'user_apollon_patras',
-      email: APOLLON_ADMIN_EMAIL,
-      password: APOLLON_ADMIN_PASSWORD,
-      fullName: 'Α.Σ. Απόλλων Πατρών',
-      role: 'admin',
-      active: true,
-      clubId,
-    });
+    const bootstrap = readDevBootstrapAdmin();
+    if (bootstrap) {
+      admin = {
+        id: PLATFORM_ADMIN_ID,
+        email: bootstrap.email,
+        password: bootstrap.password,
+        fullName: bootstrap.fullName,
+        role: 'platform_admin',
+        active: true,
+      };
+      changed = true;
+    }
   }
 
-  const admin: AppUser = {
-    ...PLATFORM_ADMIN,
-    password:
-      existingAdmin && isPasswordHashed(existingAdmin.password)
-        ? existingAdmin.password
-        : existingAdmin?.password || PLATFORM_ADMIN.password,
-    fullName: existingAdmin?.fullName || PLATFORM_ADMIN.fullName,
-    email: PLATFORM_ADMIN.email,
-    active: true,
-  };
+  const others = users.filter(
+    (u) => u.id !== (admin?.id ?? PLATFORM_ADMIN_ID) && u.role !== 'platform_admin',
+  );
 
-  const next = [admin, ...others];
-  localStorage.setItem(USERS_KEY, JSON.stringify(next));
-  return next[0];
+  const next = admin ? [admin, ...others] : [...others];
+  if (changed) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(next));
+  } else if (!localStorage.getItem(USERS_KEY) && next.length > 0) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(next));
+  }
+  return admin;
 }
 
 export function getUsers(): AppUser[] {
   ensurePlatformAdmin();
   try {
     const raw = localStorage.getItem(USERS_KEY);
-    if (!raw) {
-      localStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
-      return structuredClone(defaultUsers);
-    }
+    if (!raw) return [];
     return JSON.parse(raw) as AppUser[];
   } catch {
-    return structuredClone(defaultUsers);
+    return [];
   }
 }
 
@@ -161,6 +160,43 @@ export async function login(
   ensurePlatformAdmin();
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPassword = password.trim();
+
+  // Prefer server session when cloud account bundle is available.
+  try {
+    const remote = await serverLogin(normalizedEmail, normalizedPassword);
+    if (remote.success && remote.data?.user) {
+      const users = getUsers();
+      let local =
+        users.find((u) => u.id === remote.data!.user.id) ??
+        users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+      if (!local) {
+        local = {
+          id: remote.data.user.id,
+          email: remote.data.user.email,
+          fullName: remote.data.user.fullName,
+          role: remote.data.user.role as UserRole,
+          active: true,
+          clubId: remote.data.user.clubId ?? null,
+          password: await hashPassword(normalizedPassword),
+        };
+        saveUsers([local, ...users.filter((u) => u.id !== local!.id)]);
+      } else if (!isPasswordHashed(local.password)) {
+        const idx = users.findIndex((u) => u.id === local!.id);
+        const next = [...users];
+        next[idx] = { ...local, password: await hashPassword(normalizedPassword) };
+        saveUsers(next);
+        local = next[idx];
+      }
+
+      setSessionFromUser(local);
+      recordLoginActivity(local, 'login');
+      return { success: true, data: local };
+    }
+  } catch {
+    /* fall through to local auth (offline / no cloud bundle) */
+  }
+
   const users = getUsers();
   const index = users.findIndex(
     (u) => u.email.toLowerCase() === normalizedEmail && u.active,
@@ -187,6 +223,7 @@ export async function login(
 
 export function logout(): void {
   localStorage.removeItem(SESSION_KEY);
+  setSessionToken(null);
 }
 
 export function getSession(): {
@@ -341,7 +378,7 @@ export async function prepareStoredPassword(plain: string): Promise<string> {
   return hashPassword(plain.trim());
 }
 
-/** Μετατρέπει όλους τους plaintext κωδικούς σε PBKDF2 hash (ίδιο secret). */
+/** Μετατρέπει όλους τους plaintext κωδικούς σε PBKDF2 hash. */
 export async function migratePlaintextPasswords(): Promise<number> {
   ensurePlatformAdmin();
   const users = getUsers();

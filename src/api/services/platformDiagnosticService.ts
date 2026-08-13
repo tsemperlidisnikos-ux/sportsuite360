@@ -116,10 +116,32 @@ async function checkApiHealth(): Promise<DiagnosticFinding[]> {
 
 async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
   const out: DiagnosticFinding[] = [];
+  const { syncAuthHeaders, isSyncClientKeyConfigured } = await import('../syncAuth');
+  if (!isSyncClientKeyConfigured()) {
+    out.push(
+      finding({
+        category: 'Sync',
+        severity: 'warning',
+        title: 'Λείπει VITE_SS360_SYNC_SECRET',
+        detail: 'Τα sync APIs στο production απαιτούν κλειδί. Χωρίς client key οι κλήσεις θα πάρουν 401/503.',
+        fix: 'Ορίστε SS360_SYNC_SECRET και VITE_SS360_SYNC_SECRET (ίδια τιμή) στο Vercel και κάντε redeploy.',
+      }),
+    );
+  }
   try {
-    const mirror = await fetch('/api/sync/mirror');
-    const mirrorJson = (await mirror.json()) as { ok?: boolean; clubs?: string[] };
-    if (mirror.ok && mirrorJson.ok) {
+    const mirror = await fetch('/api/sync/mirror', { headers: syncAuthHeaders(false) });
+    const mirrorJson = (await mirror.json()) as { ok?: boolean; clubs?: string[]; error?: string };
+    if (mirror.status === 401 || mirror.status === 503) {
+      out.push(
+        finding({
+          category: 'Sync',
+          severity: 'critical',
+          title: 'Mirror sync κλειδωμένο / μη εξουσιοδοτημένο',
+          detail: mirrorJson.error || `HTTP ${mirror.status}`,
+          fix: 'Ρυθμίστε SS360_SYNC_SECRET (server) + VITE_SS360_SYNC_SECRET (build) με την ίδια τιμή.',
+        }),
+      );
+    } else if (mirror.ok && mirrorJson.ok) {
       out.push(
         finding({
           category: 'Sync',
@@ -153,8 +175,19 @@ async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
   }
 
   try {
-    const account = await fetch('/api/sync/account');
-    if (account.status === 404) {
+    const account = await fetch('/api/sync/account', { headers: syncAuthHeaders(false) });
+    const accountJson = (await account.json()) as { ok?: boolean; error?: string };
+    if (account.status === 401 || account.status === 503) {
+      out.push(
+        finding({
+          category: 'Sync',
+          severity: 'critical',
+          title: 'Account sync κλειδωμένο / μη εξουσιοδοτημένο',
+          detail: accountJson.error || `HTTP ${account.status}`,
+          fix: 'Ρυθμίστε SS360_SYNC_SECRET + VITE_SS360_SYNC_SECRET και redeploy.',
+        }),
+      );
+    } else if (account.status === 404) {
       out.push(
         finding({
           category: 'Sync',
@@ -343,7 +376,7 @@ function checkUsers(users: AppUser[], clubs: Club[]): DiagnosticFinding[] {
         severity: 'warning',
         title: `${plaintext} κωδικοί χωρίς hash`,
         detail: 'Παλιοί λογαριασμοί με plaintext password στο localStorage.',
-        fix: 'Ξανατρέξτε το διαγνωστικό τεστ (γίνεται αυτόματη διόρθωση) ή login με κάθε λογαριασμό.',
+        fix: 'Ξανατρέξτε το διαγνωστικό (auto-repair) ή ανοίξτε την εφαρμογή — γίνεται αυτόματο migrate χωρίς hardcoded secrets.',
       }),
     );
   } else {
@@ -352,7 +385,7 @@ function checkUsers(users: AppUser[], clubs: Club[]): DiagnosticFinding[] {
         category: 'Users',
         severity: 'ok',
         title: 'Κωδικοί hashed',
-        detail: 'Όλοι οι κωδικοί είναι hashed.',
+        detail: 'Όλοι οι κωδικοί είναι hashed. Δεν υπάρχουν hardcoded credentials στο client source.',
         fix: 'Καμία ενέργεια.',
       }),
     );

@@ -164,3 +164,24 @@ export async function kvDel(key: string): Promise<void> {
     }
   }
 }
+
+/** Public binary upload for gallery media (returns CDN URL). */
+export async function putPublicBinary(
+  pathname: string,
+  body: Buffer,
+  contentType: string,
+): Promise<string> {
+  const token = blobToken();
+  if (!token) {
+    throw new Error('BLOB_READ_WRITE_TOKEN missing');
+  }
+  const uploaded = await put(pathname, body, {
+    access: 'public',
+    token,
+    contentType,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
+  return uploaded.url;
+}
+

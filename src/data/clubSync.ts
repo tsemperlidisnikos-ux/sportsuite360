@@ -79,7 +79,29 @@ export async function flushClubMirrorPush(clubId?: string | null) {
     return { success: true as const, data: null, error: null };
   }
   pushing = true;
-  const result = await backendSyncService.pushClubMirror(id);
+  const baseUpdatedAt = getLastSyncAt(id);
+  let result = await backendSyncService.pushClubMirror(id, { baseUpdatedAt });
+
+  // On conflict: adopt cloud revision, then skip overwrite this cycle.
+  if (!result.success) {
+    const err = result.error ?? '';
+    const isConflict = err.toLowerCase().includes('conflict');
+    if (isConflict) {
+      const pull = await backendSyncService.pullClubMirror(id);
+      if (pull.success && pull.data?.payload) {
+        const { replaceData } = await import('./repository');
+        replaceData(pull.data.payload);
+        setLastSyncAt(id, pull.data.updatedAt ?? new Date().toISOString());
+        pushing = false;
+        return {
+          success: false as const,
+          data: null,
+          error: 'Σύγκρουση sync: φορτώθηκαν τα νεότερα cloud δεδομένα.',
+        };
+      }
+    }
+  }
+
   await accountSyncService.pushAccountBundle();
   pushing = false;
   if (result.success) {

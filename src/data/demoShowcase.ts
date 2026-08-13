@@ -2,7 +2,7 @@ import type { AppData } from '../types';
 import { localDateIso } from '../utils/dates';
 
 /** Bump to re-seed DEMO clubs after showcase content changes. */
-export const DEMO_SHOWCASE_VERSION = 2;
+export const DEMO_SHOWCASE_VERSION = 3;
 
 const APPLIED_KEY = 'academyhub-demo-showcase-applied-v1';
 
@@ -1478,7 +1478,26 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
       },
     ],
 
-    parentLinks: [],
+    parentLinks: [
+      {
+        id: 'demo_plink_1',
+        parentUserId: 'user_demo_parent',
+        athleteId: 'demo_ath_f1',
+        createdAt: daysFromToday(-90, now),
+      },
+      {
+        id: 'demo_plink_2',
+        parentUserId: 'user_demo_parent',
+        athleteId: 'demo_ath_f2',
+        createdAt: daysFromToday(-90, now),
+      },
+      {
+        id: 'demo_plink_3',
+        parentUserId: 'user_demo_parent_b',
+        athleteId: 'demo_ath_b1',
+        createdAt: daysFromToday(-60, now),
+      },
+    ],
 
     registrationApplications: [],
 

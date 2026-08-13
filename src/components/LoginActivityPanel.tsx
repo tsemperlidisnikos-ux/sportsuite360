@@ -119,15 +119,33 @@ export function LoginActivityPanel({
           {loading ? 'Φόρτωση…' : 'Δεν υπάρχουν καταγραφές ακόμα.'}
         </p>
       ) : (
-        <div className="records-table" style={{ marginTop: '0.75rem', maxHeight: 360, overflow: 'auto' }}>
+        <div
+          className="records-table login-activity-scroll"
+          style={{
+            marginTop: '0.75rem',
+            maxHeight: 'calc(2.4rem + 5 * 3.15rem)',
+            overflowY: 'auto',
+            overflowX: 'auto',
+          }}
+        >
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', padding: '0.35rem 0.4rem' }}>Ώρα</th>
-                <th style={{ textAlign: 'left', padding: '0.35rem 0.4rem' }}>Χρήστης</th>
-                <th style={{ textAlign: 'left', padding: '0.35rem 0.4rem' }}>Σύλλογος</th>
-                <th style={{ textAlign: 'left', padding: '0.35rem 0.4rem' }}>Ρόλος</th>
-                <th style={{ textAlign: 'left', padding: '0.35rem 0.4rem' }}>Τύπος</th>
+                {(['Ώρα', 'Χρήστης', 'Σύλλογος', 'Ρόλος', 'Τύπος'] as const).map((label) => (
+                  <th
+                    key={label}
+                    style={{
+                      textAlign: 'left',
+                      padding: '0.35rem 0.4rem',
+                      position: 'sticky',
+                      top: 0,
+                      background: '#fff',
+                      zIndex: 1,
+                    }}
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

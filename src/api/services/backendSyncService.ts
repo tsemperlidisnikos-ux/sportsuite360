@@ -1,4 +1,5 @@
 import { apiClient } from '../apiClient';
+import { syncAuthHeaders } from '../syncAuth';
 import { getClubData } from '../../data/repository';
 import type { AppData } from '../../types';
 
@@ -8,18 +9,41 @@ function isAppDataPayload(value: unknown): value is AppData {
   return Array.isArray(data.students) && Array.isArray(data.classes);
 }
 
-export async function pushClubMirror(clubId: string) {
+export async function pushClubMirror(
+  clubId: string,
+  opts?: { baseUpdatedAt?: string | null },
+) {
   return apiClient(async () => {
     const payload = getClubData(clubId);
     const response = await fetch('/api/sync/mirror', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: syncAuthHeaders(),
       body: JSON.stringify({
         clubId,
         payload,
+        baseUpdatedAt: opts?.baseUpdatedAt ?? null,
       }),
     });
-    const json = (await response.json()) as { ok?: boolean; error?: string; updatedAt?: string };
+    const json = (await response.json()) as {
+      ok?: boolean;
+      error?: string;
+      updatedAt?: string;
+      conflict?: boolean;
+      payload?: unknown;
+    };
+
+    if (response.status === 409 || json.conflict) {
+      const err = new Error(json.error || 'Mirror conflict') as Error & {
+        conflict?: boolean;
+        remoteUpdatedAt?: string;
+        remotePayload?: AppData;
+      };
+      err.conflict = true;
+      err.remoteUpdatedAt = json.updatedAt;
+      err.remotePayload = isAppDataPayload(json.payload) ? json.payload : undefined;
+      throw err;
+    }
+
     if (!response.ok || !json.ok) {
       throw new Error(
         json.error ||
@@ -34,7 +58,9 @@ export async function pushClubMirror(clubId: string) {
 
 export async function pullClubMirror(clubId: string) {
   return apiClient(async () => {
-    const response = await fetch(`/api/sync/mirror?clubId=${encodeURIComponent(clubId)}`);
+    const response = await fetch(`/api/sync/mirror?clubId=${encodeURIComponent(clubId)}`, {
+      headers: syncAuthHeaders(false),
+    });
     const json = (await response.json()) as {
       ok?: boolean;
       error?: string;

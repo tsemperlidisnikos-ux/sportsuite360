@@ -1,0 +1,28 @@
+# Sync API protection (same value on client build + server)
+# Vercel Production:
+#   SS360_SYNC_SECRET=<secret>
+#   VITE_SS360_SYNC_SECRET=<secret>
+# Also recommend:
+#   CRON_SECRET=<secret>   (for /api/backup/scheduled)
+#   SS360_SESSION_SECRET=<secret>  (optional; falls back to SS360_SYNC_SECRET)
+
+SS360_SYNC_SECRET=
+VITE_SS360_SYNC_SECRET=
+SS360_SESSION_SECRET=
+CRON_SECRET=
+
+# Platform SMTP for password-reset emails (preferred).
+# Fallback: enabled club SMTP from cloud account bundle.
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM_NAME=SPORTSUITE 360
+APP_URL=https://sportsuite360.vercel.app
+
+# Local/dev ONLY — never set these on Vercel production builds
+# (VITE_ vars are embedded in the client bundle).
+# Used once to create the first platform_admin when localStorage is empty.
+VITE_BOOTSTRAP_PLATFORM_ADMIN_EMAIL=
+VITE_BOOTSTRAP_PLATFORM_ADMIN_PASSWORD=
+VITE_BOOTSTRAP_PLATFORM_ADMIN_NAME=Platform Admin

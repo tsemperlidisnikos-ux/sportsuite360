@@ -1,4 +1,5 @@
 import { apiClient } from '../apiClient';
+import { syncAuthHeaders } from '../syncAuth';
 import { getUsers, saveUsers, type AppUser } from '../../auth/auth';
 import { getClubs, saveClubs, type Club } from '../../auth/clubs';
 import {
@@ -19,7 +20,7 @@ export async function pushAccountBundle() {
   return apiClient(async () => {
     const response = await fetch('/api/sync/account', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: syncAuthHeaders(),
       body: JSON.stringify({
         users: getUsers(),
         clubs: getClubs(),
@@ -36,7 +37,9 @@ export async function pushAccountBundle() {
 
 export async function pullAccountBundle() {
   return apiClient(async () => {
-    const response = await fetch('/api/sync/account');
+    const response = await fetch('/api/sync/account', {
+      headers: syncAuthHeaders(false),
+    });
     const json = (await response.json()) as {
       ok?: boolean;
       error?: string;

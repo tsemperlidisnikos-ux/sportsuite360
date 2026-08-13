@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
+  assertSyncAuthorized,
   isDurableStoreEnabled,
   listMirrorKeys,
   loadMirror,
@@ -7,10 +8,11 @@ import {
 } from '../lib/serverStore.js';
 
 /**
- * Cloud mirror for club AppData.
- * Uses Upstash Redis when UPSTASH_REDIS_REST_* or KV_REST_API_* env vars are set.
+ * Cloud mirror for club AppData (optimistic concurrency via baseUpdatedAt).
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!assertSyncAuthorized(req, res)) return;
+
   if (req.method === 'GET') {
     const clubId = String(req.query.clubId ?? '').trim();
     if (!clubId) {
@@ -31,16 +33,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
-    const body = (req.body ?? {}) as { clubId?: string; payload?: unknown };
+    const body = (req.body ?? {}) as {
+      clubId?: string;
+      payload?: unknown;
+      baseUpdatedAt?: string | null;
+    };
     const clubId = String(body.clubId ?? '').trim();
     if (!clubId) return res.status(400).json({ ok: false, error: 'clubId required' });
     if (body.payload == null) return res.status(400).json({ ok: false, error: 'payload required' });
-    await saveMirror(clubId, body.payload);
+
+    const result = await saveMirror(clubId, body.payload, {
+      baseUpdatedAt: body.baseUpdatedAt ?? null,
+    });
+
+    if (!result.ok) {
+      return res.status(409).json({
+        ok: false,
+        conflict: true,
+        error: 'Mirror conflict: cloud has a newer revision',
+        updatedAt: result.updatedAt,
+        payload: result.payload,
+        durable: isDurableStoreEnabled(),
+      });
+    }
+
     return res.status(200).json({
       ok: true,
       clubId,
       durable: isDurableStoreEnabled(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: result.updatedAt,
     });
   }
 

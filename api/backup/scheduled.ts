@@ -12,6 +12,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const secret = process.env.CRON_SECRET?.trim();
+  const isVercelProd = process.env.VERCEL_ENV === 'production';
+  if (isVercelProd && !secret) {
+    return res.status(503).json({
+      ok: false,
+      error: 'Backup cron locked: configure CRON_SECRET',
+    });
+  }
   if (secret) {
     const auth = String(req.headers.authorization ?? '');
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : String(req.query.secret ?? '');

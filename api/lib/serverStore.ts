@@ -1,9 +1,11 @@
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   durableKvBackend,
   isDurableKvEnabled,
   kvDel,
   kvGet,
   kvSet,
+  putPublicBinary,
 } from './durableKv.js';
 
 export type VivaSettlement = {
@@ -97,6 +99,7 @@ type GlobalStore = {
   pendingApps: Record<string, RemoteRegistrationApplication[]>;
   accountBundle?: AccountBundle;
   loginActivity?: LoginActivityEvent[];
+  passwordResets?: Record<string, { userId: string; email: string; exp: number }>;
 };
 
 const SETTLEMENTS_KEY = 'ss360:settlements';
@@ -180,20 +183,44 @@ export async function consumeSettlement(orderCode: string): Promise<VivaSettleme
   return found;
 }
 
-export async function saveMirror(clubId: string, payload: unknown): Promise<void> {
+export async function saveMirror(
+  clubId: string,
+  payload: unknown,
+  opts?: { baseUpdatedAt?: string | null },
+): Promise<
+  | { ok: true; updatedAt: string }
+  | { ok: false; conflict: true; updatedAt: string; payload: unknown }
+> {
+  const existing = await loadMirror(clubId);
+  const base = opts?.baseUpdatedAt;
+  if (
+    typeof base === 'string' &&
+    base.length > 0 &&
+    existing &&
+    existing.updatedAt !== base
+  ) {
+    return {
+      ok: false,
+      conflict: true,
+      updatedAt: existing.updatedAt,
+      payload: existing.payload,
+    };
+  }
+
   const record: MirrorRecord = {
     updatedAt: new Date().toISOString(),
     payload,
   };
   if (!isDurableKvEnabled()) {
     memory().mirrors[clubId] = record;
-    return;
+    return { ok: true, updatedAt: record.updatedAt };
   }
   await kvSet(`${MIRROR_PREFIX}${clubId}`, record);
   const keys = (await kvGet<string[]>(MIRROR_INDEX_KEY)) ?? [];
   if (!keys.includes(clubId)) {
     await kvSet(MIRROR_INDEX_KEY, [...keys, clubId]);
   }
+  return { ok: true, updatedAt: record.updatedAt };
 }
 
 export async function loadMirror(clubId: string): Promise<MirrorRecord | null> {
@@ -373,3 +400,225 @@ export async function listLoginActivity(limit = 100): Promise<LoginActivityEvent
   const capped = Math.min(Math.max(1, limit), LOGIN_ACTIVITY_MAX);
   return all.slice(0, capped);
 }
+
+/** Sync API auth (kept here to avoid an extra Hobby serverless file under api/). */
+export function assertSyncAuthorized(
+  req: { headers: Record<string, unknown>; query?: Record<string, unknown> },
+  res: { status: (code: number) => { json: (body: unknown) => unknown } },
+): boolean {
+  const expected = (process.env.SS360_SYNC_SECRET ?? '').trim();
+  const isVercelProd = process.env.VERCEL_ENV === 'production';
+
+  const rawHeader = String(
+    req.headers['x-ss360-sync-key'] ?? req.headers['authorization'] ?? '',
+  ).trim();
+  let provided = '';
+  if (rawHeader.toLowerCase().startsWith('bearer ')) provided = rawHeader.slice(7).trim();
+  else if (rawHeader) provided = rawHeader;
+  else {
+    const q = req.query?.key ?? req.query?.secret;
+    provided = typeof q === 'string' ? q.trim() : '';
+  }
+
+  // Prefer session token when present (payload.sig form).
+  if (provided.includes('.')) {
+    const claims = verifySessionToken(provided);
+    if (claims) return true;
+  }
+
+  if (!expected) {
+    if (isVercelProd) {
+      res.status(503).json({
+        ok: false,
+        error: 'Sync locked: configure SS360_SYNC_SECRET on Vercel',
+      });
+      return false;
+    }
+    return true;
+  }
+
+  if (!provided || provided !== expected) {
+    res.status(401).json({ ok: false, error: 'Unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Password verify (Web Crypto) + signed sessions + reset tokens + media     */
+/* -------------------------------------------------------------------------- */
+
+const HASH_PREFIX = 'pbkdf2';
+const RESET_PREFIX = 'ss360:pwd-reset:';
+const SESSION_TTL_SEC = 60 * 60 * 24 * 7;
+
+export type SessionClaims = {
+  sub: string;
+  email: string;
+  role: string;
+  clubId: string | null;
+  exp: number;
+};
+
+type ResetRecord = {
+  userId: string;
+  email: string;
+  exp: number;
+};
+
+function sessionSecret(): string {
+  return (process.env.SS360_SESSION_SECRET || process.env.SS360_SYNC_SECRET || '').trim();
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function fromHex(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+export function isPasswordHashed(stored: string): boolean {
+  return stored.startsWith(`${HASH_PREFIX}$`);
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (!stored) return false;
+  if (!isPasswordHashed(stored)) return stored === password;
+
+  const parts = stored.split('$');
+  if (parts.length !== 4 || parts[0] !== HASH_PREFIX) return false;
+  const iterations = Number(parts[1]);
+  const saltHex = parts[2];
+  const hashHex = parts[3];
+  if (!iterations || !saltHex || !hashHex) return false;
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const saltBytes = fromHex(saltHex);
+  const salt = saltBytes.buffer.slice(
+    saltBytes.byteOffset,
+    saltBytes.byteOffset + saltBytes.byteLength,
+  ) as ArrayBuffer;
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    keyMaterial,
+    256,
+  );
+  return toHex(bits) === hashHex;
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+    keyMaterial,
+    256,
+  );
+  return `${HASH_PREFIX}$100000$${toHex(salt.buffer)}$${toHex(bits)}`;
+}
+
+export function signSession(
+  claims: Omit<SessionClaims, 'exp'>,
+  ttlSec = SESSION_TTL_SEC,
+): string | null {
+  const secret = sessionSecret();
+  if (!secret) return null;
+  const body: SessionClaims = {
+    ...claims,
+    exp: Math.floor(Date.now() / 1000) + ttlSec,
+  };
+  const payload = Buffer.from(JSON.stringify(body), 'utf8').toString('base64url');
+  const sig = createHmac('sha256', secret).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+export function verifySessionToken(token: string): SessionClaims | null {
+  const secret = sessionSecret();
+  if (!secret || !token.includes('.')) return null;
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = createHmac('sha256', secret).update(payload).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as SessionClaims;
+    if (!claims?.sub || !claims.email || !claims.exp) return null;
+    if (claims.exp < Math.floor(Date.now() / 1000)) return null;
+    return claims;
+  } catch {
+    return null;
+  }
+}
+
+export async function createPasswordResetToken(
+  userId: string,
+  email: string,
+): Promise<string> {
+  const token = randomBytes(24).toString('hex');
+  const record: ResetRecord = {
+    userId,
+    email: email.toLowerCase(),
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+  };
+  if (!isDurableKvEnabled()) {
+    memory().passwordResets = memory().passwordResets ?? {};
+    memory().passwordResets![token] = record;
+    return token;
+  }
+  await kvSet(`${RESET_PREFIX}${token}`, record);
+  return token;
+}
+
+export async function consumePasswordResetToken(
+  token: string,
+): Promise<ResetRecord | null> {
+  const key = `${RESET_PREFIX}${token}`;
+  let record: ResetRecord | null = null;
+  if (!isDurableKvEnabled()) {
+    record = memory().passwordResets?.[token] ?? null;
+    if (record) delete memory().passwordResets![token];
+  } else {
+    record = (await kvGet<ResetRecord>(key)) ?? null;
+    if (record) await kvDel(key);
+  }
+  if (!record) return null;
+  if (record.exp < Math.floor(Date.now() / 1000)) return null;
+  return record;
+}
+
+export async function uploadClubMedia(input: {
+  clubId: string;
+  fileName: string;
+  contentType: string;
+  dataBase64: string;
+}): Promise<{ url: string; pathname: string }> {
+  const raw = input.dataBase64.includes(',')
+    ? input.dataBase64.split(',')[1] ?? ''
+    : input.dataBase64;
+  const bytes = Buffer.from(raw, 'base64');
+  if (!bytes.length) throw new Error('Empty media payload');
+  if (bytes.length > 2_000_000) throw new Error('Media too large (max ~2MB)');
+  const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 80) || 'photo';
+  const pathname = `ss360-media/${input.clubId}/${Date.now()}-${safeName}`;
+  const url = await putPublicBinary(pathname, bytes, input.contentType || 'image/jpeg');
+  return { url, pathname };
+}
+

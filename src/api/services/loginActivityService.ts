@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { apiClient } from '../apiClient';
+import { syncAuthHeaders } from '../syncAuth';
 
 const LOCAL_KEY = 'ss360-login-activity-local-v1';
 const LOCAL_MAX = 200;
@@ -113,7 +114,7 @@ export async function pushLoginActivity(event: LoginActivityEvent) {
   return apiClient(async () => {
     const response = await fetch('/api/sync/account?kind=login-activity', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: syncAuthHeaders(),
       body: JSON.stringify(event),
     });
     const json = (await response.json()) as { ok?: boolean; error?: string };
@@ -128,6 +129,7 @@ export async function fetchLoginActivity(limit = 100) {
   return apiClient(async () => {
     const response = await fetch(
       `/api/sync/account?kind=login-activity&limit=${encodeURIComponent(String(limit))}`,
+      { headers: syncAuthHeaders(false) },
     );
     const json = (await response.json()) as {
       ok?: boolean;
