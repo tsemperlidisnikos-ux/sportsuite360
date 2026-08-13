@@ -362,6 +362,9 @@ export function PlatformAdminPage() {
           <Link className="btn btn-secondary" to="/platform/users">
             Χρήστες
           </Link>
+          <a className="btn btn-secondary" href="#login-activity">
+            Ιστορικό εισόδων
+          </a>
           <Link className="btn btn-secondary" to="/platform/packages">
             Πακέτα αδειών
           </Link>
@@ -387,6 +390,27 @@ export function PlatformAdminPage() {
             <div>Τίτλος</div>
             <div>Εισαγωγή δεδομένων</div>
             <div>Καταχωρημένα δεδομένα</div>
+          </div>
+
+          <div id="login-activity">
+            <AdminRow
+              title="Ιστορικό εισόδων"
+              description="Ποιος συνδέθηκε, σε ποιον σύλλογο ανήκει ο λογαριασμός, ρόλος και ώρα. Αποθήκευση στο cloud."
+              entry={<LoginActivityPanel onSaved={flash} />}
+              records={
+                <RecordsTable>
+                  <RecordsRow title="Καταγράφει">
+                    Επιτυχημένες συνδέσεις και impersonate από Platform Admin.
+                  </RecordsRow>
+                  <RecordsRow title="Πεδία">
+                    Όνομα, email, σύλλογος, ρόλος, τύπος (σύνδεση / impersonate), ώρα.
+                  </RecordsRow>
+                  <RecordsRow title="Αποθήκευση">
+                    Cloud durable store (Blob/Redis) + τοπικό αντίγραφο ασφαλείας.
+                  </RecordsRow>
+                </RecordsTable>
+              }
+            />
           </div>
 
           <AdminRow
@@ -890,24 +914,6 @@ export function PlatformAdminPage() {
             }
           />
 
-          <AdminRow
-            title="Ιστορικό εισόδων"
-            description="Ποιος συνδέθηκε, σε ποιον σύλλογο ανήκει ο λογαριασμός, ρόλος και ώρα. Αποθήκευση στο cloud."
-            entry={<LoginActivityPanel onSaved={flash} />}
-            records={
-              <RecordsTable>
-                <RecordsRow title="Καταγράφει">
-                  Επιτυχημένες συνδέσεις και impersonate από Platform Admin.
-                </RecordsRow>
-                <RecordsRow title="Πεδία">
-                  Όνομα, email, σύλλογος, ρόλος, τύπος (σύνδεση / impersonate), ώρα.
-                </RecordsRow>
-                <RecordsRow title="Αποθήκευση">
-                  Cloud durable store (Blob/Redis) + τοπικό αντίγραφο ασφαλείας.
-                </RecordsRow>
-              </RecordsTable>
-            }
-          />
         </div>
       </section>
 
