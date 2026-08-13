@@ -289,14 +289,6 @@ export function RegisterClubPage() {
                 </select>
               </label>
 
-              <div className="ssr-trial">
-                <CalendarDays size={20} aria-hidden />
-                <p>
-                  <strong>Δωρεάν δοκιμή</strong>
-                  Οι επιλεγμένες ακαδημίες θα έχουν δωρεάν πρόσβαση για 30 ημέρες.
-                </p>
-              </div>
-
               <label className="ssr-terms">
                 <input
                   type="checkbox"

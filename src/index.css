@@ -4341,35 +4341,6 @@ html[data-appearance='navy-amber'] .login-footer-link a,
   text-underline-offset: 2px;
 }
 
-.ssr-trial {
-  display: flex;
-  gap: 0.7rem;
-  align-items: flex-start;
-  padding: 0.85rem 0.9rem;
-  border-radius: 12px;
-  background: #fff4df;
-  border: 1px solid rgba(224, 162, 26, 0.35);
-}
-
-.ssr-trial svg {
-  color: var(--ssr-amber);
-  flex-shrink: 0;
-  margin-top: 0.1rem;
-}
-
-.ssr-trial p {
-  margin: 0;
-  color: #5c4812;
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-
-.ssr-trial strong {
-  display: block;
-  margin-bottom: 0.15rem;
-  color: #8a650f;
-}
-
 .ssr-submit {
   display: inline-flex;
   align-items: center;
