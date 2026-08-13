@@ -111,7 +111,7 @@ export function recordLoginActivity(
 
 export async function pushLoginActivity(event: LoginActivityEvent) {
   return apiClient(async () => {
-    const response = await fetch('/api/sync/login-activity', {
+    const response = await fetch('/api/sync/account?kind=login-activity', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
@@ -127,7 +127,7 @@ export async function pushLoginActivity(event: LoginActivityEvent) {
 export async function fetchLoginActivity(limit = 100) {
   return apiClient(async () => {
     const response = await fetch(
-      `/api/sync/login-activity?limit=${encodeURIComponent(String(limit))}`,
+      `/api/sync/account?kind=login-activity&limit=${encodeURIComponent(String(limit))}`,
     );
     const json = (await response.json()) as {
       ok?: boolean;
