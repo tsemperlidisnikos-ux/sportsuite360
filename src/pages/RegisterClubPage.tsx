@@ -31,14 +31,6 @@ const SPORT_OPTIONS = [
   'Άλλο',
 ];
 
-const INTEREST_OPTIONS = [
-  'Οργάνωση ακαδημίας / προπονήσεις / πληρωμές',
-  'Οικονομικά & συνδρομές',
-  'Παρουσίες & πρόγραμμα',
-  'Επικοινωνία με γονείς',
-  'Αγώνες & στατιστικά',
-];
-
 const LEVEL_OPTIONS = [
   { id: 'academies', label: 'Ακαδημίες' },
   { id: 'pre', label: 'Προαγωνιστικό' },
@@ -53,7 +45,6 @@ type WaitlistEntry = {
   phone: string;
   sport: string;
   levels: string[];
-  interest: string;
   createdAt: string;
 };
 
@@ -88,7 +79,6 @@ export function RegisterClubPage() {
   const [phone, setPhone] = useState('');
   const [sport, setSport] = useState('');
   const [levels, setLevels] = useState<string[]>(['academies']);
-  const [interest, setInterest] = useState(INTEREST_OPTIONS[0]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -123,7 +113,6 @@ export function RegisterClubPage() {
       phone: phone.trim(),
       sport,
       levels,
-      interest,
     });
     setSaving(false);
     if (!ok) {
@@ -277,17 +266,6 @@ export function RegisterClubPage() {
                   ))}
                 </div>
               </fieldset>
-
-              <label className="ssr-field">
-                <Req>Ενδιαφέρομαι κυρίως για</Req>
-                <select value={interest} onChange={(e) => setInterest(e.target.value)} required>
-                  {INTEREST_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </label>
 
               <label className="ssr-terms">
                 <input
