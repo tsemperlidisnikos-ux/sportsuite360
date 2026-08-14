@@ -1439,22 +1439,222 @@ html[data-appearance='navy-amber'] .tx-panel {
 
 html[data-appearance='navy-amber'] .tx-panel {
   box-shadow: none;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-appearance='navy-amber'] .tx-page-header h1 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-page-header p {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] .tx-panel-header {
+  background: linear-gradient(135deg, #0a1628 0%, #12233d 55%, #1a3050 100%);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-panel-header h2 {
+  color: #ffffff;
 }
 
 html[data-appearance='navy-amber'] .tx-filters {
-  background: color-mix(in srgb, var(--surface) 88%, #000 12%);
+  background: color-mix(in srgb, var(--surface) 82%, #000 18%);
   border-bottom-color: var(--line);
 }
 
+html[data-appearance='navy-amber'] .tx-filter-field > span {
+  color: #c5d0e0;
+}
+
 html[data-appearance='navy-amber'] .tx-filter-field select {
-  background: var(--field-bg, var(--surface));
+  background: var(--field-bg, #0e1a2e);
   border-color: var(--line);
-  color: var(--ink);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-table-wrap {
+  background: var(--surface);
+}
+
+html[data-appearance='navy-amber'] .tx-table {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-table th,
+html[data-appearance='navy-amber'] .tx-table td {
+  border-bottom-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-table th,
+html[data-appearance='navy-amber'] .tx-table-wrap--athletes thead th,
+html[data-appearance='navy-amber'] .tx-table-wrap--movements thead th {
+  background: var(--table-head-bg, #18263d);
+  color: #dce5f2;
+}
+
+html[data-appearance='navy-amber'] .tx-table tbody tr:hover {
+  background: rgba(224, 177, 58, 0.1);
+}
+
+html[data-appearance='navy-amber'] .tx-table tbody tr.is-selected {
+  background: rgba(224, 177, 58, 0.18);
 }
 
 html[data-appearance='navy-amber'] .tx-balance-cell,
 html[data-appearance='navy-amber'] .tx-balance-col {
-  background: rgba(212, 160, 23, 0.14) !important;
+  background: rgba(212, 160, 23, 0.2) !important;
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .tx-total-row td {
+  background: color-mix(in srgb, var(--surface) 70%, #000 30%);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-panel-footer {
+  background: color-mix(in srgb, var(--surface) 78%, #000 22%);
+  border-top-color: var(--line);
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .tx-search {
+  background: var(--field-bg, #0e1a2e);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-search::placeholder {
+  color: #8fa0b8;
+}
+
+html[data-appearance='navy-amber'] .tx-form {
+  background: var(--surface);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-field span,
+html[data-appearance='navy-amber'] .tx-field-col span {
+  color: #dce5f2;
+}
+
+html[data-appearance='navy-amber'] .tx-form input,
+html[data-appearance='navy-amber'] .tx-form select,
+html[data-appearance='navy-amber'] .tx-form textarea {
+  background: var(--field-bg, #0e1a2e);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .tx-form input:disabled {
+  background: #1a2740;
+  color: #9aabbf;
+}
+
+html[data-appearance='navy-amber'] .tx-form input::placeholder,
+html[data-appearance='navy-amber'] .tx-form textarea::placeholder {
+  color: #8fa0b8;
+}
+
+html[data-appearance='navy-amber'] .tx-cancel-btn {
+  background: #1a2740;
+  border-color: var(--line);
+  color: #e8eef7;
+}
+
+html[data-appearance='navy-amber'] .tx-cancel-btn:hover {
+  background: #243552;
+  color: #ffffff;
+}
+
+html[data-appearance='navy-amber'] .tx-icon-btn {
+  border-color: var(--line);
+  background: #1a2740;
+  color: #e8eef7;
+}
+
+html[data-appearance='navy-amber'] .tx-icon-btn:hover {
+  color: var(--accent);
+  border-color: rgba(224, 177, 58, 0.55);
+}
+
+html[data-appearance='navy-amber'] .tx-icon-btn--danger:hover {
+  color: #ff8f8f;
+  border-color: rgba(240, 113, 103, 0.55);
+}
+
+html[data-appearance='navy-amber'] .tx-empty-info,
+html[data-appearance='navy-amber'] .tx-hint,
+html[data-appearance='navy-amber'] .tx-empty-info p {
+  color: #c5d0e0;
+}
+
+/* Fees / Συνδρομές — list + toolbar contrast */
+html[data-appearance='navy-amber'] .toolbar .tx-search {
+  background: var(--field-bg, #0e1a2e);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .toolbar .tx-search::placeholder {
+  color: #8fa0b8;
+}
+
+html[data-appearance='navy-amber'] .panel.table-wrap,
+html[data-appearance='navy-amber'] .panel.table-wrap table,
+html[data-appearance='navy-amber'] .panel.table-wrap strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .panel.table-wrap .muted {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .panel.table-wrap thead th {
+  color: #dce5f2;
+  background: var(--table-head-bg, #18263d);
+}
+
+html[data-appearance='navy-amber'] .panel.table-wrap tbody td {
+  color: #e8eef7;
+}
+
+html[data-appearance='navy-amber'] .badge-paid {
+  background: rgba(6, 180, 110, 0.2);
+  color: #7dffc0;
+}
+
+html[data-appearance='navy-amber'] .badge-overdue {
+  background: rgba(240, 113, 103, 0.2);
+  color: #ff9b9b;
+}
+
+html[data-appearance='navy-amber'] .fees-actions .btn-secondary,
+html[data-appearance='navy-amber'] .toolbar .btn-secondary,
+html[data-appearance='navy-amber'] .panel.table-wrap .btn-secondary {
+  background: #1a2740;
+  border-color: var(--line);
+  color: #e8eef7;
+}
+
+html[data-appearance='navy-amber'] .fees-actions .btn-secondary:hover,
+html[data-appearance='navy-amber'] .toolbar .btn-secondary:hover,
+html[data-appearance='navy-amber'] .panel.table-wrap .btn-secondary:hover {
+  background: #243552;
+  color: #ffffff;
+}
+
+html[data-appearance='navy-amber'] .stat-card .stat-label,
+html[data-appearance='navy-amber'] .stat-card .stat-hint {
+  color: #c5d0e0;
+}
+
+html[data-appearance='navy-amber'] .stat-card .stat-value {
+  color: #f4f7fb;
 }
 
 /* Finance income/expense/budget/reports denser navy headers */
