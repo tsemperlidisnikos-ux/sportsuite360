@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeAppData } from '../data/appDataEvents';
 import { clearDataCache, getData } from '../data/repository';
-import { APP_DATA_STORAGE_KEYS } from '../data/store';
+import { APP_DATA_STORAGE_KEYS, ensureAmkaPlaintextReady } from '../data/store';
 import type { AppData } from '../types';
 
 function snapshotData(): AppData {
@@ -26,6 +26,13 @@ export function useAppData() {
   }, []);
 
   useEffect(() => {
+    void ensureAmkaPlaintextReady().then(() => {
+      setData(snapshotData());
+      setVersion((v) => v + 1);
+    });
+  }, []);
+
+  useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (!event.key || !(APP_DATA_STORAGE_KEYS as readonly string[]).includes(event.key)) {
         return;
@@ -33,11 +40,19 @@ export function useAppData() {
       clearDataCache();
       setData(snapshotData());
       setVersion((v) => v + 1);
+      void ensureAmkaPlaintextReady().then(() => {
+        setData(snapshotData());
+        setVersion((v) => v + 1);
+      });
     };
     const onClubContext = () => {
       clearDataCache();
       setData(snapshotData());
       setVersion((v) => v + 1);
+      void ensureAmkaPlaintextReady().then(() => {
+        setData(snapshotData());
+        setVersion((v) => v + 1);
+      });
     };
     window.addEventListener('storage', onStorage);
     window.addEventListener('academyhub-platform-updated', onClubContext);

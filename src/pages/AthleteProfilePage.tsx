@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import * as studentsService from '../api/services/studentsService';
 import * as progressReportsService from '../api/services/progressReportsService';
+import * as amkaAuditService from '../api/services/amkaAuditService';
 import { getSession } from '../auth/auth';
 import { getClubById, ensureSessionClub } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
@@ -28,6 +29,14 @@ import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 import { formatDate } from '../utils/labels';
 import { localDateIso } from '../utils/dates';
 import { getPreviewClubId } from '../platform/platformConfig';
+import {
+  AMKA_CONSENT_CHECKBOX,
+  AMKA_CONSENT_LABEL,
+  AMKA_CONSENT_TITLE,
+  AMKA_PRIVACY_SECTION_HTML,
+  MEDICAL_ACCESS_HINT,
+} from '../shared/termsDefaults';
+import { canAccessAmka, canAccessMedical, formatAmkaForViewer } from '../utils/amkaAccess';
 
 type ProfileTab =
   | 'personal'
@@ -39,6 +48,18 @@ type ProfileTab =
   | 'progress'
   | 'history';
 
+function isAthleteMinor(birthDate: string | undefined): boolean {
+  if (!birthDate) return true;
+  const born = new Date(birthDate);
+  if (Number.isNaN(born.getTime())) return true;
+  const today = new Date();
+  let age = today.getFullYear() - born.getFullYear();
+  const monthDiff = today.getMonth() - born.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < born.getDate())) {
+    age -= 1;
+  }
+  return age < 18;
+}
 const PROFILE_TABS: { id: ProfileTab; label: string; icon: typeof User }[] = [
   { id: 'personal', label: 'Προσωπικά Στοιχεία', icon: User },
   { id: 'guardians', label: 'Κηδεμόνες', icon: Users },
@@ -153,13 +174,17 @@ function toForm(student: Student): StudentInput {
     comments: student.comments ?? '',
     photoUrl: student.photoUrl ?? null,
     gdprConsent: student.gdprConsent ?? 'pending',
-    gdprItems: student.gdprItems ?? {
+    gdprItems: {
       personalData: student.gdprConsent === 'full' || student.gdprConsent === 'locked',
       photoUse: student.gdprConsent === 'full' || student.gdprConsent === 'locked',
       gallery: student.gdprConsent === 'full' || student.gdprConsent === 'locked',
       communication: student.gdprConsent === 'full' || student.gdprConsent === 'locked',
       medical: student.gdprConsent === 'full' || student.gdprConsent === 'locked',
+      amkaHealthCard: false,
+      ...student.gdprItems,
     },
+    amkaConsentAt: student.amkaConsentAt ?? '',
+    healthCardSealedAt: student.healthCardSealedAt ?? '',
     placeOfBirth: student.placeOfBirth ?? '',
     nationality: student.nationality ?? '',
     communicationLanguage: student.communicationLanguage ?? 'Ελληνικά',
@@ -223,6 +248,9 @@ export function AthleteProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data, refresh } = useAppData();
+  const session = getSession();
+  const amkaAllowed = canAccessAmka(session?.role);
+  const medicalAllowed = canAccessMedical(session?.role);
   const student = data.students.find((s) => s.id === athleteId);
 
   const [editing, setEditing] = useState(
@@ -242,6 +270,7 @@ export function AthleteProfilePage() {
   const [loadingHealthCardPreview, setLoadingHealthCardPreview] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const healthCardPreviewUrlRef = useRef<string | null>(null);
+  const amkaViewLoggedRef = useRef<string | null>(null);
 
   const uniformSizeOptions = useMemo(() => {
     const groups = sizeChartOptGroups(data.sizeChart);
@@ -273,6 +302,23 @@ export function AthleteProfilePage() {
   useEffect(() => {
     if (student) setForm(toForm(student));
   }, [student]);
+
+  useEffect(() => {
+    if (!amkaAllowed || !student || !session) return;
+    if (profileTab !== 'identity' && profileTab !== 'health') return;
+    const amkaValue = (student.amka ?? '').trim();
+    if (!amkaValue) return;
+    const key = `${student.id}:${profileTab}`;
+    if (amkaViewLoggedRef.current === key) return;
+    amkaViewLoggedRef.current = key;
+    void amkaAuditService.recordAmkaAccess({
+      userId: session.id,
+      userName: session.fullName || session.email || session.id,
+      athleteId: student.id,
+      athleteName: `${student.lastName} ${student.firstName}`.trim(),
+      action: 'view',
+    });
+  }, [amkaAllowed, profileTab, session, student]);
 
   useEffect(() => {
     if ((location.state as { editing?: boolean } | null)?.editing) {
@@ -419,8 +465,38 @@ export function AthleteProfilePage() {
     if (!form || !student) return;
     setSaving(true);
     setError('');
+    const amkaValue = amkaAllowed ? (form.amka ?? '').trim() : (student.amka ?? '').trim();
+    if (amkaAllowed && amkaValue && !form.gdprItems?.amkaHealthCard) {
+      setSaving(false);
+      setError(
+        isAthleteMinor(form.birthDate)
+          ? 'Απαιτείται ρητή συγκατάθεση γονέα/κηδεμόνα για τη συλλογή του ΑΜΚΑ.'
+          : 'Απαιτείται ρητή συγκατάθεση για τη συλλογή και επεξεργασία του ΑΜΚΑ.',
+      );
+      return;
+    }
+    const previousAmka = (student.amka ?? '').trim();
     const payload: StudentInput = {
       ...form,
+      amka: amkaValue,
+      amkaConsentAt: amkaValue
+        ? form.amkaConsentAt || localDateIso()
+        : '',
+      // Preserve medical fields when role cannot access them
+      doctorName: medicalAllowed ? form.doctorName : student.doctorName,
+      doctorPhone: medicalAllowed ? form.doctorPhone : student.doctorPhone,
+      bloodType: medicalAllowed ? form.bloodType : student.bloodType,
+      allergies: medicalAllowed ? form.allergies : student.allergies,
+      chronicConditions: medicalAllowed ? form.chronicConditions : student.chronicConditions,
+      medication: medicalAllowed ? form.medication : student.medication,
+      gdprItems: {
+        personalData: Boolean(form.gdprItems?.personalData),
+        photoUse: Boolean(form.gdprItems?.photoUse),
+        gallery: Boolean(form.gdprItems?.gallery),
+        communication: Boolean(form.gdprItems?.communication),
+        medical: Boolean(form.gdprItems?.medical),
+        amkaHealthCard: amkaValue ? Boolean(form.gdprItems?.amkaHealthCard) : false,
+      },
       guardianName:
         form.guardianName ||
         (form.fatherFirstName
@@ -433,6 +509,26 @@ export function AthleteProfilePage() {
     if (!result.success) {
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
       return;
+    }
+    if (amkaAllowed && session) {
+      const athleteName = `${payload.lastName} ${payload.firstName}`.trim();
+      if (amkaValue !== previousAmka) {
+        void amkaAuditService.recordAmkaAccess({
+          userId: session.id,
+          userName: session.fullName || session.email || session.id,
+          athleteId: student.id,
+          athleteName,
+          action: amkaValue ? 'edit' : 'delete',
+        });
+      } else if (amkaValue && form.gdprItems?.amkaHealthCard && !student.gdprItems?.amkaHealthCard) {
+        void amkaAuditService.recordAmkaAccess({
+          userId: session.id,
+          userName: session.fullName || session.email || session.id,
+          athleteId: student.id,
+          athleteName,
+          action: 'consent',
+        });
+      }
     }
     setEditing(false);
     refresh();
@@ -457,6 +553,10 @@ export function AthleteProfilePage() {
 
   async function openHealthCardPreview() {
     if (!form) return;
+    if (!amkaAllowed) {
+      setError('Η προεπισκόπηση κάρτας υγείας με ΑΜΚΑ είναι διαθέσιμη μόνο σε διαχειριστή/ιατρό.');
+      return;
+    }
     setLoadingHealthCardPreview(true);
     setError('');
     const result = await buildHealthCardPdf({
@@ -636,7 +736,7 @@ export function AthleteProfilePage() {
               </div>
               <div className="ap-hero-stat">
                 <Shield size={16} aria-hidden />
-                <span>ΑΜΚΑ {form.amka || '—'}</span>
+                <span>ΑΜΚΑ {formatAmkaForViewer(form.amka, amkaAllowed)}</span>
               </div>
               <div className="ap-hero-stat">
                 <Users size={16} aria-hidden />
@@ -919,57 +1019,61 @@ export function AthleteProfilePage() {
               </ApCard>
 
               <ApCard title="Ιατρικές Παρατηρήσεις">
-                <div className="ap-grid-2">
-                  <ApField label="Ιατρός">
-                    {textInput(form.doctorName, (v) => setField('doctorName', v), { upper: true })}
-                  </ApField>
-                  <ApField label="Τηλέφωνο ιατρού">
-                    {textInput(form.doctorPhone, (v) => setField('doctorPhone', v), {
-                      type: 'tel',
-                    })}
-                  </ApField>
-                  <ApField label="Ομάδα αίματος" className="ap-span-2">
-                    <select
-                      className={inputClass}
-                      value={form.bloodType ?? ''}
-                      disabled={disabled}
-                      onChange={(e) => setField('bloodType', e.target.value)}
-                    >
-                      {BLOOD_TYPES.map((t) => (
-                        <option key={t || 'empty'} value={t}>
-                          {t || '—'}
-                        </option>
-                      ))}
-                    </select>
-                  </ApField>
-                  <ApField label="Αλλεργίες" className="ap-span-2">
-                    <textarea
-                      className={`${inputClass} ap-textarea`}
-                      rows={2}
-                      disabled={disabled}
-                      value={form.allergies ?? ''}
-                      onChange={(e) => setField('allergies', e.target.value)}
-                    />
-                  </ApField>
-                  <ApField label="Χρόνιες παθήσεις / παρατηρήσεις" className="ap-span-2">
-                    <textarea
-                      className={`${inputClass} ap-textarea`}
-                      rows={2}
-                      disabled={disabled}
-                      value={form.chronicConditions ?? ''}
-                      onChange={(e) => setField('chronicConditions', e.target.value)}
-                    />
-                  </ApField>
-                  <ApField label="Φαρμακευτική αγωγή" className="ap-span-2">
-                    <textarea
-                      className={`${inputClass} ap-textarea`}
-                      rows={2}
-                      disabled={disabled}
-                      value={form.medication ?? ''}
-                      onChange={(e) => setField('medication', e.target.value)}
-                    />
-                  </ApField>
-                </div>
+                {medicalAllowed ? (
+                  <div className="ap-grid-2">
+                    <ApField label="Ιατρός">
+                      {textInput(form.doctorName, (v) => setField('doctorName', v), { upper: true })}
+                    </ApField>
+                    <ApField label="Τηλέφωνο ιατρού">
+                      {textInput(form.doctorPhone, (v) => setField('doctorPhone', v), {
+                        type: 'tel',
+                      })}
+                    </ApField>
+                    <ApField label="Ομάδα αίματος" className="ap-span-2">
+                      <select
+                        className={inputClass}
+                        value={form.bloodType ?? ''}
+                        disabled={disabled}
+                        onChange={(e) => setField('bloodType', e.target.value)}
+                      >
+                        {BLOOD_TYPES.map((t) => (
+                          <option key={t || 'empty'} value={t}>
+                            {t || '—'}
+                          </option>
+                        ))}
+                      </select>
+                    </ApField>
+                    <ApField label="Αλλεργίες" className="ap-span-2">
+                      <textarea
+                        className={`${inputClass} ap-textarea`}
+                        rows={2}
+                        disabled={disabled}
+                        value={form.allergies ?? ''}
+                        onChange={(e) => setField('allergies', e.target.value)}
+                      />
+                    </ApField>
+                    <ApField label="Χρόνιες παθήσεις / παρατηρήσεις" className="ap-span-2">
+                      <textarea
+                        className={`${inputClass} ap-textarea`}
+                        rows={2}
+                        disabled={disabled}
+                        value={form.chronicConditions ?? ''}
+                        onChange={(e) => setField('chronicConditions', e.target.value)}
+                      />
+                    </ApField>
+                    <ApField label="Φαρμακευτική αγωγή" className="ap-span-2">
+                      <textarea
+                        className={`${inputClass} ap-textarea`}
+                        rows={2}
+                        disabled={disabled}
+                        value={form.medication ?? ''}
+                        onChange={(e) => setField('medication', e.target.value)}
+                      />
+                    </ApField>
+                  </div>
+                ) : (
+                  <p className="ap-field-hint">{MEDICAL_ACCESS_HINT}</p>
+                )}
               </ApCard>
             </div>
           </div>
@@ -1022,13 +1126,89 @@ export function AthleteProfilePage() {
 
         {profileTab === 'identity' ? (
           <ApCard title="AMKA & Ταυτοποίηση">
+            {amkaAllowed ? (
+              <div
+                className="ap-amka-privacy"
+                dangerouslySetInnerHTML={{ __html: AMKA_PRIVACY_SECTION_HTML }}
+              />
+            ) : (
+              <p className="ap-field-hint">
+                Ο ΑΜΚΑ είναι ορατός μόνο σε διαχειριστή συλλόγου και ιατρό (RBAC).
+              </p>
+            )}
             <div className="ap-grid-2">
               <ApField label="ΑΜΚΑ">
-                {textInput(form.amka, (v) => setField('amka', v))}
+                {amkaAllowed ? (
+                  <>
+                    {textInput(form.amka, (v) => setField('amka', v))}
+                    {editing ? (
+                      <button
+                        type="button"
+                        className="btn btn-ghost ap-amka-clear"
+                        onClick={() => {
+                          setField('amka', '');
+                          setField('amkaConsentAt', '');
+                          setField('gdprItems', {
+                            personalData: false,
+                            photoUse: false,
+                            gallery: false,
+                            communication: false,
+                            medical: false,
+                            ...form.gdprItems,
+                            amkaHealthCard: false,
+                          });
+                        }}
+                      >
+                        Διαγραφή ΑΜΚΑ
+                      </button>
+                    ) : null}
+                  </>
+                ) : (
+                  <input
+                    className={inputClass}
+                    value={formatAmkaForViewer(form.amka, false)}
+                    disabled
+                    readOnly
+                  />
+                )}
               </ApField>
               <ApField label="Αρ. δελτίου / κωδικός">
                 {textInput(form.registrationNumber, (v) => setField('registrationNumber', v))}
               </ApField>
+              {amkaAllowed ? (
+                <ApField label={AMKA_CONSENT_TITLE} className="ap-span-2">
+                  <p className="ap-field-hint">{AMKA_CONSENT_LABEL}</p>
+                  <label className="ap-amka-consent">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.gdprItems?.amkaHealthCard)}
+                      disabled={!editing}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setField('gdprItems', {
+                          personalData: false,
+                          photoUse: false,
+                          gallery: false,
+                          communication: false,
+                          medical: false,
+                          ...form.gdprItems,
+                          amkaHealthCard: checked,
+                        });
+                        setField('amkaConsentAt', checked ? localDateIso() : '');
+                      }}
+                    />
+                    <span>
+                      {AMKA_CONSENT_CHECKBOX}
+                      {isAthleteMinor(form.birthDate) ? (
+                        <>
+                          {' '}
+                          <em>(γονέας/κηδεμόνας)</em>
+                        </>
+                      ) : null}
+                    </span>
+                  </label>
+                </ApField>
+              ) : null}
               <ApField label="Σωματείο">
                 <select
                   className={inputClass}
@@ -1235,48 +1415,56 @@ export function AthleteProfilePage() {
                   type: 'date',
                 })}
               </ApField>
-              <ApField label="Ομάδα αίματος">
-                <select
-                  className={inputClass}
-                  value={form.bloodType ?? ''}
-                  disabled={disabled}
-                  onChange={(e) => setField('bloodType', e.target.value)}
-                >
-                  {BLOOD_TYPES.map((t) => (
-                    <option key={t || 'empty'} value={t}>
-                      {t || '—'}
-                    </option>
-                  ))}
-                </select>
-              </ApField>
-              <div className="ap-field ap-field-actions">
-                <span className="ap-field-label">Έγγραφο</span>
-                <Button
-                  type="button"
-                  disabled={loadingHealthCardPreview || !form.healthCard}
-                  onClick={() => void openHealthCardPreview()}
-                >
-                  {loadingHealthCardPreview ? 'Φόρτωση…' : 'Προεπισκόπηση PDF'}
-                </Button>
-              </div>
-              <ApField label="Αλλεργίες" className="ap-span-2">
-                <textarea
-                  className={`${inputClass} ap-textarea`}
-                  rows={3}
-                  disabled={disabled}
-                  value={form.allergies ?? ''}
-                  onChange={(e) => setField('allergies', e.target.value)}
-                />
-              </ApField>
-              <ApField label="Χρόνιες παθήσεις" className="ap-span-2">
-                <textarea
-                  className={`${inputClass} ap-textarea`}
-                  rows={3}
-                  disabled={disabled}
-                  value={form.chronicConditions ?? ''}
-                  onChange={(e) => setField('chronicConditions', e.target.value)}
-                />
-              </ApField>
+              {medicalAllowed ? (
+                <>
+                  <ApField label="Ομάδα αίματος">
+                    <select
+                      className={inputClass}
+                      value={form.bloodType ?? ''}
+                      disabled={disabled}
+                      onChange={(e) => setField('bloodType', e.target.value)}
+                    >
+                      {BLOOD_TYPES.map((t) => (
+                        <option key={t || 'empty'} value={t}>
+                          {t || '—'}
+                        </option>
+                      ))}
+                    </select>
+                  </ApField>
+                  <div className="ap-field ap-field-actions">
+                    <span className="ap-field-label">Έγγραφο</span>
+                    <Button
+                      type="button"
+                      disabled={loadingHealthCardPreview || !form.healthCard || !amkaAllowed}
+                      onClick={() => void openHealthCardPreview()}
+                    >
+                      {loadingHealthCardPreview ? 'Φόρτωση…' : 'Προεπισκόπηση PDF'}
+                    </Button>
+                  </div>
+                  <ApField label="Αλλεργίες" className="ap-span-2">
+                    <textarea
+                      className={`${inputClass} ap-textarea`}
+                      rows={3}
+                      disabled={disabled}
+                      value={form.allergies ?? ''}
+                      onChange={(e) => setField('allergies', e.target.value)}
+                    />
+                  </ApField>
+                  <ApField label="Χρόνιες παθήσεις" className="ap-span-2">
+                    <textarea
+                      className={`${inputClass} ap-textarea`}
+                      rows={3}
+                      disabled={disabled}
+                      value={form.chronicConditions ?? ''}
+                      onChange={(e) => setField('chronicConditions', e.target.value)}
+                    />
+                  </ApField>
+                </>
+              ) : (
+                <ApField label="Ιατρικά στοιχεία" className="ap-span-2">
+                  <p className="ap-field-hint">{MEDICAL_ACCESS_HINT}</p>
+                </ApField>
+              )}
             </div>
           </ApCard>
         ) : null}
@@ -1310,6 +1498,7 @@ export function AthleteProfilePage() {
                   ['gallery', 'Δημοσίευση gallery'],
                   ['communication', 'Επικοινωνία'],
                   ['medical', 'Ιατρικά δεδομένα'],
+                  ['amkaHealthCard', `${AMKA_CONSENT_CHECKBOX} — συγκατάθεση ΑΜΚΑ`],
                 ] as const
               ).map(([key, label]) => (
                 <li key={key}>
@@ -1317,20 +1506,31 @@ export function AthleteProfilePage() {
                     <input
                       type="checkbox"
                       checked={Boolean(form.gdprItems?.[key])}
-                      disabled={!editing || form.gdprConsent === 'locked'}
+                      disabled={
+                        !editing ||
+                        form.gdprConsent === 'locked' ||
+                        (key === 'amkaHealthCard' && !amkaAllowed)
+                      }
                       onChange={(e) => {
+                        if (key === 'amkaHealthCard' && !amkaAllowed) return;
                         const next = {
                           personalData: false,
                           photoUse: false,
                           gallery: false,
                           communication: false,
                           medical: false,
+                          amkaHealthCard: false,
                           ...form.gdprItems,
                           [key]: e.target.checked,
                         };
                         setField('gdprItems', next);
-                        const allOn = Object.values(next).every(Boolean);
-                        setField('gdprConsent', allOn ? 'full' : 'pending');
+                        if (key === 'amkaHealthCard') {
+                          setField('amkaConsentAt', e.target.checked ? localDateIso() : '');
+                        }
+                        const coreOn = (
+                          ['personalData', 'photoUse', 'gallery', 'communication', 'medical'] as const
+                        ).every((k) => next[k]);
+                        setField('gdprConsent', coreOn ? 'full' : 'pending');
                       }}
                     />
                     <span>{label}</span>

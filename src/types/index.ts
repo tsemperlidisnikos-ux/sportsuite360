@@ -83,7 +83,13 @@ export interface Student {
     gallery: boolean;
     communication: boolean;
     medical: boolean;
+    /** Ρητή συγκατάθεση για συλλογή/επεξεργασία ΑΜΚΑ (κάρτα υγείας). */
+    amkaHealthCard?: boolean;
   };
+  /** Πότε δόθηκε η συγκατάθεση ΑΜΚΑ (ISO). */
+  amkaConsentAt?: string;
+  /** Πότε ολοκληρώθηκε σφράγιση κάρτας υγείας και διαγράφηκε ο ΑΜΚΑ. */
+  healthCardSealedAt?: string;
   placeOfBirth?: string;
   nationality?: string;
   communicationLanguage?: string;
@@ -417,6 +423,19 @@ export interface FeeReminderLog {
   createdAt: string;
 }
 
+export type AmkaAccessAction = 'view' | 'edit' | 'delete' | 'consent' | 'seal';
+
+/** Audit log ΑΜΚΑ — χωρίς αποθήκευση της τιμής ΑΜΚΑ. */
+export interface AmkaAccessLog {
+  id: string;
+  at: string;
+  userId: string;
+  userName: string;
+  athleteId: string;
+  athleteName: string;
+  action: AmkaAccessAction;
+}
+
 export interface GalleryPhoto {
   id: string;
   imageUrl: string;
@@ -488,6 +507,8 @@ export interface AppData {
   partnerOffers: PartnerOffer[];
   feeChargeTemplates: FeeChargeTemplate[];
   feeReminderLogs: FeeReminderLog[];
+  /** Audit logs πρόσβασης ΑΜΚΑ (12 μήνες, χωρίς τιμή ΑΜΚΑ). */
+  amkaAccessLogs?: AmkaAccessLog[];
   photos: GalleryPhoto[];
   parentLinks: ParentAthleteLink[];
   progressReports: ProgressReport[];
@@ -495,6 +516,12 @@ export interface AppData {
   sizeChart: SizeChart;
   /** HTML όρων χρήσης / πολιτικής απορρήτου (εγγραφή). */
   termsOfUseHtml?: string;
+  /** Συμφωνία επεξεργασίας (DPA) συλλόγου–πλατφόρμας. */
+  dpaHtml?: string;
+  /** Πολιτική διατήρησης δεδομένων. */
+  retentionPolicyHtml?: string;
+  /** Μήνες διατήρησης ευαίσθητων δεδομένων ανενεργών αθλητών. */
+  dataRetentionMonths?: number;
   cashAccounts?: CashAccount[];
   /** Κλειστοί μήνες YYYY-MM — δεν επιτρέπεται επεξεργασία κινήσεων. */
   closedFinanceMonths?: string[];

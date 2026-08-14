@@ -1,4 +1,5 @@
 import type { AcademyClass, AttendanceRecord, Student } from '../types';
+import { maskAmka } from './amkaAccess';
 import { normalizeSportKey } from './sport';
 
 export type TriState = '' | 'yes' | 'no';
@@ -236,11 +237,13 @@ export function mapAthleteRegistryRow(
   athlete: Student,
   index: number,
   className: string,
+  options?: { revealAmka?: boolean },
 ): Record<string, string> {
   const yesNo = (v: boolean) => (v ? 'Ναι' : 'Όχι');
+  const revealAmka = options?.revealAmka ?? false;
   return {
     index: String(index + 1),
-    amka: athlete.amka || '',
+    amka: revealAmka ? athlete.amka || '' : maskAmka(athlete.amka),
     gender: genderLabel(athlete.gender),
     last_name: athlete.lastName || '',
     first_name: athlete.firstName || '',

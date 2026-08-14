@@ -1,7 +1,13 @@
 import { getSession, isPlatformAdmin } from '../auth/auth';
 import { getClubs } from '../auth/clubs';
+import { notifyAppDataChanged } from './appDataEvents';
 import { getPreviewClubId } from '../platform/platformConfig';
 import type { AppData } from '../types';
+import {
+  decryptStudentAmkaFields,
+  encryptStudentAmkaFields,
+  isAmkaEncrypted,
+} from '../utils/amkaCrypto';
 import { isQuotaError, stripHeavyMedia } from './mediaStrip';
 import { seedData } from './seed';
 
@@ -13,6 +19,11 @@ const ISOLATION_DEDUPE_FLAG = 'academyhub-isolation-dedupe-v1';
 export const APP_DATA_STORAGE_KEYS = [LEGACY_KEY, BY_CLUB_KEY] as const;
 
 type ClubDataMap = Record<string, AppData>;
+
+/** In-memory plaintext map (AMKA decrypted). Disk holds AES-encrypted AMKA. */
+let memoryMap: ClubDataMap | null = null;
+let amkaHydratePromise: Promise<void> | null = null;
+let persistSeq = 0;
 
 /**
  * Active club for domain data.
@@ -35,7 +46,7 @@ export function resolveActiveClubId(): string {
   return '_default';
 }
 
-function loadClubMap(): ClubDataMap {
+function readClubMapFromDisk(): ClubDataMap {
   try {
     const raw = localStorage.getItem(BY_CLUB_KEY);
     if (raw) return JSON.parse(raw) as ClubDataMap;
@@ -45,37 +56,74 @@ function loadClubMap(): ClubDataMap {
   return {};
 }
 
-function saveClubMap(map: ClubDataMap): void {
+function writeClubMapToDisk(map: ClubDataMap): void {
   localStorage.setItem(BY_CLUB_KEY, JSON.stringify(map));
 }
 
+function clubMapHasEncryptedAmka(map: ClubDataMap): boolean {
+  for (const data of Object.values(map)) {
+    for (const student of data.students ?? []) {
+      if (isAmkaEncrypted(student.amka)) return true;
+    }
+  }
+  return false;
+}
+
+async function encryptMapForDisk(map: ClubDataMap): Promise<ClubDataMap> {
+  const forDisk = structuredClone(map);
+  for (const [clubId, data] of Object.entries(forDisk)) {
+    await encryptStudentAmkaFields(data.students ?? [], clubId);
+  }
+  return forDisk;
+}
+
+async function decryptMapInPlace(map: ClubDataMap): Promise<boolean> {
+  let changed = false;
+  for (const [clubId, data] of Object.entries(map)) {
+    if (await decryptStudentAmkaFields(data.students ?? [], clubId)) {
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function saveClubMapSafe(map: ClubDataMap, priorityClubId?: string): void {
-  try {
-    saveClubMap(map);
-    return;
-  } catch (err) {
-    if (!isQuotaError(err)) throw err;
-  }
+  memoryMap = map;
+  const seq = ++persistSeq;
+  void (async () => {
+    try {
+      const forDisk = await encryptMapForDisk(map);
+      if (seq !== persistSeq) return;
+      try {
+        writeClubMapToDisk(forDisk);
+        return;
+      } catch (err) {
+        if (!isQuotaError(err)) throw err;
+      }
 
-  const stripped: ClubDataMap = {};
-  for (const [id, data] of Object.entries(map)) {
-    stripped[id] = stripHeavyMedia(data);
-  }
-  try {
-    saveClubMap(stripped);
-    return;
-  } catch (err) {
-    if (!isQuotaError(err)) throw err;
-  }
+      const stripped: ClubDataMap = {};
+      for (const [id, data] of Object.entries(forDisk)) {
+        stripped[id] = stripHeavyMedia(data);
+      }
+      try {
+        writeClubMapToDisk(stripped);
+        return;
+      } catch (err) {
+        if (!isQuotaError(err)) throw err;
+      }
 
-  if (priorityClubId && stripped[priorityClubId]) {
-    saveClubMap({ [priorityClubId]: stripped[priorityClubId] });
-    return;
-  }
+      if (priorityClubId && stripped[priorityClubId]) {
+        writeClubMapToDisk({ [priorityClubId]: stripped[priorityClubId] });
+        return;
+      }
 
-  throw new Error(
-    'Ο χώρος του browser γέμισε. Καθαρίστε δεδομένα ιστότοπου (localStorage) και ξαναδοκιμάστε.',
-  );
+      console.error(
+        'Ο χώρος του browser γέμισε. Καθαρίστε δεδομένα ιστότοπου (localStorage) και ξαναδοκιμάστε.',
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  })();
 }
 
 function emptyClubData(): AppData {
@@ -98,7 +146,7 @@ function migrateLegacyIfNeeded(map: ClubDataMap, clubId: string): ClubDataMap {
     }
     const parsed = JSON.parse(legacy) as AppData;
     const next = { ...map, [clubId]: parsed };
-    saveClubMap(next);
+    saveClubMapSafe(next, clubId);
     localStorage.setItem(LEGACY_MIGRATED_FLAG, '1');
     return next;
   } catch {
@@ -144,16 +192,53 @@ function purgeDuplicatedClubBuckets(map: ClubDataMap): ClubDataMap {
     if (!owner) fingerprintOwner.set(fingerprint, club.id);
   }
 
-  if (changed) saveClubMap(next);
+  if (changed) saveClubMapSafe(next);
   localStorage.setItem(ISOLATION_DEDUPE_FLAG, '1');
   return next;
 }
 
-export function loadStore(): AppData | null {
+function scheduleAmkaHydration(map: ClubDataMap): void {
+  if (!clubMapHasEncryptedAmka(map)) return;
+  if (amkaHydratePromise) return;
+  amkaHydratePromise = (async () => {
+    const changed = await decryptMapInPlace(map);
+    amkaHydratePromise = null;
+    if (changed) {
+      memoryMap = map;
+      notifyAppDataChanged();
+    }
+  })();
+}
+
+/** Wait until encrypted AMKA values in memory are decrypted (if any). */
+export async function ensureAmkaPlaintextReady(): Promise<void> {
+  loadClubMap();
+  if (amkaHydratePromise) await amkaHydratePromise;
+}
+
+function loadClubMap(): ClubDataMap {
+  if (memoryMap) {
+    scheduleAmkaHydration(memoryMap);
+    return memoryMap;
+  }
+  let map = readClubMapFromDisk();
   const clubId = resolveActiveClubId();
-  let map = loadClubMap();
   map = migrateLegacyIfNeeded(map, clubId);
   map = purgeDuplicatedClubBuckets(map);
+  memoryMap = map;
+  scheduleAmkaHydration(map);
+  return map;
+}
+
+/** Drop memory map so next load re-reads disk (e.g. after storage event). */
+export function clearStoreMemory(): void {
+  memoryMap = null;
+  amkaHydratePromise = null;
+}
+
+export function loadStore(): AppData | null {
+  const clubId = resolveActiveClubId();
+  const map = loadClubMap();
   return map[clubId] ?? null;
 }
 
@@ -198,7 +283,7 @@ export function ensureClubStore(clubId: string): void {
   const map = loadClubMap();
   if (map[clubId]) return;
   map[clubId] = emptyClubData();
-  saveClubMap(map);
+  saveClubMapSafe(map, clubId);
 }
 
 /** All club datasets (for full platform backup). */

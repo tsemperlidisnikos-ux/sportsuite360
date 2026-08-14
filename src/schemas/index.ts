@@ -47,8 +47,11 @@ export const studentSchema = z.object({
       gallery: z.boolean(),
       communication: z.boolean(),
       medical: z.boolean(),
+      amkaHealthCard: z.boolean().optional(),
     })
     .optional(),
+  amkaConsentAt: z.string().optional(),
+  healthCardSealedAt: z.string().optional(),
   placeOfBirth: z.string().optional(),
   nationality: z.string().optional(),
   communicationLanguage: z.string().optional(),

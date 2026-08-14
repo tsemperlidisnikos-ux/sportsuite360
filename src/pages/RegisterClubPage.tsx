@@ -277,12 +277,13 @@ export function RegisterClubPage() {
                   Διάβασα και αποδέχομαι τους{' '}
                   <button type="button" className="ssr-link">
                     Όρους Χρήσης
-                  </button>{' '}
-                  και την{' '}
+                  </button>
+                  , την{' '}
                   <button type="button" className="ssr-link">
                     Πολιτική Απορρήτου
-                  </button>
-                  .
+                  </button>{' '}
+                  και τη Συμφωνία Επεξεργασίας Δεδομένων (DPA) όπου ο σύλλογος είναι υπεύθυνος
+                  επεξεργασίας και η πλατφόρμα εκτελών την επεξεργασία.
                 </span>
               </label>
 

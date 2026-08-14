@@ -1,4 +1,5 @@
 import type { AppData } from '../types';
+import { DEFAULT_TERMS_OF_USE_HTML } from '../shared/termsDefaults';
 import { localDateIso } from '../utils/dates';
 
 /** Bump to re-seed DEMO clubs after showcase content changes. */
@@ -282,7 +283,9 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
           gallery: true,
           communication: true,
           medical: true,
+          amkaHealthCard: true,
         },
+        amkaConsentAt: enrolled,
         comments: 'Αρχηγός ομάδας U12',
       },
       {
@@ -1507,7 +1510,6 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
       women: ['XS', 'S', 'M', 'L', 'XL'],
     },
 
-    termsOfUseHtml:
-      '<h2>Όροι χρήσης (DEMO)</h2><p>Το παρόν κείμενο είναι δείγμα για παρουσίαση της εφαρμογής SportSuite360.</p><p>Τα δεδομένα του συλλόγου DEMO είναι πλασματικά.</p>',
+    termsOfUseHtml: `<h2>Όροι χρήσης (DEMO)</h2><p>Τα δεδομένα του συλλόγου DEMO είναι πλασματικά.</p>${DEFAULT_TERMS_OF_USE_HTML}`,
   };
 }

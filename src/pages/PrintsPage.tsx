@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
 import * as registrationApplicationsService from '../api/services/registrationApplicationsService';
-import { isPlatformAdmin } from '../auth/auth';
+import { getSession, isPlatformAdmin } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { useAppData } from '../hooks/useAppData';
@@ -17,6 +17,7 @@ import {
 import { PAYMENT_METHODS, paymentMethodLabel } from '../shared/paymentMethods';
 import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 import { localDateIso } from '../utils/dates';
+import { canAccessAmka } from '../utils/amkaAccess';
 
 const COMPARE_OPS = ['=', '<', '>', '<=', '>='] as const;
 
@@ -427,6 +428,7 @@ function AthleteRegistrySection() {
       athlete,
       index,
       data.classes.find((c) => c.id === athlete.classId)?.name ?? '',
+      { revealAmka: canAccessAmka(getSession()?.role) },
     ),
   );
 

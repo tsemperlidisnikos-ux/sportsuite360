@@ -46,11 +46,20 @@ export type AcademyModuleId = (typeof ACADEMY_MODULES)[number]['id'];
 /* Δικαιώματα ρόλων συλλόγου                                                  */
 /* -------------------------------------------------------------------------- */
 
-export const CLUB_ROLES = ['admin', 'secretariat', 'coach', 'staff', 'athlete', 'parent'] as const;
+export const CLUB_ROLES = [
+  'admin',
+  'doctor',
+  'secretariat',
+  'coach',
+  'staff',
+  'athlete',
+  'parent',
+] as const;
 export type ClubRole = (typeof CLUB_ROLES)[number];
 
 export const CLUB_ROLE_LABELS: Record<ClubRole, string> = {
   admin: 'Διαχειριστής συλλόγου',
+  doctor: 'Ιατρός',
   coach: 'Προπονητής',
   secretariat: 'Γραμματεία',
   staff: 'Προσωπικό',
@@ -107,6 +116,7 @@ export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
 
 export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> = {
   admin: [...CLUB_PERMISSIONS],
+  doctor: ['calendar', 'athletes', 'announcements', 'settings'],
   coach: [
     'calendar',
     'athletes',

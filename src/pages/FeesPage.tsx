@@ -15,6 +15,7 @@ import type { FeeChargeTemplateInput } from '../schemas';
 import type { FeeChargeTemplate } from '../types';
 import { formatCurrency, formatDate } from '../utils/labels';
 import { normalizeSportKey } from '../utils/sport';
+import { canAccessAmka, formatAmkaForViewer } from '../utils/amkaAccess';
 
 type Panel = 'list' | 'createCharges' | 'reminders' | 'newCharge';
 
@@ -135,7 +136,8 @@ export function FeesPage() {
       .filter((s) => s.status !== 'inactive')
       .filter((s) => {
         if (!q) return true;
-        return `${s.lastName} ${s.firstName} ${s.amka ?? ''}`.toLowerCase().includes(q);
+        const amkaPart = canAccessAmka(session?.role) ? (s.amka ?? '') : '';
+        return `${s.lastName} ${s.firstName} ${amkaPart}`.toLowerCase().includes(q);
       })
       .map((athlete) => {
         const balance = feeChargesService.athleteBalance(athlete.id, transactions);
@@ -433,7 +435,9 @@ export function FeesPage() {
                   <strong>
                     {athlete.lastName} {athlete.firstName}
                   </strong>
-                  <div className="muted">{athlete.amka || '—'}</div>
+                  <div className="muted">
+                    {formatAmkaForViewer(athlete.amka, canAccessAmka(session?.role))}
+                  </div>
                 </td>
                 <td>{cls?.name ?? '—'}</td>
                 <td>{formatCurrency(athlete.monthlyFee)}</td>

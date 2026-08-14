@@ -5,6 +5,7 @@ import { hashPassword, isPasswordHashed, verifyPassword } from './password';
 export type UserRole =
   | 'platform_admin'
   | 'admin'
+  | 'doctor'
   | 'coach'
   | 'secretariat'
   | 'staff'
@@ -255,6 +256,7 @@ export function isPlatformAdmin(): boolean {
 export const roleLabels: Record<UserRole, string> = {
   platform_admin: 'Διαχειριστής πλατφόρμας',
   admin: 'Διαχειριστής συλλόγου',
+  doctor: 'Ιατρός',
   coach: 'Προπονητής',
   secretariat: 'Γραμματεία',
   staff: 'Προσωπικό',

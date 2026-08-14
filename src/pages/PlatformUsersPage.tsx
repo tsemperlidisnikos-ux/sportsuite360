@@ -70,7 +70,7 @@ function buildRows(): PlatformUserRow[] {
 
   const fromUsers: PlatformUserRow[] = users
     .filter((u) =>
-      (['platform_admin', 'admin', 'secretariat', 'coach', 'staff', 'athlete', 'parent'] as UserRole[]).includes(
+      (['platform_admin', 'admin', 'doctor', 'secretariat', 'coach', 'staff', 'athlete', 'parent'] as UserRole[]).includes(
         u.role,
       ),
     )

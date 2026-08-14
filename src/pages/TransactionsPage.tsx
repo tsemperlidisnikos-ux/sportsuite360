@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 import { ensureLegacyPaymentsMatched } from '../api/services/paymentMatchingService';
 import * as transactionsService from '../api/services/transactionsService';
+import { getSession } from '../auth/auth';
 import { useAppData } from '../hooks/useAppData';
 import type { TransactionInput } from '../schemas';
 import type { AthleteTransaction, Student } from '../types';
 import { PAYMENT_METHODS, normalizePaymentMethod } from '../shared/paymentMethods';
 import { formatCurrency, formatDate } from '../utils/labels';
+import { canAccessAmka, formatAmkaForViewer } from '../utils/amkaAccess';
 
 const MONTHS = [
   { value: 1, label: 'Ιανουάριος' },
@@ -130,15 +132,19 @@ export function TransactionsPage() {
 
   const selected = data.students.find((s) => s.id === selectedId) ?? null;
 
+  const session = getSession();
+  const amkaAllowed = canAccessAmka(session?.role);
+
   const filteredAthletes = useMemo(() => {
     const q = query.trim().toLowerCase();
     return data.students.filter((s) => {
       if (s.status === 'inactive') return false;
       if (!q) return true;
-      const hay = `${s.amka ?? ''} ${s.registrationNumber ?? ''} ${s.lastName} ${s.firstName} ${s.fatherFirstName ?? ''}`.toLowerCase();
+      const amkaPart = amkaAllowed ? (s.amka ?? '') : '';
+      const hay = `${amkaPart} ${s.registrationNumber ?? ''} ${s.lastName} ${s.firstName} ${s.fatherFirstName ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [data.students, query]);
+  }, [data.students, query, amkaAllowed]);
 
   const selectedTx = useMemo(
     () =>
@@ -323,7 +329,7 @@ export function TransactionsPage() {
                         className={selectedId === athlete.id ? 'is-selected' : ''}
                         onClick={() => selectAthlete(athlete)}
                       >
-                        <td>{athlete.amka || '—'}</td>
+                        <td>{formatAmkaForViewer(athlete.amka, amkaAllowed)}</td>
                         <td>{athlete.registrationNumber || '—'}</td>
                         <td>{athlete.lastName}</td>
                         <td>{athlete.firstName}</td>

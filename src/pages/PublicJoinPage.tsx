@@ -10,6 +10,7 @@ import {
 } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
 import { getClubData } from '../data/repository';
+import { DEFAULT_TERMS_OF_USE_HTML } from '../shared/termsDefaults';
 import type { RegistrationApplicationKind } from '../types';
 
 type JoinClubView = {
@@ -40,7 +41,7 @@ function fromRemote(club: RemotePublicClub): JoinClubView {
     allowTrial: club.allowTrial,
     allowWaitlist: club.allowWaitlist,
     classes: club.classes ?? [],
-    termsHtml: club.termsHtml || '',
+    termsHtml: club.termsHtml?.trim() || DEFAULT_TERMS_OF_USE_HTML,
   };
 }
 
@@ -91,7 +92,7 @@ export function PublicJoinPage() {
             allowTrial: settings.allowTrial,
             allowWaitlist: settings.allowWaitlist,
             classes: (data.classes ?? []).filter((c) => c.name),
-            termsHtml: data.termsOfUseHtml?.trim() || '',
+            termsHtml: data.termsOfUseHtml?.trim() || DEFAULT_TERMS_OF_USE_HTML,
           });
           setLoading(false);
         }

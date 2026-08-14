@@ -9,6 +9,7 @@ import {
 } from './demoShowcase';
 import { seedData } from './seed';
 import {
+  clearStoreMemory,
   createId,
   loadAllClubStores,
   loadStore,
@@ -18,13 +19,16 @@ import {
   writeClubStoreExclusive,
 } from './store';
 import type { AppData } from '../types';
+import { ensureAmkaPrivacySection } from '../shared/termsDefaults';
+import { pruneAmkaAccessLogs } from '../utils/amkaAccess';
 
 let cache: AppData | null = null;
 let cacheClubId: string | null = null;
 
 const REMOVED_PAYMENT_TXN_ID = 'txn_8d535cbd';
 
-function ensureCollections(data: AppData): void {
+function ensureCollections(data: AppData): boolean {
+  let changed = false;
   if (!data.transactions) data.transactions = structuredClone(seedData.transactions);
   if (!data.trainings) data.trainings = structuredClone(seedData.trainings);
   if (!data.staff) data.staff = structuredClone(seedData.staff);
@@ -51,6 +55,28 @@ function ensureCollections(data: AppData): void {
   }
   if (!data.sizeChart) data.sizeChart = structuredClone(seedData.sizeChart);
   if (data.termsOfUseHtml === undefined) data.termsOfUseHtml = seedData.termsOfUseHtml ?? '';
+  if (data.dpaHtml === undefined) data.dpaHtml = seedData.dpaHtml ?? '';
+  if (data.retentionPolicyHtml === undefined) {
+    data.retentionPolicyHtml = seedData.retentionPolicyHtml ?? '';
+  }
+  if (data.dataRetentionMonths === undefined) {
+    data.dataRetentionMonths = seedData.dataRetentionMonths ?? 36;
+  }
+  if (data.termsOfUseHtml.trim()) {
+    const ensuredTerms = ensureAmkaPrivacySection(data.termsOfUseHtml);
+    if (ensuredTerms.changed) {
+      data.termsOfUseHtml = ensuredTerms.html;
+      changed = true;
+    }
+  }
+  if (!data.amkaAccessLogs) data.amkaAccessLogs = structuredClone(seedData.amkaAccessLogs ?? []);
+  {
+    const pruned = pruneAmkaAccessLogs(data.amkaAccessLogs);
+    if (pruned.length !== data.amkaAccessLogs.length) {
+      data.amkaAccessLogs = pruned;
+      changed = true;
+    }
+  }
   if (!data.cashAccounts) data.cashAccounts = structuredClone(seedData.cashAccounts ?? []);
   if (!data.closedFinanceMonths) {
     data.closedFinanceMonths = structuredClone(seedData.closedFinanceMonths ?? []);
@@ -62,6 +88,7 @@ function ensureCollections(data: AppData): void {
     t.year = Number(t.year);
     t.amount = Number(t.amount) || 0;
   }
+  return changed;
 }
 
 function purgeRemovedAthletePayment(data: AppData): boolean {
@@ -121,6 +148,7 @@ function maybeApplyDemoShowcase(clubId: string): AppData | null {
 export function clearDataCache(): void {
   cache = null;
   cacheClubId = null;
+  clearStoreMemory();
 }
 
 export function getData(): AppData {
@@ -136,17 +164,17 @@ export function getData(): AppData {
     const stored = loadStore();
     cache = stored ?? structuredClone(seedData);
     cacheClubId = clubId;
-    ensureCollections(cache);
+    const ensured = ensureCollections(cache);
     const cleaned =
       purgeRemovedAthletePayment(cache) || purgeMirroredAthletePaymentRevenues(cache);
-    if (!stored || cleaned) saveStore(cache);
+    if (!stored || cleaned || ensured) saveStore(cache);
     return cache;
   }
 
-  ensureCollections(cache);
+  const ensured = ensureCollections(cache);
   const cleaned =
     purgeRemovedAthletePayment(cache) || purgeMirroredAthletePaymentRevenues(cache);
-  if (cleaned) saveStore(cache);
+  if (cleaned || ensured) saveStore(cache);
   return cache;
 }
 

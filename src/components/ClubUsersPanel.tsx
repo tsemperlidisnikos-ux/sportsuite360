@@ -40,7 +40,8 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
   const [searchFirstName, setSearchFirstName] = useState('');
   const [searchRole, setSearchRole] = useState('');
 
-  const [fullName, setFullName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState(() => generatePassword());
   const [role, setRole] = useState<ClubRole>('coach');
@@ -49,13 +50,14 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
   const [permissions, setPermissions] = useState<ClubPermission[]>(() =>
     clubUsersService.defaultPermissionsForRole('coach'),
   );
+  const [creating, setCreating] = useState(false);
 
   const editingUser = useMemo(
     () => users.find((u) => u.id === editingId) ?? null,
     [users, editingId],
   );
 
-  const showForm = isInvitations || Boolean(editingUser);
+  const showForm = isInvitations || creating || Boolean(editingUser);
 
   const roleOptions = useMemo(() => {
     const labels = new Set(directory.map((row) => row.roleLabel));
@@ -152,9 +154,22 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     );
   }
 
+  function composedFullName(): string {
+    return `${lastName.trim()} ${firstName.trim()}`.trim();
+  }
+
+  function splitFullName(value: string): { lastName: string; firstName: string } {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { lastName: '', firstName: '' };
+    if (parts.length === 1) return { lastName: parts[0], firstName: '' };
+    return { lastName: parts[0], firstName: parts.slice(1).join(' ') };
+  }
+
   function resetForm() {
     setEditingId(null);
-    setFullName('');
+    setCreating(false);
+    setLastName('');
+    setFirstName('');
     setEmail('');
     setPassword(generatePassword());
     setAthleteId('');
@@ -162,9 +177,26 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     applyRoleDefaults('coach');
   }
 
+  function startCreate() {
+    setEditingId(null);
+    setCreating(true);
+    setLastName('');
+    setFirstName('');
+    setEmail('');
+    setPassword(generatePassword());
+    setAthleteId('');
+    setCoachId('');
+    applyRoleDefaults('coach');
+    setError('');
+    setMessage('');
+  }
+
   function startEdit(user: AppUser) {
+    setCreating(false);
     setEditingId(user.id);
-    setFullName(user.fullName);
+    const split = splitFullName(user.fullName);
+    setLastName(split.lastName);
+    setFirstName(split.firstName);
     setEmail(user.email);
     setPassword('');
     const nextRole = (CLUB_ROLES as readonly string[]).includes(user.role)
@@ -188,6 +220,12 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     event.preventDefault();
     setError('');
     setMessage('');
+
+    const fullName = composedFullName();
+    if (!lastName.trim() || !firstName.trim()) {
+      setError('Συμπληρώστε επώνυμο και όνομα.');
+      return;
+    }
 
     if (editingId) {
       const result = await clubUsersService.updateClubUser(clubId, editingId, {
@@ -303,24 +341,45 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
 
   return (
     <section className="panel settings-panel club-users-panel">
-      <h3>{isInvitations ? 'Προσκλήσεις' : 'Χρήστες'}</h3>
-      <p className="lede">
-        {isInvitations
-          ? 'Προσκαλέστε μέλη στον σύλλογο και ορίστε ρόλο + δικαιώματα πρόσβασης.'
-          : 'Στο μητρώο φαίνονται όλοι οι εγγεγραμμένοι (αθλητές, προπονητές, προσωπικό, λογαριασμοί). Ανενεργά μέλη δεν εμφανίζονται στις αντίστοιχες λίστες της εφαρμογής.'}
-      </p>
+      <div className="club-users-panel-head">
+        <div>
+          <h3>{isInvitations ? 'Προσκλήσεις' : 'Χρήστες'}</h3>
+          <p className="lede">
+            {isInvitations
+              ? 'Προσκαλέστε μέλη στον σύλλογο και ορίστε ρόλο + δικαιώματα πρόσβασης.'
+              : 'Στο μητρώο φαίνονται όλοι οι εγγεγραμμένοι (αθλητές, προπονητές, προσωπικό, λογαριασμοί). Ανενεργά μέλη δεν εμφανίζονται στις αντίστοιχες λίστες της εφαρμογής.'}
+          </p>
+        </div>
+        {!isInvitations && !showForm ? (
+          <Button type="button" onClick={startCreate}>
+            <UserPlus size={16} /> Νέος χρήστης
+          </Button>
+        ) : null}
+      </div>
 
       {showForm ? (
         <form className="entry-form club-users-form settings-form" onSubmit={handleSubmit}>
-          <h4>{editingUser ? 'Επεξεργασία χρήστη' : 'Νέα πρόσκληση'}</h4>
+          <h4>{editingUser ? 'Επεξεργασία χρήστη' : 'Νέος χρήστης / Πρόσκληση'}</h4>
 
-          <SettingsFormRow label="Ονοματεπώνυμο" htmlFor="club-user-fullname">
+          <SettingsFormRow label="Επώνυμο" htmlFor="club-user-last-name">
             <input
-              id="club-user-fullname"
+              id="club-user-last-name"
               className="field-input"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               required
+              autoComplete="family-name"
+            />
+          </SettingsFormRow>
+
+          <SettingsFormRow label="Όνομα" htmlFor="club-user-first-name">
+            <input
+              id="club-user-first-name"
+              className="field-input"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              autoComplete="given-name"
             />
           </SettingsFormRow>
 
@@ -406,12 +465,12 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
             <div className="club-users-permissions-grid">
               {CLUB_PERMISSIONS.map((permission) => (
                 <label key={permission} className="admin-check">
-                  <span>{CLUB_PERMISSION_LABELS[permission]}</span>
                   <input
                     type="checkbox"
                     checked={permissions.includes(permission)}
                     onChange={() => togglePermission(permission)}
                   />
+                  <span>{CLUB_PERMISSION_LABELS[permission]}</span>
                 </label>
               ))}
             </div>
@@ -419,13 +478,14 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
 
           <div className="settings-form-actions admin-entry-actions">
             <Button type="submit">
-              <UserPlus size={16} /> {editingId ? 'Αποθήκευση' : 'Πρόσκληση'}
+              <UserPlus size={16} /> {editingId ? 'Αποθήκευση' : 'Δημιουργία χρήστη'}
             </Button>
-            {editingId ? (
+            {editingId || creating ? (
               <Button type="button" variant="secondary" onClick={resetForm}>
                 Άκυρο
               </Button>
-            ) : (
+            ) : null}
+            {!editingId ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -433,7 +493,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
               >
                 Νέος κωδικός
               </Button>
-            )}
+            ) : null}
           </div>
         </form>
       ) : null}

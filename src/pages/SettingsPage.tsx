@@ -8,6 +8,7 @@ import {
   KeyRound,
   Plus,
   Ruler,
+  ShieldCheck,
   Trophy,
   UserPlus,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ import { Button } from '../components/ui/Button';
 import { SizeChartPanel } from '../components/SizeChartPanel';
 import { getPreviewClubId } from '../platform/platformConfig';
 import { AssociationsPage } from './AssociationsPage';
+import { AmkaCompliancePanel } from './AmkaCompliancePanel';
 import { SportsPage } from './SportsPage';
 import { TermsOfUsePanel } from './TermsOfUsePanel';
 
@@ -51,6 +53,7 @@ type SettingsTab =
   | 'sports'
   | 'sizes'
   | 'terms'
+  | 'amka'
   | 'backup';
 
 type ClubForm = {
@@ -78,6 +81,7 @@ const MORE_TABS: Array<{ id: SettingsTab; label: string; icon: typeof KeyRound }
   { id: 'sports', label: 'Άθλημα', icon: Trophy },
   { id: 'sizes', label: 'Μεγεθολόγιο', icon: Ruler },
   { id: 'terms', label: 'Όροι', icon: FileText },
+  { id: 'amka', label: 'GDPR', icon: ShieldCheck },
   { id: 'backup', label: 'Backup', icon: Database },
 ];
 
@@ -598,6 +602,7 @@ export function SettingsPage() {
       {tab === 'sports' ? <SportsPage /> : null}
       {tab === 'sizes' ? <SizeChartPanel /> : null}
       {tab === 'terms' ? <TermsOfUsePanel /> : null}
+      {tab === 'amka' ? <AmkaCompliancePanel /> : null}
       {tab === 'backup' ? <BackupPanel /> : null}
     </div>
   );

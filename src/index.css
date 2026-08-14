@@ -1299,14 +1299,31 @@ th {
 }
 
 
+.size-chart-inline-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .size-chart-inline-list li {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.55rem;
+  gap: 0.45rem;
+  padding: 0.4rem 0.65rem;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--field-bg, #fff);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.size-chart-inline-list li > span {
+  color: var(--ink);
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 760px) {
@@ -1334,6 +1351,24 @@ th {
 .club-users-panel h4 {
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
+}
+
+.club-users-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.club-users-panel-head .lede {
+  margin: 0.35rem 0 0;
+  max-width: 42rem;
+}
+
+.club-users-panel-head h3 {
+  margin: 0;
 }
 
 .club-users-form {
@@ -2042,14 +2077,15 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
   gap: 0.35rem;
   border: 0;
   background: transparent;
-  color: #2b6cb0;
-  font-weight: 650;
+  color: var(--accent, #c9971a);
+  font-weight: 750;
   cursor: pointer;
   padding: 0;
 }
 
 .size-chart-link:hover {
   text-decoration: underline;
+  color: var(--ink);
 }
 
 .size-chart-add-row {
@@ -2061,7 +2097,8 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
   padding: 0.75rem;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #f8fbfa;
+  background: var(--field-bg, #f8fbfa);
+  color: var(--ink);
 }
 
 .size-chart-add-row input,
@@ -2070,6 +2107,8 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--ink);
 }
 
 .size-chart-grid {
@@ -2112,25 +2151,33 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
 
 .size-chart-delete {
   border: 0;
-  background: transparent;
-  color: #c53030;
+  background: rgba(240, 113, 103, 0.14);
+  color: var(--danger, #c53030);
   cursor: pointer;
-  font-weight: 650;
-  padding: 0;
+  font-weight: 750;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
 }
 
 .size-chart-delete:hover {
-  text-decoration: underline;
+  background: rgba(240, 113, 103, 0.22);
+  text-decoration: none;
 }
 
 .size-chart-add-inline {
   margin-top: 0.65rem;
   border: 0;
   background: transparent;
-  color: #2b6cb0;
+  color: var(--accent, #c9971a);
   cursor: pointer;
-  font-weight: 650;
+  font-weight: 750;
   padding: 0;
+}
+
+.size-chart-add-inline:hover {
+  text-decoration: underline;
+  color: var(--ink);
 }
 
 .size-chart-footer {

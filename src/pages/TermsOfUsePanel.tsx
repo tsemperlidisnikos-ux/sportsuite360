@@ -16,10 +16,9 @@ import * as termsOfUseService from '../api/services/termsOfUseService';
 import { Button } from '../components/ui/Button';
 import { SettingsFormRow } from '../components/ui/SettingsFormRow';
 import { useAppData } from '../hooks/useAppData';
+import { DEFAULT_TERMS_OF_USE_HTML } from '../shared/termsDefaults';
 
-const DEFAULT_TERMS = `<p>Με την παρούσα παρέχω τη ρητή συγκατάθεσή μου για την επεξεργασία των προσωπικών δεδομένων του ανήλικου τέκνου μου από τον Α.Σ. ΑΠΟΛΛΩΝ ΠΑΤΡΩΝ, αποκλειστικά για τους σκοπούς της εγγραφής, συμμετοχής στις αθλητικές δραστηριότητες και της εύρυθμης λειτουργίας του συλλόγου.</p>
-<p>Συναινώ επίσης στη χρήση φωτογραφιών και οπτικοακουστικού υλικού του τέκνου μου για την προβολή του συλλόγου στα μέσα κοινωνικής δικτύωσης και στην επίσημη ιστοσελίδα, σύμφωνα με την ισχύουσα νομοθεσία περί προστασίας δεδομένων προσωπικού χαρακτήρα.</p>
-<p>Δηλώνω ότι ενημερώθηκα για τα δικαιώματά μου και για το δικαίωμα ανάκλησης της συγκατάθεσης οποιαδήποτε στιγμή.</p>`;
+const DEFAULT_TERMS = DEFAULT_TERMS_OF_USE_HTML;
 
 export function TermsOfUsePanel() {
   const { data, refresh } = useAppData();

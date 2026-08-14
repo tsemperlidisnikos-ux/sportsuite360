@@ -182,15 +182,23 @@
 .admin-check {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: flex-start;
+  gap: 0.55rem;
   width: 100%;
   font-size: 0.9rem;
   cursor: pointer;
 }
 
+.admin-check input[type='checkbox'] {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  order: -1;
+}
+
 .admin-check span {
-  flex: 1;
+  flex: 0 1 auto;
   text-align: left;
   line-height: 1.35;
 }

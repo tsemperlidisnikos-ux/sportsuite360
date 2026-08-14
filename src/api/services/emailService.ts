@@ -5,6 +5,7 @@ import {
   getClubSmtp,
 } from '../../auth/clubs';
 import { localDateTimeIso } from '../../utils/dates';
+import { sanitizeOutboundEmail } from '../../utils/amkaAccess';
 
 export type SendEmailInput = {
   clubId: string;
@@ -29,6 +30,12 @@ export async function sendClubEmail(input: SendEmailInput) {
       throw new Error('Μη έγκυρο email παραλήπτη.');
     }
 
+    const sanitized = sanitizeOutboundEmail({
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+    });
+
     const response = await fetch('/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,9 +48,9 @@ export async function sendClubEmail(input: SendEmailInput) {
           fromName: smtp.fromName || club?.name || 'SPORTSUITE 360',
         },
         to,
-        subject: input.subject,
-        text: input.text,
-        html: input.html,
+        subject: sanitized.subject,
+        text: sanitized.text,
+        html: sanitized.html,
       }),
     });
 
@@ -72,7 +79,7 @@ export async function sendClubEmail(input: SendEmailInput) {
     appendClubSmtpSendLog(input.clubId, {
       to,
       status: 'ok',
-      message: `Στάλθηκε: ${input.subject}${payload.messageId ? ` (${payload.messageId})` : ''}`,
+      message: `Στάλθηκε: ${sanitized.subject}${payload.messageId ? ` (${payload.messageId})` : ''}`,
       at: localDateTimeIso(),
     });
 

@@ -2319,3 +2319,66 @@ html[data-appearance='navy-amber'] .modal:not(.fee-charge-modal) textarea::place
   opacity: 1;
 }
 
+/* ---- Size chart (Μεγεθολόγιο) ---- */
+html[data-appearance='navy-amber'] .size-chart-panel {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .size-chart-header h3,
+html[data-appearance='navy-amber'] .size-chart-header h2 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .size-chart-header p,
+html[data-appearance='navy-amber'] .size-chart-empty {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] .size-chart-panel .settings-form-row-label {
+  color: #f0d078;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+html[data-appearance='navy-amber'] .size-chart-link,
+html[data-appearance='navy-amber'] .size-chart-add-inline {
+  color: #f5d27a;
+}
+
+html[data-appearance='navy-amber'] .size-chart-link:hover,
+html[data-appearance='navy-amber'] .size-chart-add-inline:hover {
+  color: #ffffff;
+}
+
+html[data-appearance='navy-amber'] .size-chart-inline-list li {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .size-chart-inline-list li > span {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .size-chart-delete {
+  background: rgba(240, 113, 103, 0.2);
+  color: #ff8f8f;
+}
+
+html[data-appearance='navy-amber'] .size-chart-add-row {
+  background: #0e1a2e;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .club-users-panel-head h3,
+html[data-appearance='navy-amber'] .club-users-panel h4 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .club-users-panel .lede {
+  color: #d0dae8;
+}
+
