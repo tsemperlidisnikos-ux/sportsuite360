@@ -5,7 +5,9 @@ import {
   type ClubWaitlistEntry,
 } from '../api/services/clubWaitlistService';
 import { pushAccountBundle, pullAccountBundle, applyAccountBundle } from '../api/services/accountSyncService';
-import { provisionClub } from '../auth/clubs';
+import { getUsers } from '../auth/auth';
+import { getClubs, provisionClub, purgeClub } from '../auth/clubs';
+import { removeClubStore } from '../data/store';
 import { Button } from './ui/Button';
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -41,6 +43,18 @@ function statusLabel(status: ClubWaitlistEntry['status']): string {
 function levelsLabel(levels: string[]): string {
   if (!levels.length) return '—';
   return levels.map((id) => LEVEL_LABELS[id] ?? id).join(', ');
+}
+
+function resolveClubId(entry: ClubWaitlistEntry): string | null {
+  if (entry.clubId) return entry.clubId;
+  const name = entry.clubName.trim().toLowerCase();
+  const byName = getClubs().find((c) => c.name.trim().toLowerCase() === name);
+  if (byName) return byName.id;
+  const email = entry.email.trim().toLowerCase();
+  const byEmail = getUsers().find(
+    (u) => u.email.toLowerCase() === email && u.role === 'admin' && u.clubId,
+  );
+  return byEmail?.clubId ?? null;
 }
 
 export function ClubWaitlistPanel({
@@ -185,6 +199,59 @@ export function ClubWaitlistPanel({
     await load();
   }
 
+  async function handleDeleteClub(entry: ClubWaitlistEntry) {
+    const ok = window.confirm(
+      `Διαγραφή συλλόγου «${entry.clubName}»; Θα διαγραφούν ο λογαριασμός admin και τα δεδομένα του συλλόγου.`,
+    );
+    if (!ok) return;
+
+    setError('');
+    setBusyId(entry.id);
+
+    const account = await pullAccountBundle();
+    if (account.success && account.data) {
+      applyAccountBundle(account.data);
+    }
+
+    const clubId = resolveClubId(entry);
+    if (clubId) {
+      const purged = purgeClub(clubId);
+      if (!purged.success) {
+        setBusyId(null);
+        const message = purged.error ?? 'Αποτυχία διαγραφής συλλόγου.';
+        setError(message);
+        onSaved?.(message);
+        return;
+      }
+      removeClubStore(clubId);
+      const pushed = await pushAccountBundle();
+      if (!pushed.success) {
+        setBusyId(null);
+        const message =
+          pushed.error ??
+          'Ο σύλλογος διαγράφηκε τοπικά. Το cloud push απέτυχε — κάντε Push από το Backup.';
+        setError(message);
+        onSaved?.(message);
+        return;
+      }
+    }
+
+    const removed = await updateClubWaitlistStatus({
+      id: entry.id,
+      action: 'reject',
+    });
+    setBusyId(null);
+    if (!removed.success) {
+      const message = removed.error ?? 'Ο σύλλογος διαγράφηκε, αλλά η λίστα δεν ενημερώθηκε.';
+      setError(message);
+      onSaved?.(message);
+      await load();
+      return;
+    }
+    onSaved?.(`Διαγράφηκε ο σύλλογος «${entry.clubName}».`);
+    await load();
+  }
+
   async function copyCredentials() {
     if (!created) return;
     const text = `Σύλλογος: ${created.clubName}\nEmail: ${created.email}\nΚωδικός: ${created.password}`;
@@ -314,10 +381,22 @@ export function ClubWaitlistPanel({
                           </Button>
                         </div>
                       </div>
+                    ) : entry.status === 'approved' ? (
+                      <div className="club-waitlist-actions">
+                        <span className="login-activity-email">Λογαριασμός δημιουργήθηκε</span>
+                        <div className="club-waitlist-buttons">
+                          <Button
+                            type="button"
+                            variant="danger"
+                            disabled={busyId === entry.id}
+                            onClick={() => void handleDeleteClub(entry)}
+                          >
+                            {busyId === entry.id ? '…' : 'Διαγραφή συλλόγου'}
+                          </Button>
+                        </div>
+                      </div>
                     ) : (
-                      <span className="login-activity-email">
-                        {entry.status === 'approved' ? 'Λογαριασμός δημιουργήθηκε' : '—'}
-                      </span>
+                      <span className="login-activity-email">—</span>
                     )}
                   </td>
                 </tr>

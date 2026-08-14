@@ -11,13 +11,14 @@ import {
   type UserRole,
 } from '../auth/auth';
 import {
-  deleteClub,
   getClubById,
   getClubs,
+  purgeClub,
   updateClubLicenses,
   type Club,
 } from '../auth/clubs';
-import { loadStore } from '../data/store';
+import { pushAccountBundle } from '../api/services/accountSyncService';
+import { loadStore, removeClubStore } from '../data/store';
 
 type PlatformRole =
   | 'platform_admin'
@@ -243,19 +244,37 @@ export function PlatformUsersPage() {
     refresh();
   }
 
-  function handleDelete(row: PlatformUserRow) {
+  async function handleDelete(row: PlatformUserRow) {
     if (!row.canDelete) return;
-    const ok = window.confirm(`Διαγραφή χρήστη «${row.fullName}»;`);
+    const ok = window.confirm(
+      row.role === 'admin' && row.clubId
+        ? `Διαγραφή συλλόγου «${row.clubName || row.fullName}»; Θα διαγραφούν ο admin και τα δεδομένα.`
+        : `Διαγραφή χρήστη «${row.fullName}»;`,
+    );
     if (!ok) return;
-    const result = deleteUser(row.id);
-    if (!result.success) {
-      setError(result.error ?? 'Αποτυχία διαγραφής');
-      return;
-    }
     if (row.role === 'admin' && row.clubId) {
-      deleteClub(row.clubId);
+      const purged = purgeClub(row.clubId);
+      if (!purged.success) {
+        setError(purged.error ?? 'Αποτυχία διαγραφής συλλόγου');
+        return;
+      }
+      removeClubStore(row.clubId);
+    } else {
+      const result = deleteUser(row.id);
+      if (!result.success) {
+        setError(result.error ?? 'Αποτυχία διαγραφής');
+        return;
+      }
     }
-    setMessage('Ο χρήστης διαγράφηκε.');
+    const pushed = await pushAccountBundle();
+    if (!pushed.success) {
+      setError(
+        pushed.error ??
+          'Διαγράφηκε τοπικά. Το cloud push απέτυχε — κάντε Push από το Backup.',
+      );
+    } else {
+      setMessage(row.role === 'admin' ? 'Ο σύλλογος διαγράφηκε.' : 'Ο χρήστης διαγράφηκε.');
+    }
     refresh();
   }
 
@@ -369,7 +388,7 @@ export function PlatformUsersPage() {
                         <button
                           type="button"
                           className="pu-btn pu-btn-delete"
-                          onClick={() => handleDelete(row)}
+                          onClick={() => void handleDelete(row)}
                           disabled={!row.canDelete}
                         >
                           Διαγραφή

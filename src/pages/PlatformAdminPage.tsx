@@ -412,7 +412,8 @@ export function PlatformAdminPage() {
                   Δημόσια φόρμα εγγραφής ακαδημίας (/register).
                 </RecordsRow>
                 <RecordsRow title="Έγκριση">
-                  Ο Platform Admin ορίζει κωδικό και δημιουργεί σύλλογο + admin.
+                  Ο Platform Admin ορίζει κωδικό και δημιουργεί σύλλογο + admin. Μετά μπορεί να
+                  διαγράψει τον σύλλογο.
                 </RecordsRow>
                 <RecordsRow title="Αποθήκευση">
                   Cloud durable store + τοπικό αντίγραφο. Μετά την έγκριση γίνεται Push λογαριασμών.

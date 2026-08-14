@@ -622,3 +622,19 @@ export function deleteClub(clubId: string): ApiResult<true> {
   saveClubs(clubs);
   return ok(true);
 }
+
+/** Διαγράφει σύλλογο + όλους τους χρήστες του (όχι DEMO). */
+export function purgeClub(clubId: string): ApiResult<true> {
+  const id = clubId.trim();
+  if (!id) return fail('Λείπει ο σύλλογος');
+  const club = getClubById(id);
+  const isDemo =
+    id === 'club_demo_showcase' ||
+    (club?.name ?? '').trim().toUpperCase() === 'DEMO';
+  if (isDemo) return fail('Ο σύλλογος DEMO δεν διαγράφεται');
+
+  saveUsers(getUsers().filter((u) => u.role === 'platform_admin' || u.clubId !== id));
+  saveClubs(getClubs().filter((c) => c.id !== id));
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+  return ok(true);
+}

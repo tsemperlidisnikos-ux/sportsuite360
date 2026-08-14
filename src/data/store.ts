@@ -249,6 +249,15 @@ export function saveStore(data: AppData): void {
   saveClubMapSafe(map, clubId);
 }
 
+/** Remove a club's AppData bucket. */
+export function removeClubStore(clubId: string): void {
+  const map = loadClubMap();
+  if (!(clubId in map)) return;
+  delete map[clubId];
+  saveClubMapSafe(map);
+  notifyAppDataChanged();
+}
+
 /** Create or replace a club bucket with empty seed data (new registrations). */
 export function resetClubStore(clubId: string): void {
   const map = loadClubMap();
