@@ -18,10 +18,12 @@ import {
 } from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 import { dayNames } from '../utils/labels';
+import { normalizeSportKey } from '../utils/sport';
 
 const HOUR_START = 8;
-const HOUR_END = 22;
-const HOURS = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
+/** Τέλος ημέρας (μεσάνυχτα) — exclusive. */
+const HOUR_END = 24;
+const HOURS = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
 const PX_PER_HOUR = 56;
 
 /** Monday-first weekday labels (Δευτέρα … Κυριακή). */
@@ -99,23 +101,71 @@ export function SchedulePage() {
     [data.classes, data.coaches, session],
   );
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
-  const [classId, setClassId] = useState(visibleClasses[0]?.id ?? '');
+
+  const sportOptions = useMemo(() => {
+    const active = (data.sports ?? []).filter((s) => s.active);
+    if (isCoach && coach?.sport) {
+      const key = normalizeSportKey(coach.sport);
+      const matched = active.filter((s) => normalizeSportKey(s.name) === key);
+      return matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
+    }
+    const fromClasses = new Map<string, string>();
+    for (const cls of visibleClasses) {
+      const name = (cls.sport ?? '').trim();
+      if (!name) continue;
+      const key = normalizeSportKey(name);
+      if (!fromClasses.has(key)) fromClasses.set(key, name);
+    }
+    if (active.length > 0) {
+      return active.filter((s) =>
+        visibleClasses.some((c) => sportsMatch(c.sport, s.name)),
+      );
+    }
+    return [...fromClasses.values()].map((name, i) => ({
+      id: `sport-${i}`,
+      name,
+      active: true,
+    }));
+  }, [data.sports, isCoach, coach, visibleClasses]);
+
+  const [sportFilter, setSportFilter] = useState(() => {
+    if (coach?.sport) return coach.sport;
+    return '';
+  });
+
+  const classesForSport = useMemo(() => {
+    if (!sportFilter.trim()) return visibleClasses;
+    return visibleClasses.filter((c) => sportsMatch(c.sport, sportFilter));
+  }, [visibleClasses, sportFilter]);
+
+  const [classId, setClassId] = useState('');
   const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(new Date()));
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ScheduleSlotInput>({
     ...emptyForm,
-    classId: visibleClasses[0]?.id ?? '',
+    classId: '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   const activeClassId =
-    classId && visibleClasses.some((c) => c.id === classId)
+    classId && classesForSport.some((c) => c.id === classId)
       ? classId
       : isCoach
-        ? visibleClasses[0]?.id ?? ''
-        : classId;
+        ? classesForSport[0]?.id ?? ''
+        : '';
+
+  function handleSportChange(nextSport: string) {
+    setSportFilter(nextSport);
+    const nextClasses = nextSport.trim()
+      ? visibleClasses.filter((c) => sportsMatch(c.sport, nextSport))
+      : visibleClasses;
+    setClassId((prev) => {
+      if (prev && nextClasses.some((c) => c.id === prev)) return prev;
+      return isCoach ? nextClasses[0]?.id ?? '' : '';
+    });
+  }
 
   const weekDays = useMemo(
     () => WEEKDAY_ORDER.map((dow, index) => {
@@ -128,16 +178,27 @@ export function SchedulePage() {
   const blocks = useMemo(() => {
     const result: GridBlock[] = [];
     const selectedClass = activeClassId || null;
+    const sportKey = sportFilter.trim();
 
-    for (const slot of data.schedule) {
+    function inSportFilter(cid: string | null | undefined): boolean {
+      if (!sportKey) return true;
+      if (!cid) return false;
+      const cls =
+        visibleClasses.find((c) => c.id === cid) ?? data.classes.find((c) => c.id === cid);
+      return cls ? sportsMatch(cls.sport, sportKey) : false;
+    }
+
+    for (const slot of data.schedule ?? []) {
       if (!isClassInCoachScope(slot.classId, allowedClassIds, isCoach)) continue;
       if (selectedClass && slot.classId !== selectedClass) continue;
+      if (!selectedClass && !inSportFilter(slot.classId)) continue;
       const dayIndex = WEEKDAY_ORDER.indexOf(slot.dayOfWeek as (typeof WEEKDAY_ORDER)[number]);
       if (dayIndex < 0) continue;
-      const cls = visibleClasses.find((c) => c.id === slot.classId)
-        ?? data.classes.find((c) => c.id === slot.classId);
+      const cls =
+        visibleClasses.find((c) => c.id === slot.classId) ??
+        data.classes.find((c) => c.id === slot.classId);
       result.push({
-        id: slot.id,
+        id: `schedule:${slot.id}`,
         kind: 'training',
         dayIndex,
         startMin: parseTimeToMinutes(slot.startTime),
@@ -148,36 +209,85 @@ export function SchedulePage() {
       });
     }
 
+    for (const training of data.trainings ?? []) {
+      if (!isClassInCoachScope(training.classId, allowedClassIds, isCoach)) continue;
+      if (selectedClass && training.classId !== selectedClass) continue;
+      if (!selectedClass && !inSportFilter(training.classId)) continue;
+      const iso = training.date?.slice(0, 10);
+      if (!iso) continue;
+      const dayIndex = weekDays.findIndex((d) => d.iso === iso);
+      if (dayIndex < 0) continue;
+      const cls = training.classId
+        ? visibleClasses.find((c) => c.id === training.classId) ??
+          data.classes.find((c) => c.id === training.classId)
+        : undefined;
+      const startMin = parseTimeToMinutes(training.startTime || '12:00');
+      const endMin = training.endTime
+        ? parseTimeToMinutes(training.endTime)
+        : startMin + 60;
+      result.push({
+        id: `training:${training.id}`,
+        kind: 'training',
+        dayIndex,
+        startMin,
+        endMin: endMin > startMin ? endMin : startMin + 60,
+        title: cls?.name ? `Προπόνηση · ${cls.name}` : 'Προπόνηση',
+        location: training.location || '',
+      });
+    }
+
     for (const match of data.matches ?? []) {
       if (match.status === 'cancelled') continue;
       const matchInScope = match.classId
         ? isClassInCoachScope(match.classId, allowedClassIds, isCoach)
         : !isCoach || sportsMatch(match.sport, coach?.sport);
       if (!matchInScope) continue;
-      if (selectedClass && match.classId && match.classId !== selectedClass) continue;
+      if (selectedClass) {
+        if (match.classId) {
+          if (match.classId !== selectedClass) continue;
+        } else {
+          const cls =
+            visibleClasses.find((c) => c.id === selectedClass) ??
+            data.classes.find((c) => c.id === selectedClass);
+          if (cls?.sport && match.sport && !sportsMatch(match.sport, cls.sport)) continue;
+          if (cls && !match.classId && !match.sport) {
+            continue;
+          }
+        }
+      } else if (sportKey) {
+        if (match.classId) {
+          if (!inSportFilter(match.classId)) continue;
+        } else if (!sportsMatch(match.sport, sportKey)) {
+          continue;
+        }
+      }
       const iso = match.date?.slice(0, 10);
       const dayIndex = weekDays.findIndex((d) => d.iso === iso);
       if (dayIndex < 0) continue;
       const startMin = parseTimeToMinutes(match.time || '12:00');
       const endMin = startMin + 90;
       result.push({
-        id: match.id,
+        id: `match:${match.id}`,
         kind: 'match',
         dayIndex,
         startMin,
         endMin,
         title: `Αγώνας vs ${match.opponent}`,
-        location: match.location || (match.venue === 'home' ? 'Εντός' : match.venue === 'away' ? 'Εκτός' : ''),
+        location:
+          match.location ||
+          (match.venue === 'home' ? 'Εντός' : match.venue === 'away' ? 'Εκτός' : ''),
       });
     }
 
     return result;
   }, [
     data.schedule,
+    data.trainings,
     data.matches,
     data.classes,
     visibleClasses,
     activeClassId,
+    sportFilter,
     weekDays,
     allowedClassIds,
     isCoach,
@@ -188,7 +298,7 @@ export function SchedulePage() {
     setEditingId(null);
     setForm({
       ...emptyForm,
-      classId: activeClassId || visibleClasses[0]?.id || '',
+      classId: activeClassId || classesForSport[0]?.id || '',
       dayOfWeek: 1,
     });
     setError('');
@@ -247,10 +357,26 @@ export function SchedulePage() {
     <div className="prog-page">
       <div className="prog-toolbar panel">
         <label className="prog-field">
+          <span>Άθλημα</span>
+          <select
+            value={isCoach && coach?.sport ? coach.sport : sportFilter}
+            disabled={isCoach}
+            onChange={(e) => handleSportChange(e.target.value)}
+          >
+            {isCoach ? null : <option value="">Όλα τα αθλήματα</option>}
+            {sportOptions.map((s) => (
+              <option key={s.id} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="prog-field">
           <span>Επιλογή Τμήματος</span>
           <select value={activeClassId} onChange={(e) => setClassId(e.target.value)}>
             {isCoach ? null : <option value="">Όλα τα τμήματα</option>}
-            {visibleClasses.map((cls) => (
+            {classesForSport.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name}
                 {cls.ageGroup ? ` · ${cls.ageGroup}` : ''}
@@ -296,7 +422,7 @@ export function SchedulePage() {
           <div className="prog-time-col" style={{ height: gridHeight }}>
             {HOURS.map((hour) => (
               <div key={hour} className="prog-hour-label" style={{ height: PX_PER_HOUR }}>
-                {pad(hour)}:00
+                {pad(hour % 24)}:00
               </div>
             ))}
           </div>
@@ -315,8 +441,10 @@ export function SchedulePage() {
                       36,
                       ((block.endMin - block.startMin) / 60) * PX_PER_HOUR - 4,
                     );
-                    const startLabel = `${pad(Math.floor(block.startMin / 60))}:${pad(block.startMin % 60)}`;
-                    const endLabel = `${pad(Math.floor(block.endMin / 60))}:${pad(block.endMin % 60)}`;
+                    const startHour = Math.floor(block.startMin / 60) % 24;
+                    const endHour = Math.floor(block.endMin / 60) % 24;
+                    const startLabel = `${pad(startHour)}:${pad(block.startMin % 60)}`;
+                    const endLabel = `${pad(endHour)}:${pad(block.endMin % 60)}`;
                     return (
                       <button
                         key={block.id}
@@ -388,7 +516,7 @@ export function SchedulePage() {
             label="Τμήμα"
             value={form.classId}
             onChange={(e) => setForm({ ...form, classId: e.target.value })}
-            options={visibleClasses.map((c) => ({ value: c.id, label: c.name }))}
+            options={classesForSport.map((c) => ({ value: c.id, label: c.name }))}
           />
           <Select
             label="Ημέρα"

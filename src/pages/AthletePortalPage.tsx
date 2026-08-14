@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   CreditCard,
   Megaphone,
+  User,
   XCircle,
 } from 'lucide-react';
 import * as vivaService from '../api/services/vivaService';
@@ -102,11 +103,22 @@ export function AthletePortalPage() {
 
   const announcements = useMemo(() => {
     if (!athlete) return [];
+    const classSport = athlete.classId
+      ? data.classes.find((c) => c.id === athlete.classId)?.sport
+      : null;
     return (data.announcements ?? [])
-      .filter((a) => announcementVisibleToAthlete(a, athlete.id, athlete.classId))
+      .filter((a) =>
+        announcementVisibleToAthlete(a, {
+          athleteId: athlete.id,
+          classId: athlete.classId,
+          sport: athlete.sport,
+          clubName: athlete.clubName,
+          classSport,
+        }),
+      )
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 5);
-  }, [data.announcements, athlete]);
+  }, [data.announcements, data.classes, athlete]);
 
   const className = athlete?.classId
     ? data.classes.find((c) => c.id === athlete.classId)?.name
@@ -138,6 +150,11 @@ export function AthletePortalPage() {
       <header className="aport-welcome">
         <h1>Καλωσήρθες στο SportSuite 360, {greetingName(session?.fullName)}!</h1>
         {className ? <p className="aport-class">Τμήμα · {className}</p> : null}
+        {athlete ? (
+          <Link className="aport-profile-link" to={`/athletes/${athlete.id}`}>
+            <User size={16} /> Το προφίλ μου
+          </Link>
+        ) : null}
       </header>
 
       {!athlete ? (

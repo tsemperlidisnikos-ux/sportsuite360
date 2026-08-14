@@ -86,7 +86,7 @@ export function CoachPortalPage() {
   const announcements = useMemo(() => {
     if (!coach) return [];
     return (data.announcements ?? [])
-      .filter((a) => announcementVisibleToCoach(a, coach.id))
+      .filter((a) => announcementVisibleToCoach(a, coach.id, coach.sport))
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 4);
   }, [data.announcements, coach]);

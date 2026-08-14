@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { getSession, isPlatformAdmin } from './auth/auth';
 import { RequireAuth } from './auth/RequireAuth';
 import { RequireModule } from './auth/RequireModule';
+import { RequireAthletesOrOwnProfile } from './auth/RequireAthletesOrOwnProfile';
 import { RequirePlatformAdmin } from './auth/RequirePlatformAdmin';
 import { AppLayout } from './components/layout/AppLayout';
 import { getPreviewClubId } from './platform/platformConfig';
@@ -160,9 +161,9 @@ export default function App() {
               <Route
                 path="athletes/:athleteId"
                 element={
-                  <RequireModule moduleId="athletes">
+                  <RequireAthletesOrOwnProfile>
                     <AthleteProfilePage />
-                  </RequireModule>
+                  </RequireAthletesOrOwnProfile>
                 }
               />
               <Route path="students" element={<Navigate to="/athletes" replace />} />

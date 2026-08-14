@@ -152,8 +152,11 @@ export function filterAthleteRegistry(
     }
 
     if (filters.sport) {
-      const athleteSport = String(athlete.sport || '').trim();
-      if (!athleteSport || !sportsAreEquivalent(athleteSport, filters.sport)) {
+      const classSport = classes.find((c) => c.id === athlete.classId)?.sport;
+      if (
+        !sportsAreEquivalent(athlete.sport, filters.sport) &&
+        !sportsAreEquivalent(classSport, filters.sport)
+      ) {
         return false;
       }
     }

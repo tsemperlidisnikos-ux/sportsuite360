@@ -9,6 +9,7 @@ import {
   HeartPulse,
   History,
   IdCard,
+  Megaphone,
   Shield,
   ShieldCheck,
   TrendingUp,
@@ -37,6 +38,7 @@ import {
   MEDICAL_ACCESS_HINT,
 } from '../shared/termsDefaults';
 import { canAccessAmka, canAccessMedical, formatAmkaForViewer } from '../utils/amkaAccess';
+import { announcementVisibleToAthlete } from '../utils/announcementAudience';
 import {
   classIdsOf,
   isClassInCoachScope,
@@ -51,7 +53,20 @@ type ProfileTab =
   | 'health'
   | 'gdpr'
   | 'progress'
+  | 'announcements'
   | 'history';
+
+function htmlToPlain(html: string): string {
+  if (typeof document === 'undefined') {
+    return String(html || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  return (el.innerText || el.textContent || '').trim();
+}
 
 function isAthleteMinor(birthDate: string | undefined): boolean {
   if (!birthDate) return true;
@@ -73,6 +88,7 @@ const PROFILE_TABS: { id: ProfileTab; label: string; icon: typeof User }[] = [
   { id: 'health', label: 'Κάρτα Υγείας', icon: HeartPulse },
   { id: 'gdpr', label: 'Συγκαταθέσεις (GDPR)', icon: ShieldCheck },
   { id: 'progress', label: 'Πρόοδος', icon: TrendingUp },
+  { id: 'announcements', label: 'Ανακοινώσεις', icon: Megaphone },
   { id: 'history', label: 'Ιστορικό', icon: History },
 ];
 
@@ -264,6 +280,14 @@ export function AthleteProfilePage() {
   );
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
   const student = data.students.find((s) => s.id === athleteId);
+  const isSelfAthlete = useMemo(() => {
+    if (session?.role !== 'athlete' || !athleteId) return false;
+    if (session.athleteId && session.athleteId === athleteId) return true;
+    const email = session.email?.toLowerCase() ?? '';
+    if (!email || !student) return false;
+    return student.email.toLowerCase() === email;
+  }, [session, athleteId, student]);
+  const canEditProfile = session?.role !== 'athlete' && session?.role !== 'parent';
 
   const [editing, setEditing] = useState(
     Boolean((location.state as { editing?: boolean } | null)?.editing),
@@ -464,8 +488,33 @@ export function AthleteProfilePage() {
     [data.progressReports, athleteId],
   );
 
+  const athleteAnnouncements = useMemo(() => {
+    if (!student) return [];
+    const classSport = student.classId
+      ? data.classes.find((c) => c.id === student.classId)?.sport
+      : null;
+    return (data.announcements ?? [])
+      .filter((a) =>
+        announcementVisibleToAthlete(a, {
+          athleteId: student.id,
+          classId: student.classId,
+          sport: student.sport,
+          clubName: student.clubName,
+          classSport,
+        }),
+      )
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  }, [data.announcements, data.classes, student]);
+
   if (session?.role === 'doctor') {
     return <Navigate to="/athletes" replace />;
+  }
+
+  if (session?.role === 'athlete' && athleteId && !isSelfAthlete) {
+    if (session.athleteId) {
+      return <Navigate to={`/athletes/${session.athleteId}`} replace />;
+    }
+    return <Navigate to="/" replace />;
   }
 
   if (
@@ -665,7 +714,7 @@ export function AthleteProfilePage() {
   }
 
   const inputClass = 'ap-input';
-  const disabled = !editing;
+  const disabled = !editing || !canEditProfile;
 
   const textInput = (
     value: string | undefined,
@@ -711,9 +760,15 @@ export function AthleteProfilePage() {
   return (
     <div className="athlete-profile-page ap-shell">
       <nav className="ap-breadcrumb" aria-label="Breadcrumb">
-        <button type="button" className="ap-crumb-link" onClick={() => navigate('/athletes')}>
-          Αθλητές
-        </button>
+        {isSelfAthlete ? (
+          <button type="button" className="ap-crumb-link" onClick={() => navigate('/')}>
+            Αρχική
+          </button>
+        ) : (
+          <button type="button" className="ap-crumb-link" onClick={() => navigate('/athletes')}>
+            Αθλητές
+          </button>
+        )}
         <span className="ap-crumb-sep">›</span>
         <span>Προφίλ Αθλητή</span>
       </nav>
@@ -726,7 +781,7 @@ export function AthleteProfilePage() {
             ) : (
               <div className="ap-hero-photo ap-hero-photo--empty" aria-hidden="true" />
             )}
-            {editing ? (
+            {editing && canEditProfile ? (
               <div className="ap-hero-photo-actions">
                 <label className="ap-hero-photo-upload">
                   <input
@@ -804,7 +859,7 @@ export function AthleteProfilePage() {
             </button>
             {actionsOpen ? (
               <div className="ap-actions-dropdown">
-                {!editing ? (
+                {!editing && canEditProfile ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1669,41 +1724,57 @@ export function AthleteProfilePage() {
           </ApCard>
         ) : null}
 
+        {profileTab === 'announcements' ? (
+          <ApCard title="Ανακοινώσεις">
+            {athleteAnnouncements.length === 0 ? (
+              <p className="muted">Δεν υπάρχουν ανακοινώσεις για αυτόν τον αθλητή.</p>
+            ) : (
+              <ul className="ap-athlete-announcements">
+                {athleteAnnouncements.map((a) => {
+                  const body = htmlToPlain(a.message || '');
+                  const audience =
+                    a.audienceRoles && a.audienceRoles.length > 0
+                      ? a.audienceRoles
+                          .map((r) =>
+                            r === 'athletes'
+                              ? 'Αθλητές'
+                              : r === 'coaches'
+                                ? 'Προπονητές'
+                                : r === 'parents'
+                                  ? 'Γονείς'
+                                  : r === 'staff'
+                                    ? 'Προσωπικό'
+                                    : r,
+                          )
+                          .join(', ')
+                      : 'Σύλλογος';
+                  const scopeBits = [
+                    a.sportCategories?.trim() ? `Άθλημα: ${a.sportCategories.trim()}` : '',
+                    a.teamsLabel?.trim() ? `Σωματείο: ${a.teamsLabel.trim()}` : '',
+                  ].filter(Boolean);
+                  return (
+                    <li key={a.id} className="ap-athlete-announcement">
+                      <div className="ap-athlete-announcement-head">
+                        <strong>{a.title}</strong>
+                        <time dateTime={a.createdAt || undefined}>
+                          {formatDate(a.createdAt)}
+                        </time>
+                      </div>
+                      <p className="ap-athlete-announcement-meta">
+                        {audience}
+                        {scopeBits.length > 0 ? ` · ${scopeBits.join(' · ')}` : ''}
+                      </p>
+                      {body ? <p className="ap-athlete-announcement-body">{body}</p> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ApCard>
+        ) : null}
+
         {profileTab === 'history' ? (
           <div className="ap-stack">
-            <ApCard title="Ανακοινώσεις">
-              <div className="ap-finance-wrap">
-                <table className="ap-announcements-table">
-                  <thead>
-                    <tr>
-                      <th>Ημερομηνία</th>
-                      <th>Τίτλος</th>
-                      <th>Κοινό</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(data.announcements ?? []).slice(0, 20).map((a) => (
-                      <tr key={a.id}>
-                        <td>{formatDate(a.createdAt)}</td>
-                        <td>{a.title}</td>
-                        <td>
-                          {a.audienceRoles?.length
-                            ? a.audienceRoles.join(', ')
-                            : a.teamsLabel || a.showTo || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                    {(data.announcements ?? []).length === 0 ? (
-                      <tr>
-                        <td colSpan={3} className="ap-empty-msg">
-                          Δεν υπάρχουν ανακοινώσεις.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </ApCard>
             <ApCard title="Παρουσίες (τρέχουσα σεζόν)">
               <p className="muted">
                 Παρουσίες: {totals.present} · Απουσίες: {totals.absent} · Σύνολο καταγραφών:{' '}
@@ -1715,20 +1786,22 @@ export function AthleteProfilePage() {
       </div>
 
       <footer className="ap-footer-actions">
-        {editing ? (
-          <>
-            <Button type="button" variant="secondary" onClick={handleCancel}>
-              Ακύρωση
+        {canEditProfile ? (
+          editing ? (
+            <>
+              <Button type="button" variant="secondary" onClick={handleCancel}>
+                Ακύρωση
+              </Button>
+              <Button type="button" disabled={saving} onClick={() => void handleSave()}>
+                {saving ? 'Αποθήκευση…' : 'Αποθήκευση Αλλαγών'}
+              </Button>
+            </>
+          ) : (
+            <Button type="button" onClick={() => setEditing(true)}>
+              Επεξεργασία προφίλ
             </Button>
-            <Button type="button" disabled={saving} onClick={() => void handleSave()}>
-              {saving ? 'Αποθήκευση…' : 'Αποθήκευση Αλλαγών'}
-            </Button>
-          </>
-        ) : (
-          <Button type="button" onClick={() => setEditing(true)}>
-            Επεξεργασία προφίλ
-          </Button>
-        )}
+          )
+        ) : null}
       </footer>
     </div>
   );

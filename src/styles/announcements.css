@@ -839,7 +839,34 @@
   line-height: 1.45;
 }
 
-.ann-side-block {
+.ann-audience-scope {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+}
+
+.ann-scope-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.ann-scope-field > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted, #9aa6b5);
+}
+
+.ann-scope-field select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border, #2a3a4f) 80%, transparent);
+  background: color-mix(in srgb, var(--panel, #142033) 92%, #000);
+  color: inherit;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -930,8 +957,16 @@
   gap: 0.5rem;
   padding: 0.4rem 0.45rem;
   border-radius: 8px;
-  cursor: pointer;
   color: var(--ink);
+}
+
+.ann-pick-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
 }
 
 .ann-pick-row:hover,
@@ -958,6 +993,16 @@
   font-style: normal;
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.ann-pick-profile {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--accent, #c9a227);
+  text-decoration: underline;
+  white-space: nowrap;
 }
 
 .ann-role-pill.is-classes {
@@ -1187,9 +1232,13 @@
 .ann-priority-label.is-high { color: #e08a3a; }
 .ann-priority-label.is-urgent { color: #e15b5b; }
 
-.ann-menu-wrap { position: relative; display: inline-flex; }
+.ann-row-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 
-.ann-menu-btn {
+.ann-icon-btn {
   width: 34px;
   height: 34px;
   border: 1px solid var(--line);
@@ -1201,34 +1250,14 @@
   cursor: pointer;
 }
 
-.ann-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 6;
-  min-width: 150px;
-  padding: 0.3rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  display: grid;
+.ann-icon-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  color: var(--accent, #c9a227);
 }
 
-.ann-menu button {
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  text-align: left;
-  font: inherit;
-  font-weight: 650;
-  padding: 0.5rem 0.6rem;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.ann-menu button:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+.ann-icon-btn.is-danger:hover {
+  border-color: color-mix(in srgb, #e15b5b 55%, var(--line));
+  color: #e15b5b;
 }
 
 .ann-empty {

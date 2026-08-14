@@ -5,7 +5,7 @@ import { getSession, isPlatformAdmin } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { useAppData } from '../hooks/useAppData';
-import type { Student } from '../types';
+import type { AcademyClass, Student } from '../types';
 import {
   REGISTRY_COLUMNS,
   defaultRegistryFilters,
@@ -18,6 +18,7 @@ import { PAYMENT_METHODS, paymentMethodLabel } from '../shared/paymentMethods';
 import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 import { localDateIso } from '../utils/dates';
 import { canAccessAmka } from '../utils/amkaAccess';
+import { sportsMatch } from '../utils/coachScope';
 
 const COMPARE_OPS = ['=', '<', '>', '<=', '>='] as const;
 
@@ -83,6 +84,17 @@ function monthsAgoIso(months: number): string {
   d.setMonth(d.getMonth() - months);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function studentMatchesSportFilter(
+  student: Pick<Student, 'sport' | 'classId'>,
+  sport: string,
+  classes: AcademyClass[],
+): boolean {
+  if (!sport.trim()) return true;
+  if (sportsMatch(student.sport, sport)) return true;
+  const cls = classes.find((c) => c.id === student.classId);
+  return sportsMatch(cls?.sport, sport);
 }
 
 function FilterRow({
@@ -179,13 +191,21 @@ function TeamSelect({
   value,
   onChange,
   allLabel = 'Όλα τα τμήματα',
+  sport = '',
 }: {
   id: string;
   value: string;
   onChange: (v: string) => void;
   allLabel?: string;
+  sport?: string;
 }) {
   const { data } = useAppData();
+  const options = useMemo(() => {
+    const list = data.classes ?? [];
+    if (!sport.trim()) return list;
+    return list.filter((c) => sportsMatch(c.sport, sport));
+  }, [data.classes, sport]);
+
   return (
     <select
       id={id}
@@ -194,9 +214,49 @@ function TeamSelect({
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="">{allLabel}</option>
-      {data.classes.map((c) => (
+      {options.map((c) => (
         <option key={c.id} value={c.id}>
           {c.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function SportSelect({
+  id,
+  value,
+  onChange,
+  allLabel = 'Όλα τα αθλήματα',
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  allLabel?: string;
+}) {
+  const { data } = useAppData();
+  const options = useMemo(() => {
+    const fromCatalog = (data.sports ?? [])
+      .filter((s) => s.active)
+      .map((s) => s.name);
+    const fromClasses = (data.classes ?? []).map((c) => c.sport).filter(Boolean);
+    const fromAthletes = (data.students ?? []).map((s) => s.sport).filter(Boolean);
+    return Array.from(new Set([...fromCatalog, ...fromClasses, ...fromAthletes]))
+      .filter((n): n is string => Boolean(n && String(n).trim()))
+      .sort((a, b) => a.localeCompare(b, 'el'));
+  }, [data.sports, data.classes, data.students]);
+
+  return (
+    <select
+      id={id}
+      className="prints-filter-input"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">{allLabel}</option>
+      {options.map((name) => (
+        <option key={name} value={name}>
+          {name}
         </option>
       ))}
     </select>
@@ -431,22 +491,22 @@ function AthleteRegistrySection() {
   const [showResults, setShowResults] = useState(false);
   const [filtered, setFiltered] = useState<Student[]>([]);
 
-  const sportOptions = useMemo(
-    () =>
-      (data.sports ?? [])
-        .filter((s) => s.active)
-        .map((s) => s.name)
-        .sort((a, b) => a.localeCompare(b, 'el')),
-    [data.sports],
-  );
-
   const uniformSizeGroups = useMemo(
     () => sizeChartOptGroups(data.sizeChart),
     [data.sizeChart],
   );
 
   function setFilter<K extends keyof RegistryFilters>(key: K, value: RegistryFilters[K]) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'sport' && prev.teamId) {
+        const cls = data.classes.find((c) => c.id === prev.teamId);
+        if (value && cls && !sportsMatch(cls.sport, String(value))) {
+          next.teamId = '';
+        }
+      }
+      return next;
+    });
   }
 
   function runSearch() {
@@ -488,10 +548,18 @@ function AthleteRegistrySection() {
           onChange={(e) => setFilter('untilDate', e.target.value)}
         />
       </FilterRow>
+      <FilterRow label="Άθλημα" htmlFor="reg-sport">
+        <SportSelect
+          id="reg-sport"
+          value={filters.sport}
+          onChange={(v) => setFilter('sport', v)}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="reg-team">
         <TeamSelect
           id="reg-team"
           value={filters.teamId}
+          sport={filters.sport}
           onChange={(v) => setFilter('teamId', v)}
         />
       </FilterRow>
@@ -539,21 +607,6 @@ function AthleteRegistrySection() {
           value={filters.doctorCheck}
           onChange={(v) => setFilter('doctorCheck', v)}
         />
-      </FilterRow>
-      <FilterRow label="Άθλημα" htmlFor="reg-sport">
-        <select
-          id="reg-sport"
-          className="prints-filter-input"
-          value={filters.sport}
-          onChange={(e) => setFilter('sport', e.target.value)}
-        >
-          <option value="">Όλα</option>
-          {sportOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
       </FilterRow>
       <FilterRow label="Σωματείο" htmlFor="reg-assoc">
         <AssociationSelect
@@ -650,6 +703,7 @@ function AthleteRegistrySection() {
 function AthleteBalancesSection() {
   const { data } = useAppData();
   const [untilDate, setUntilDate] = useState(todayIso);
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [gender, setGender] = useState('');
   const [active, setActive] = useState<TriState>('');
@@ -663,6 +717,7 @@ function AthleteBalancesSection() {
   function runSearch() {
     const next = data.students
       .filter((s) => {
+        if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
         if (teamId && s.classId !== teamId) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
@@ -717,7 +772,7 @@ function AthleteBalancesSection() {
   return (
     <SectionShell
       title="Υπόλοιπα αθλητών"
-      desc="Εκκρεμείς χρεώσεις ανά αθλητή. Φίλτρα ανά τμήμα, φύλο, ενεργότητα, ποσό υπολοίπου και σωματείο."
+      desc="Εκκρεμείς χρεώσεις ανά αθλητή. Φίλτρα ανά άθλημα, τμήμα, φύλο, ενεργότητα, ποσό υπολοίπου και σωματείο."
     >
       <FilterRow label="Έως Ημερομηνία" htmlFor="bal-until">
         <input
@@ -728,8 +783,18 @@ function AthleteBalancesSection() {
           onChange={(e) => setUntilDate(e.target.value)}
         />
       </FilterRow>
+      <FilterRow label="Άθλημα" htmlFor="bal-sport">
+        <SportSelect
+          id="bal-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="bal-team">
-        <TeamSelect id="bal-team" value={teamId} onChange={setTeamId} />
+        <TeamSelect id="bal-team" value={teamId} sport={sport} onChange={setTeamId} />
       </FilterRow>
       <FilterRow label="Φύλο" htmlFor="bal-gender">
         <GenderSelect id="bal-gender" value={gender} onChange={setGender} />
@@ -781,6 +846,7 @@ function AttendanceLogSection() {
   const { data } = useAppData();
   const [fromDate, setFromDate] = useState(seasonStartIso);
   const [untilDate, setUntilDate] = useState(todayIso);
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [gender, setGender] = useState('');
   const [active, setActive] = useState<TriState>('');
@@ -796,6 +862,7 @@ function AttendanceLogSection() {
   function runSearch() {
     const next = data.students
       .filter((s) => {
+        if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
         if (teamId && s.classId !== teamId) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
@@ -870,7 +937,7 @@ function AttendanceLogSection() {
   return (
     <SectionShell
       title="Παρουσιολόγιο"
-      desc="Παρουσίες και απουσίες ανά αθλητή για επιλεγμένη περίοδο. Φίλτρα ανά τμήμα, φύλο, ενεργότητα και ποσοστό παρουσίας."
+      desc="Παρουσίες και απουσίες ανά αθλητή για επιλεγμένη περίοδο. Φίλτρα ανά άθλημα, τμήμα, φύλο, ενεργότητα και ποσοστό παρουσίας."
     >
       <FilterRow label="Από Ημερομηνία" htmlFor="att-from">
         <input
@@ -890,8 +957,18 @@ function AttendanceLogSection() {
           onChange={(e) => setUntilDate(e.target.value)}
         />
       </FilterRow>
+      <FilterRow label="Άθλημα" htmlFor="att-sport">
+        <SportSelect
+          id="att-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="att-team">
-        <TeamSelect id="att-team" value={teamId} onChange={setTeamId} />
+        <TeamSelect id="att-team" value={teamId} sport={sport} onChange={setTeamId} />
       </FilterRow>
       <FilterRow label="Φύλο" htmlFor="att-gender">
         <GenderSelect id="att-gender" value={gender} onChange={setGender} />
@@ -953,6 +1030,7 @@ function AttendanceLogSection() {
 
 function TrainingAttendanceSheetSection() {
   const { data } = useAppData();
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [date, setDate] = useState(todayIso);
   const [trainingId, setTrainingId] = useState('');
@@ -966,7 +1044,9 @@ function TrainingAttendanceSheetSection() {
 
   function runSearch() {
     if (!teamId) return;
-    const athletes = data.students.filter((s) => s.classId === teamId);
+    const athletes = data.students.filter(
+      (s) => s.classId === teamId && studentMatchesSportFilter(s, sport, data.classes),
+    );
     setRows(
       athletes.map((s, index) => ({
         id: s.id,
@@ -986,10 +1066,22 @@ function TrainingAttendanceSheetSection() {
       title="Παρουσιολόγιο προπόνησης"
       desc="Κενό φύλλο παρουσίας για επιλεγμένη προπόνηση ή λίστα τμήματος. Εκτύπωση με checkbox παρόν/απών/αργία."
     >
+      <FilterRow label="Άθλημα" htmlFor="tas-sport">
+        <SportSelect
+          id="tas-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+            setTrainingId('');
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="tas-team">
         <TeamSelect
           id="tas-team"
           value={teamId}
+          sport={sport}
           onChange={(v) => {
             setTeamId(v);
             setTrainingId('');
@@ -1056,6 +1148,7 @@ function RegistrationApplicationsSection() {
   const [untilDate, setUntilDate] = useState(todayIso);
   const [category, setCategory] = useState('pending');
   const [appType, setAppType] = useState('');
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
@@ -1093,6 +1186,10 @@ function RegistrationApplicationsSection() {
       if (fromDate && day && day < fromDate) return false;
       if (untilDate && day && day > untilDate) return false;
       if (teamId && app.classId !== teamId) return false;
+      if (sport) {
+        const cls = data.classes.find((c) => c.id === app.classId);
+        if (!sportsMatch(cls?.sport, sport)) return false;
+      }
       if (appType && app.kind !== appType) return false;
       if (category === 'pending' && app.status !== 'pending') return false;
       if (category === 'trial' && app.kind !== 'trial') return false;
@@ -1143,7 +1240,7 @@ function RegistrationApplicationsSection() {
   return (
     <SectionShell
       title="Αιτήσεις εγγραφής"
-      desc="Εκτύπωση εκκρεμών, δοκιμαστικών και λίστας αναμονής. Φίλτρα ανά ημερομηνία, τμήμα και τύπο αίτησης."
+      desc="Εκτύπωση εκκρεμών, δοκιμαστικών και λίστας αναμονής. Φίλτρα ανά ημερομηνία, άθλημα, τμήμα και τύπο αίτησης."
     >
       <FilterRow label="Από Ημερομηνία" htmlFor="app-from">
         <input
@@ -1189,8 +1286,18 @@ function RegistrationApplicationsSection() {
           <option value="waitlist">Λίστα αναμονής</option>
         </select>
       </FilterRow>
+      <FilterRow label="Άθλημα" htmlFor="app-sport">
+        <SportSelect
+          id="app-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="app-team">
-        <TeamSelect id="app-team" value={teamId} onChange={setTeamId} />
+        <TeamSelect id="app-team" value={teamId} sport={sport} onChange={setTeamId} />
       </FilterRow>
       <div className="prints-filter-actions">
         <Button type="button" onClick={runSearch}>
@@ -1225,6 +1332,7 @@ function MedicalExpirySection() {
   const { data } = useAppData();
   const [refDate, setRefDate] = useState(todayIso);
   const [window, setWindow] = useState('30');
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [gender, setGender] = useState('');
   const [active, setActive] = useState<TriState>('yes');
@@ -1234,6 +1342,7 @@ function MedicalExpirySection() {
   function runSearch() {
     const next = data.students
       .filter((s) => {
+        if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
         if (teamId && s.classId !== teamId) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
@@ -1259,7 +1368,7 @@ function MedicalExpirySection() {
   return (
     <SectionShell
       title="Λήξεις ιατρικών πιστοποιητικών"
-      desc="Αθλητές με ληγμένη ή προσεχώς ληγμένη ιατρική βεβαίωση. Φίλτρα ανά τμήμα, φύλο και ενεργότητα."
+      desc="Αθλητές με ληγμένη ή προσεχώς ληγμένη ιατρική βεβαίωση. Φίλτρα ανά άθλημα, τμήμα, φύλο και ενεργότητα."
     >
       <FilterRow label="Ημερομηνία αναφοράς" htmlFor="med-ref">
         <input
@@ -1286,8 +1395,18 @@ function MedicalExpirySection() {
           <option value="all">Όλα</option>
         </select>
       </FilterRow>
+      <FilterRow label="Άθλημα" htmlFor="med-sport">
+        <SportSelect
+          id="med-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="med-team">
-        <TeamSelect id="med-team" value={teamId} onChange={setTeamId} />
+        <TeamSelect id="med-team" value={teamId} sport={sport} onChange={setTeamId} />
       </FilterRow>
       <FilterRow label="Φύλο" htmlFor="med-gender">
         <GenderSelect id="med-gender" value={gender} onChange={setGender} />
@@ -1333,14 +1452,6 @@ function PaymentsCollectionsSection() {
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const sportOptions = useMemo(
-    () =>
-      [...new Set((data.sports ?? []).filter((s) => s.active).map((s) => s.name))].sort((a, b) =>
-        a.localeCompare(b, 'el'),
-      ),
-    [data.sports],
-  );
-
   function runSearch() {
     const min = amountMin.trim() ? Number(amountMin) : null;
     const max = amountMax.trim() ? Number(amountMax) : null;
@@ -1361,11 +1472,10 @@ function PaymentsCollectionsSection() {
 
         const student = data.students.find((s) => s.id === t.athleteId);
         if (teamId && (!student || student.classId !== teamId)) return false;
-        if (sport) {
-          const studentSport = student?.sport ?? '';
-          const classSport = data.classes.find((c) => c.id === student?.classId)?.sport ?? '';
-          if (studentSport !== sport && classSport !== sport) return false;
+        if (sport && student && !studentMatchesSportFilter(student, sport, data.classes)) {
+          return false;
         }
+        if (sport && !student) return false;
         if (q) {
           const hay = `${student?.lastName ?? ''} ${student?.firstName ?? ''}`.toLowerCase();
           if (!hay.includes(q)) return false;
@@ -1421,19 +1531,14 @@ function PaymentsCollectionsSection() {
         />
       </FilterRow>
       <FilterRow label="Άθλημα" htmlFor="pay-sport">
-        <select
+        <SportSelect
           id="pay-sport"
-          className="prints-filter-input"
           value={sport}
-          onChange={(e) => setSport(e.target.value)}
-        >
-          <option value="">Όλα</option>
-          {sportOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+          }}
+        />
       </FilterRow>
       <FilterRow label="Ποσό από" htmlFor="pay-amount-min">
         <input
@@ -1497,7 +1602,7 @@ function PaymentsCollectionsSection() {
         />
       </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="pay-team">
-        <TeamSelect id="pay-team" value={teamId} onChange={setTeamId} />
+        <TeamSelect id="pay-team" value={teamId} sport={sport} onChange={setTeamId} />
       </FilterRow>
       <div className="prints-filter-actions">
         <Button type="button" onClick={runSearch}>
@@ -1531,6 +1636,7 @@ function PaymentsCollectionsSection() {
 function DebtorsSection() {
   const { data } = useAppData();
   const [untilDate, setUntilDate] = useState(todayIso);
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [gender, setGender] = useState('');
   const [active, setActive] = useState<TriState>('yes');
@@ -1552,6 +1658,7 @@ function DebtorsSection() {
       })
       .filter(({ student: s, balance }) => {
         if (balance <= 0) return false;
+        if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
         if (teamId && s.classId !== teamId) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
@@ -1577,7 +1684,7 @@ function DebtorsSection() {
   return (
     <SectionShell
       title="Οφειλέτες"
-      desc="Αθλητές με εκκρεμείς χρεώσεις και στοιχεία επικοινωνίας. Φίλτρα ανά τμήμα, ενεργότητα και ελάχιστο υπόλοιπο."
+      desc="Αθλητές με εκκρεμείς χρεώσεις και στοιχεία επικοινωνίας. Φίλτρα ανά άθλημα, τμήμα, ενεργότητα και ελάχιστο υπόλοιπο."
     >
       <FilterRow label="Έως Ημερομηνία" htmlFor="deb-until">
         <input
@@ -1588,8 +1695,18 @@ function DebtorsSection() {
           onChange={(e) => setUntilDate(e.target.value)}
         />
       </FilterRow>
+      <FilterRow label="Άθλημα" htmlFor="deb-sport">
+        <SportSelect
+          id="deb-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setTeamId('');
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Τμήματα" htmlFor="deb-team">
-        <TeamSelect id="deb-team" value={teamId} onChange={setTeamId} />
+        <TeamSelect id="deb-team" value={teamId} sport={sport} onChange={setTeamId} />
       </FilterRow>
       <FilterRow label="Φύλο" htmlFor="deb-gender">
         <GenderSelect id="deb-gender" value={gender} onChange={setGender} />
@@ -1638,7 +1755,16 @@ function DebtorsSection() {
 function LegalFormsSection() {
   const { data } = useAppData();
   const [mode, setMode] = useState<'gdpr' | 'registration'>('gdpr');
+  const [sport, setSport] = useState('');
   const [athleteId, setAthleteId] = useState('');
+
+  const athleteOptions = useMemo(() => {
+    return [...data.students]
+      .filter((s) => studentMatchesSportFilter(s, sport, data.classes))
+      .sort((a, b) =>
+        `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
+      );
+  }, [data.students, data.classes, sport]);
 
   return (
     <SectionShell
@@ -1662,28 +1788,33 @@ function LegalFormsSection() {
         </button>
       </div>
       {mode === 'gdpr' ? (
-        <FilterRow label="Αθλητής" htmlFor="legal-athlete">
-          <select
-            id="legal-athlete"
-            className="prints-filter-input"
-            value={athleteId}
-            onChange={(e) => setAthleteId(e.target.value)}
-          >
-            <option value="">Επιλέξτε αθλητή</option>
-            {[...data.students]
-              .sort((a, b) =>
-                `${a.lastName} ${a.firstName}`.localeCompare(
-                  `${b.lastName} ${b.firstName}`,
-                  'el',
-                ),
-              )
-              .map((s) => (
+        <>
+          <FilterRow label="Άθλημα" htmlFor="legal-sport">
+            <SportSelect
+              id="legal-sport"
+              value={sport}
+              onChange={(v) => {
+                setSport(v);
+                setAthleteId('');
+              }}
+            />
+          </FilterRow>
+          <FilterRow label="Αθλητής" htmlFor="legal-athlete">
+            <select
+              id="legal-athlete"
+              className="prints-filter-input"
+              value={athleteId}
+              onChange={(e) => setAthleteId(e.target.value)}
+            >
+              <option value="">Επιλέξτε αθλητή</option>
+              {athleteOptions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.lastName} {s.firstName}
                 </option>
               ))}
-          </select>
-        </FilterRow>
+            </select>
+          </FilterRow>
+        </>
       ) : (
         <FilterRow label="Αιτήσεις Εγγραφής" htmlFor="legal-app">
           <select id="legal-app" className="prints-filter-input" defaultValue="">
@@ -1702,10 +1833,19 @@ function LegalFormsSection() {
 
 function DevelopmentReportSection() {
   const { data } = useAppData();
+  const [sport, setSport] = useState('');
   const [athleteId, setAthleteId] = useState('');
   const [fromDate, setFromDate] = useState(monthsAgoIso(3));
   const [untilDate, setUntilDate] = useState(todayIso);
   const [preview, setPreview] = useState(false);
+
+  const athleteOptions = useMemo(() => {
+    return [...data.students]
+      .filter((s) => studentMatchesSportFilter(s, sport, data.classes))
+      .sort((a, b) =>
+        `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
+      );
+  }, [data.students, data.classes, sport]);
 
   const reports = useMemo(() => {
     if (!athleteId || !preview) return [];
@@ -1722,23 +1862,33 @@ function DevelopmentReportSection() {
       title="Αναφορά προόδου"
       desc="Εκτύπωση αναφοράς προόδου αθλητή για επιλεγμένη περίοδο."
     >
+      <FilterRow label="Άθλημα" htmlFor="dev-sport">
+        <SportSelect
+          id="dev-sport"
+          value={sport}
+          onChange={(v) => {
+            setSport(v);
+            setAthleteId('');
+            setPreview(false);
+          }}
+        />
+      </FilterRow>
       <FilterRow label="Αθλητής" htmlFor="dev-athlete">
         <select
           id="dev-athlete"
           className="prints-filter-input"
           value={athleteId}
-          onChange={(e) => setAthleteId(e.target.value)}
+          onChange={(e) => {
+            setAthleteId(e.target.value);
+            setPreview(false);
+          }}
         >
           <option value="">Επίλεξε αθλητή...</option>
-          {[...data.students]
-            .sort((a, b) =>
-              `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
-            )
-            .map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.lastName} {s.firstName}
-              </option>
-            ))}
+          {athleteOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.lastName} {s.firstName}
+            </option>
+          ))}
         </select>
       </FilterRow>
       <FilterRow label="Από" htmlFor="dev-from">
@@ -1809,9 +1959,10 @@ function SimpleReportSection({
 }: {
   title: string;
   desc: string;
-  filters: Array<'team' | 'paymentStatus'>;
+  filters: Array<'team' | 'paymentStatus' | 'sport'>;
 }) {
   const { data } = useAppData();
+  const [sport, setSport] = useState('');
   const [teamId, setTeamId] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -1827,13 +1978,15 @@ function SimpleReportSection({
         { key: 'age', label: 'Κατηγορία' },
       ]);
       setRows(
-        data.classes.map((c, i) => ({
-          id: c.id,
-          index: String(i + 1),
-          name: c.name,
-          sport: c.sport,
-          age: c.ageGroup,
-        })),
+        data.classes
+          .filter((c) => !sport || sportsMatch(c.sport, sport))
+          .map((c, i) => ({
+            id: c.id,
+            index: String(i + 1),
+            name: c.name,
+            sport: c.sport,
+            age: c.ageGroup,
+          })),
       );
     } else if (title === 'Πρόγραμμα προπονήσεων') {
       setColumns([
@@ -1845,7 +1998,12 @@ function SimpleReportSection({
       ]);
       setRows(
         data.trainings
-          .filter((t) => !teamId || t.classId === teamId)
+          .filter((t) => {
+            if (teamId && t.classId !== teamId) return false;
+            if (!sport) return true;
+            const cls = data.classes.find((c) => c.id === t.classId);
+            return sportsMatch(cls?.sport, sport);
+          })
           .map((t, i) => ({
             id: t.id,
             index: String(i + 1),
@@ -1865,7 +2023,11 @@ function SimpleReportSection({
       ]);
       setRows(
         data.students
-          .filter((s) => !teamId || s.classId === teamId)
+          .filter((s) => {
+            if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
+            if (teamId && s.classId !== teamId) return false;
+            return true;
+          })
           .map((s, i) => ({
             id: s.id,
             index: String(i + 1),
@@ -1896,7 +2058,12 @@ function SimpleReportSection({
       ]);
       setRows(
         data.revenues
-          .filter((r) => !paymentStatus || r.paymentStatus === paymentStatus)
+          .filter((r) => {
+            if (paymentStatus && r.paymentStatus !== paymentStatus) return false;
+            if (!sport) return true;
+            const s = data.students.find((st) => st.id === r.studentId);
+            return s ? studentMatchesSportFilter(s, sport, data.classes) : false;
+          })
           .map((r, i) => {
             const s = data.students.find((st) => st.id === r.studentId);
             return {
@@ -1919,9 +2086,26 @@ function SimpleReportSection({
 
   return (
     <SectionShell title={title} desc={desc}>
+      {filters.includes('sport') ? (
+        <FilterRow label="Άθλημα" htmlFor={`simple-sport-${title}`}>
+          <SportSelect
+            id={`simple-sport-${title}`}
+            value={sport}
+            onChange={(v) => {
+              setSport(v);
+              setTeamId('');
+            }}
+          />
+        </FilterRow>
+      ) : null}
       {filters.includes('team') ? (
         <FilterRow label="Τμήματα" htmlFor={`simple-team-${title}`}>
-          <TeamSelect id={`simple-team-${title}`} value={teamId} onChange={setTeamId} />
+          <TeamSelect
+            id={`simple-team-${title}`}
+            value={teamId}
+            sport={filters.includes('sport') ? sport : ''}
+            onChange={setTeamId}
+          />
         </FilterRow>
       ) : null}
       {filters.includes('paymentStatus') ? (
@@ -1981,8 +2165,8 @@ function SelectedSection({ id }: { id: MenuId }) {
       return (
         <SimpleReportSection
           title="Κατάλογος τμημάτων"
-          desc="Όνομα και κατηγορία κάθε τμήματος."
-          filters={[]}
+          desc="Όνομα και κατηγορία κάθε τμήματος. Φίλτρο ανά άθλημα."
+          filters={['sport']}
         />
       );
     case 'medical':
@@ -1990,7 +2174,7 @@ function SelectedSection({ id }: { id: MenuId }) {
         <SimpleReportSection
           title="Ιατρικά στοιχεία"
           desc="Πιστοποιητικά, τραυματισμοί και σημειώσεις."
-          filters={['team']}
+          filters={['sport', 'team']}
         />
       );
     case 'finance':
@@ -2006,7 +2190,7 @@ function SelectedSection({ id }: { id: MenuId }) {
         <SimpleReportSection
           title="Χρεώσεις / πληρωμές"
           desc="Κατάσταση χρεώσεων και πληρωμών αθλητών."
-          filters={['paymentStatus']}
+          filters={['sport', 'paymentStatus']}
         />
       );
     case 'trainings':
@@ -2014,7 +2198,7 @@ function SelectedSection({ id }: { id: MenuId }) {
         <SimpleReportSection
           title="Πρόγραμμα προπονήσεων"
           desc="Ημερομηνία, ώρα, τοποθεσία και τμήμα."
-          filters={['team']}
+          filters={['sport', 'team']}
         />
       );
     default:

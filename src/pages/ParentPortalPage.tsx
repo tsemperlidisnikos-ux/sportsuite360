@@ -107,13 +107,21 @@ export function ParentPortalPage() {
     const linkedClasses = linkedAthletes
       .map((a) => a.classId)
       .filter(Boolean) as string[];
+    const linkedMeta = linkedAthletes.map((a) => ({
+      id: a.id,
+      sport: a.sport,
+      clubName: a.clubName,
+      classSport: a.classId
+        ? data.classes.find((c) => c.id === a.classId)?.sport
+        : null,
+    }));
     return (data.announcements ?? [])
       .filter((a) =>
-        announcementVisibleToParent(a, session.id, linkedIds, linkedClasses),
+        announcementVisibleToParent(a, session.id, linkedIds, linkedClasses, linkedMeta),
       )
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 8);
-  }, [data.announcements, linkedAthletes, session]);
+  }, [data.announcements, data.classes, linkedAthletes, session]);
 
   const classNameById = useMemo(() => {
     const map = new Map<string, string>();

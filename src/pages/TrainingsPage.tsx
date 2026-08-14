@@ -9,9 +9,12 @@ import type { Training } from '../types';
 import {
   classIdsOf,
   isClassInCoachScope,
+  resolveCoachRecord,
+  sportsMatch,
   visibleClassesForSession,
 } from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
+import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm: TrainingInput = {
   date: '',
@@ -47,20 +50,63 @@ export function TrainingsPage() {
   const { data, refresh } = useAppData();
   const session = getSession();
   const isCoach = session?.role === 'coach';
+  const coach = useMemo(
+    () => resolveCoachRecord(data.coaches, session?.coachId),
+    [data.coaches, session?.coachId],
+  );
   const visibleClasses = useMemo(
     () => visibleClassesForSession(data.classes, data.coaches, session),
     [data.classes, data.coaches, session],
   );
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
+
+  const sportOptions = useMemo(() => {
+    const active = (data.sports ?? []).filter((s) => s.active);
+    if (isCoach && coach?.sport) {
+      const key = normalizeSportKey(coach.sport);
+      const matched = active.filter((s) => normalizeSportKey(s.name) === key);
+      return matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
+    }
+    if (active.length > 0) {
+      return active.filter((s) =>
+        visibleClasses.some((c) => sportsMatch(c.sport, s.name)),
+      );
+    }
+    const fromClasses = new Map<string, string>();
+    for (const cls of visibleClasses) {
+      const name = (cls.sport ?? '').trim();
+      if (!name) continue;
+      const key = normalizeSportKey(name);
+      if (!fromClasses.has(key)) fromClasses.set(key, name);
+    }
+    return [...fromClasses.values()].map((name, i) => ({
+      id: `sport-${i}`,
+      name,
+      active: true,
+    }));
+  }, [data.sports, isCoach, coach, visibleClasses]);
+
   const [showAdd, setShowAdd] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
   const [editing, setEditing] = useState<Training | null>(null);
   const [form, setForm] = useState<TrainingInput>(emptyForm);
+  const [formSport, setFormSport] = useState('');
   const [recForm, setRecForm] = useState(emptyRecurring);
+  const [recSport, setRecSport] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  const classesForFormSport = useMemo(() => {
+    if (!formSport.trim()) return visibleClasses;
+    return visibleClasses.filter((c) => sportsMatch(c.sport, formSport));
+  }, [visibleClasses, formSport]);
+
+  const classesForRecSport = useMemo(() => {
+    if (!recSport.trim()) return visibleClasses;
+    return visibleClasses.filter((c) => sportsMatch(c.sport, recSport));
+  }, [visibleClasses, recSport]);
 
   const trainings = useMemo(
     () =>
@@ -77,15 +123,24 @@ export function TrainingsPage() {
   const allSelected =
     trainings.length > 0 && trainings.every((t) => selectedIds.has(t.id));
 
+  function defaultSport(): string {
+    return isCoach && coach?.sport ? coach.sport : '';
+  }
+
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setFormSport(defaultSport());
     setError('');
     setShowAdd(true);
   }
 
   function openEdit(training: Training) {
     setEditing(training);
+    const cls = training.classId
+      ? visibleClasses.find((c) => c.id === training.classId) ??
+        data.classes.find((c) => c.id === training.classId)
+      : undefined;
     setForm({
       date: training.date,
       startTime: training.startTime,
@@ -94,12 +149,14 @@ export function TrainingsPage() {
       notes: training.notes,
       classId: training.classId,
     });
+    setFormSport(cls?.sport || defaultSport());
     setError('');
     setShowAdd(true);
   }
 
   function openRecurring() {
     setRecForm(emptyRecurring);
+    setRecSport(defaultSport());
     setError('');
     setShowRecurring(true);
   }
@@ -108,7 +165,31 @@ export function TrainingsPage() {
     setShowAdd(false);
     setShowRecurring(false);
     setEditing(null);
+    setFormSport('');
+    setRecSport('');
     setError('');
+  }
+
+  function handleFormSportChange(sport: string) {
+    setFormSport(sport);
+    setForm((prev) => {
+      if (!prev.classId) return prev;
+      const stillValid = visibleClasses.some(
+        (c) => c.id === prev.classId && (!sport.trim() || sportsMatch(c.sport, sport)),
+      );
+      return stillValid ? prev : { ...prev, classId: null };
+    });
+  }
+
+  function handleRecSportChange(sport: string) {
+    setRecSport(sport);
+    setRecForm((prev) => {
+      if (!prev.classId) return prev;
+      const stillValid = visibleClasses.some(
+        (c) => c.id === prev.classId && (!sport.trim() || sportsMatch(c.sport, sport)),
+      );
+      return stillValid ? prev : { ...prev, classId: null };
+    });
   }
 
   function toggleRow(id: string) {
@@ -338,6 +419,21 @@ export function TrainingsPage() {
                 />
               </label>
               <label>
+                <span>Άθλημα</span>
+                <select
+                  value={formSport}
+                  disabled={isCoach}
+                  onChange={(e) => handleFormSportChange(e.target.value)}
+                >
+                  {isCoach ? null : <option value="">—</option>}
+                  {sportOptions.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 <span>Τμήμα</span>
                 <select
                   value={form.classId ?? ''}
@@ -346,7 +442,7 @@ export function TrainingsPage() {
                   }
                 >
                   <option value="">—</option>
-                  {visibleClasses.map((cls) => (
+                  {classesForFormSport.map((cls) => (
                     <option key={cls.id} value={cls.id}>
                       {cls.name}
                     </option>
@@ -392,6 +488,21 @@ export function TrainingsPage() {
             <h2 id="recurring-modal-title">Επαναλαμβανόμενες προπονήσεις</h2>
             <div className="training-modal-fields">
               <label>
+                <span>Άθλημα</span>
+                <select
+                  value={recSport}
+                  disabled={isCoach}
+                  onChange={(e) => handleRecSportChange(e.target.value)}
+                >
+                  {isCoach ? null : <option value="">—</option>}
+                  {sportOptions.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 <span>Τμήμα</span>
                 <select
                   value={recForm.classId ?? ''}
@@ -403,7 +514,7 @@ export function TrainingsPage() {
                   }
                 >
                   <option value="">—</option>
-                  {visibleClasses.map((cls) => (
+                  {classesForRecSport.map((cls) => (
                     <option key={cls.id} value={cls.id}>
                       {cls.name}
                     </option>

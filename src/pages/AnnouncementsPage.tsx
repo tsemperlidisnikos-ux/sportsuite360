@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import {
   Bold,
+  Building2,
   CalendarClock,
-  Flag,
   Italic,
   Layers,
   List,
   ListOrdered,
-  MoreHorizontal,
+  Pencil,
   Search,
   Send,
+  Trash2,
+  Trophy,
   Underline,
   Users,
   UserRound,
+  UsersRound,
   GraduationCap,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import * as announcementsService from '../api/services/announcementsService';
 import * as notificationService from '../api/services/notificationService';
 import { getSession } from '../auth/auth';
@@ -24,16 +28,22 @@ import type { AnnouncementInput } from '../schemas';
 import type {
   Announcement,
   AnnouncementAudienceRole,
-  AnnouncementPriority,
   AnnouncementRecipient,
   AnnouncementRecipientKind,
 } from '../types';
-import { listParentRecipients } from '../utils/announcementAudience';
+import {
+  announcementVisibleToAthlete,
+  announcementVisibleToCoach,
+  listParentRecipients,
+} from '../utils/announcementAudience';
 import {
   classIdsOf,
+  resolveCoachRecord,
+  sportsMatch,
   visibleClassesForSession,
   visibleStudentsForSession,
 } from '../utils/coachScope';
+import { normalizeSportKey } from '../utils/sport';
 
 const PAGE_SIZE = 5;
 
@@ -48,21 +58,8 @@ const AUDIENCE_OPTIONS: Array<{
   { id: 'parents', label: 'Γονείς', icon: Users, recipientKind: 'parent' },
   { id: 'coaches', label: 'Προπονητές', icon: UserRound, recipientKind: 'coach' },
   { id: 'athletes', label: 'Αθλητές', icon: GraduationCap, recipientKind: 'athlete' },
+  { id: 'staff', label: 'Προσωπικό', icon: UsersRound, recipientKind: 'staff' },
 ];
-
-const PRIORITY_OPTIONS: Array<{ id: AnnouncementPriority; label: string }> = [
-  { id: 'low', label: 'Χαμηλή' },
-  { id: 'normal', label: 'Κανονική' },
-  { id: 'high', label: 'Υψηλή' },
-  { id: 'urgent', label: 'Επείγουσα' },
-];
-
-const PRIORITY_LABELS: Record<AnnouncementPriority, string> = {
-  low: 'Χαμηλή',
-  normal: 'Κανονική',
-  high: 'Υψηλή',
-  urgent: 'Επείγουσα',
-};
 
 const emptyForm: AnnouncementInput = {
   title: '',
@@ -97,11 +94,6 @@ function htmlToPlain(html: string): string {
   return (el.innerText || el.textContent || '').trim();
 }
 
-function resolvePriority(item: Announcement): AnnouncementPriority {
-  if (item.priority) return item.priority;
-  return item.highPriority ? 'high' : 'normal';
-}
-
 export function AnnouncementsPage() {
   const { data, refresh } = useAppData();
   const session = getSession();
@@ -114,10 +106,8 @@ export function AnnouncementsPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
-  const [menuId, setMenuId] = useState<string | null>(null);
 
   const [audienceFilter, setAudienceFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pickerOpen, setPickerOpen] = useState<AudiencePicker>(null);
@@ -137,45 +127,126 @@ export function AnnouncementsPage() {
   );
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
 
-  const coachOptions = useMemo(
-    () =>
-      (data.coaches ?? [])
-        .filter((c) => c.active)
-        .map((c) => ({
-          id: c.id,
-          label: `${c.lastName} ${c.firstName}`.trim(),
-          hint: c.email,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label, 'el')),
-    [data.coaches],
-  );
+  const coachOptions = useMemo(() => {
+    const sport = (form.sportCategories ?? '').trim();
+    return (data.coaches ?? [])
+      .filter((c) => c.active)
+      .filter((c) => !sport || sportsMatch(c.sport, sport))
+      .map((c) => ({
+        id: c.id,
+        label: `${c.lastName} ${c.firstName}`.trim(),
+        hint: c.email,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'el'));
+  }, [data.coaches, form.sportCategories]);
+
+  const scopedStudents = useMemo(() => {
+    const sport = (form.sportCategories ?? '').trim();
+    const club = (form.teamsLabel ?? '').trim();
+    const clubKey = normalizeSportKey(club);
+    return visibleStudentsForSession(data.students, allowedClassIds, session)
+      .filter((s) => s.status !== 'inactive')
+      .filter((s) => {
+        if (clubKey && normalizeSportKey(s.clubName) !== clubKey) return false;
+        if (!sport) return true;
+        if (sportsMatch(s.sport, sport)) return true;
+        const cls = data.classes.find((c) => c.id === s.classId);
+        return sportsMatch(cls?.sport, sport);
+      });
+  }, [
+    data.students,
+    data.classes,
+    allowedClassIds,
+    session,
+    form.sportCategories,
+    form.teamsLabel,
+  ]);
 
   const athleteOptions = useMemo(() => {
     const classFilter = form.classIds ?? [];
-    return visibleStudentsForSession(data.students, allowedClassIds, session)
-      .filter((s) => s.status !== 'inactive')
+    return scopedStudents
       .filter((s) => (classFilter.length === 0 ? true : s.classId && classFilter.includes(s.classId)))
-      .map((s) => ({
-        id: s.id,
-        label: `${s.lastName} ${s.firstName}`.trim(),
-        hint: data.classes.find((c) => c.id === s.classId)?.name ?? '',
-      }))
+      .map((s) => {
+        const className = data.classes.find((c) => c.id === s.classId)?.name ?? '';
+        const sport = s.sport || data.classes.find((c) => c.id === s.classId)?.sport || '';
+        return {
+          id: s.id,
+          label: `${s.lastName} ${s.firstName}`.trim(),
+          hint: [className, sport].filter(Boolean).join(' · '),
+        };
+      })
       .sort((a, b) => a.label.localeCompare(b.label, 'el'));
-  }, [data.students, data.classes, form.classIds, allowedClassIds, session]);
+  }, [scopedStudents, data.classes, form.classIds]);
 
-  const parentOptions = useMemo(() => listParentRecipients(), [data.parentLinks, data.students]);
+  const parentOptions = useMemo(() => {
+    const all = listParentRecipients();
+    const sport = (form.sportCategories ?? '').trim();
+    const club = (form.teamsLabel ?? '').trim();
+    if (!sport && !club) return all;
+    const athleteIds = new Set(scopedStudents.map((s) => s.id));
+    return all.filter((p) =>
+      (data.parentLinks ?? []).some(
+        (link) => link.parentUserId === p.id && athleteIds.has(link.athleteId),
+      ),
+    );
+  }, [data.parentLinks, scopedStudents, form.sportCategories, form.teamsLabel]);
 
-  const classOptions = useMemo(
+  const staffOptions = useMemo(
     () =>
-      visibleClasses
-        .map((c) => ({
-          id: c.id,
-          label: c.name,
-          hint: c.ageGroup || c.sport || '',
+      (data.staff ?? [])
+        .filter((s) => s.active)
+        .map((s) => ({
+          id: s.id,
+          label: s.fullName || s.email,
+          hint: s.email,
         }))
         .sort((a, b) => a.label.localeCompare(b.label, 'el')),
-    [visibleClasses],
+    [data.staff],
   );
+
+  const classOptions = useMemo(() => {
+    const sport = (form.sportCategories ?? '').trim();
+    const club = (form.teamsLabel ?? '').trim();
+    const clubKey = normalizeSportKey(club);
+    return visibleClasses
+      .filter((c) => !sport || sportsMatch(c.sport, sport))
+      .filter((c) => {
+        if (!clubKey) return true;
+        return (data.students ?? []).some(
+          (s) =>
+            s.classId === c.id &&
+            s.status !== 'inactive' &&
+            normalizeSportKey(s.clubName) === clubKey,
+        );
+      })
+      .map((c) => ({
+        id: c.id,
+        label: c.name,
+        hint: c.ageGroup || c.sport || '',
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'el'));
+  }, [visibleClasses, data.students, form.sportCategories, form.teamsLabel]);
+
+  const sportFilterOptions = useMemo(() => {
+    const active = (data.sports ?? []).filter((s) => s.active);
+    if (active.length > 0) return active.map((s) => s.name);
+    const names = new Set<string>();
+    for (const c of visibleClasses) {
+      if (c.sport?.trim()) names.add(c.sport.trim());
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, 'el'));
+  }, [data.sports, visibleClasses]);
+
+  const clubFilterOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const a of data.associations ?? []) {
+      if (a.active && a.name?.trim()) names.add(a.name.trim());
+    }
+    for (const s of data.students ?? []) {
+      if (s.clubName?.trim()) names.add(s.clubName.trim());
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, 'el'));
+  }, [data.associations, data.students]);
 
   const announcements = useMemo(
     () =>
@@ -185,10 +256,33 @@ export function AnnouncementsPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const coach = resolveCoachRecord(data.coaches, session?.coachId);
+    const athlete =
+      session?.role === 'athlete' && session.athleteId
+        ? data.students.find((s) => s.id === session.athleteId)
+        : null;
+    const athleteClassSport = athlete?.classId
+      ? data.classes.find((c) => c.id === athlete.classId)?.sport
+      : null;
+
     return announcements.filter((item) => {
       if (item.status === 'draft') return false;
-      const priority = resolvePriority(item);
-      if (priorityFilter && priority !== priorityFilter) return false;
+      if (session?.role === 'athlete' && athlete) {
+        if (
+          !announcementVisibleToAthlete(item, {
+            athleteId: athlete.id,
+            classId: athlete.classId,
+            sport: athlete.sport,
+            clubName: athlete.clubName,
+            classSport: athleteClassSport,
+          })
+        ) {
+          return false;
+        }
+      }
+      if (session?.role === 'coach' && coach) {
+        if (!announcementVisibleToCoach(item, coach.id, coach.sport)) return false;
+      }
       if (audienceFilter) {
         const roles = item.audienceRoles ?? [];
         if (roles.length > 0 && !roles.includes(audienceFilter as AnnouncementAudienceRole)) {
@@ -199,7 +293,15 @@ export function AnnouncementsPage() {
       const hay = `${item.title} ${htmlToPlain(item.message)}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [announcements, audienceFilter, priorityFilter, query]);
+  }, [
+    announcements,
+    audienceFilter,
+    query,
+    session,
+    data.coaches,
+    data.students,
+    data.classes,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -235,8 +337,8 @@ export function AnnouncementsPage() {
       message: htmlToPlain(item.message),
       targetType: item.targetType,
       targetId: item.targetId,
-      highPriority: item.highPriority ?? false,
-      priority: resolvePriority(item),
+      highPriority: false,
+      priority: 'normal',
       status: item.status ?? 'published',
       createdBy: item.createdBy || session?.fullName || 'Διαχειριστής',
       imageUrl: item.imageUrl ?? null,
@@ -252,7 +354,6 @@ export function AnnouncementsPage() {
     setClassesEnabled((item.classIds ?? []).length > 0);
     setScheduleMode(item.visibleFrom ? 'later' : 'now');
     setError('');
-    setMenuId(null);
     setPickerOpen(null);
     setPickerQuery('');
     composeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -260,6 +361,74 @@ export function AnnouncementsPage() {
 
   function recipientCount(kind: AnnouncementRecipientKind): number {
     return (form.recipientIds ?? []).filter((r) => r.kind === kind).length;
+  }
+
+  function applyAudienceScope(next: { sport?: string; club?: string }) {
+    const sport = next.sport !== undefined ? next.sport : (form.sportCategories ?? '');
+    const club = next.club !== undefined ? next.club : (form.teamsLabel ?? '');
+    const sportKey = sport.trim();
+    const clubKey = normalizeSportKey(club);
+
+    const nextClassIds = (form.classIds ?? []).filter((id) => {
+      const cls = data.classes.find((c) => c.id === id);
+      if (!cls) return false;
+      if (sportKey && !sportsMatch(cls.sport, sportKey)) return false;
+      if (clubKey) {
+        const hasClubAthlete = (data.students ?? []).some(
+          (s) =>
+            s.classId === id &&
+            s.status !== 'inactive' &&
+            normalizeSportKey(s.clubName) === clubKey,
+        );
+        if (!hasClubAthlete) return false;
+      }
+      return true;
+    });
+
+    const allowedAthleteIds = new Set(
+      (data.students ?? [])
+        .filter((s) => s.status !== 'inactive')
+        .filter((s) => {
+          if (clubKey && normalizeSportKey(s.clubName) !== clubKey) return false;
+          if (!sportKey) return true;
+          if (sportsMatch(s.sport, sportKey)) return true;
+          const cls = data.classes.find((c) => c.id === s.classId);
+          return sportsMatch(cls?.sport, sportKey);
+        })
+        .map((s) => s.id),
+    );
+
+    const allowedCoachIds = new Set(
+      (data.coaches ?? [])
+        .filter((c) => c.active)
+        .filter((c) => !sportKey || sportsMatch(c.sport, sportKey))
+        .map((c) => c.id),
+    );
+
+    const allowedParentIds = new Set(
+      listParentRecipients()
+        .filter((p) =>
+          !sportKey && !clubKey
+            ? true
+            : (data.parentLinks ?? []).some(
+                (link) => link.parentUserId === p.id && allowedAthleteIds.has(link.athleteId),
+              ),
+        )
+        .map((p) => p.id),
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      sportCategories: sport,
+      teamsLabel: club,
+      classIds: nextClassIds,
+      recipientIds: (prev.recipientIds ?? []).filter((r) => {
+        if (r.kind === 'athlete') return allowedAthleteIds.has(r.id);
+        if (r.kind === 'coach') return allowedCoachIds.has(r.id);
+        if (r.kind === 'parent') return allowedParentIds.has(r.id);
+        return true;
+      }),
+    }));
   }
 
   function toggleAudience(role: AnnouncementAudienceRole) {
@@ -336,14 +505,6 @@ export function AnnouncementsPage() {
     return (form.recipientIds ?? []).some((r) => r.kind === kind && r.id === id);
   }
 
-  function setPriority(priority: AnnouncementPriority) {
-    setForm((prev) => ({
-      ...prev,
-      priority,
-      highPriority: priority === 'high' || priority === 'urgent',
-    }));
-  }
-
   function wrapMessage(prefix: string, suffix = prefix) {
     const el = messageRef.current;
     if (!el) return;
@@ -374,7 +535,7 @@ export function AnnouncementsPage() {
     setSaving(true);
     setError('');
 
-    const priority = form.priority ?? 'normal';
+    const priority = 'normal' as const;
     const roles = form.audienceRoles ?? [];
     const classIds = form.classIds ?? [];
     const recipientIds = form.recipientIds ?? [];
@@ -393,17 +554,26 @@ export function AnnouncementsPage() {
       );
     }
 
+    if (form.teamsLabel?.trim()) {
+      audienceLabels.unshift(`Σωματείο: ${form.teamsLabel.trim()}`);
+    }
+    if (form.sportCategories?.trim()) {
+      audienceLabels.unshift(`Άθλημα: ${form.sportCategories.trim()}`);
+    }
+
     const payload: AnnouncementInput = {
       ...form,
       title,
       message,
       priority,
       status,
-      highPriority: priority === 'high' || priority === 'urgent',
+      highPriority: false,
       createdBy: session?.fullName || form.createdBy || 'Διαχειριστής',
       audienceRoles: roles,
       classIds,
       recipientIds,
+      sportCategories: form.sportCategories ?? '',
+      teamsLabel: form.teamsLabel ?? '',
       targetType: classIds.length === 1 ? 'team' : 'club',
       targetId: classIds.length === 1 ? classIds[0] : null,
       showTo: audienceLabels.length > 0 ? audienceLabels.join(', ') : 'Ολόκληρος σύλλογος',
@@ -443,13 +613,12 @@ export function AnnouncementsPage() {
   async function handleDelete(id: string) {
     if (!confirm('Διαγραφή ανακοίνωσης;')) return;
     await announcementsService.deleteAnnouncement(id);
-    setMenuId(null);
     refresh();
   }
 
   function audienceRolesOf(item: Announcement): AnnouncementAudienceRole[] {
     if (item.audienceRoles && item.audienceRoles.length > 0) return item.audienceRoles;
-    return ['parents', 'coaches', 'athletes'];
+    return ['parents', 'coaches', 'athletes', 'staff'];
   }
 
   return (
@@ -514,8 +683,42 @@ export function AnnouncementsPage() {
           <aside className="ann-compose-side">
             <div className="ann-side-block">
               <span className="ann-label">Ακροατήριο</span>
+              <div className="ann-audience-scope">
+                <label className="ann-scope-field">
+                  <span>
+                    <Trophy size={14} aria-hidden /> Άθλημα
+                  </span>
+                  <select
+                    value={form.sportCategories ?? ''}
+                    onChange={(e) => applyAudienceScope({ sport: e.target.value })}
+                  >
+                    <option value="">Όλα τα αθλήματα</option>
+                    {sportFilterOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ann-scope-field">
+                  <span>
+                    <Building2 size={14} aria-hidden /> Σωματείο
+                  </span>
+                  <select
+                    value={form.teamsLabel ?? ''}
+                    onChange={(e) => applyAudienceScope({ club: e.target.value })}
+                  >
+                    <option value="">Όλα τα σωματεία</option>
+                    {clubFilterOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <div className="ann-audience-toggles">
-                {AUDIENCE_OPTIONS.map((option) => {
+                {AUDIENCE_OPTIONS.filter((option) => option.id !== 'staff').map((option) => {
                   const Icon = option.icon;
                   const active = (form.audienceRoles ?? []).includes(option.id);
                   const count = recipientCount(option.recipientKind);
@@ -557,6 +760,30 @@ export function AnnouncementsPage() {
                     ) : null}
                   </span>
                 </button>
+                {(() => {
+                  const option = AUDIENCE_OPTIONS.find((o) => o.id === 'staff');
+                  if (!option) return null;
+                  const Icon = option.icon;
+                  const active = (form.audienceRoles ?? []).includes('staff');
+                  const count = recipientCount('staff');
+                  return (
+                    <button
+                      type="button"
+                      className={`ann-audience-btn${active ? ' is-active' : ''}${
+                        pickerOpen === 'staff' ? ' is-open' : ''
+                      }`}
+                      onClick={() => toggleAudience('staff')}
+                    >
+                      <Icon size={16} />
+                      <span className="ann-audience-btn-label">
+                        {option.label}
+                        {active ? (
+                          <em>{count > 0 ? `${count} επιλεγμένοι` : 'Όλοι'}</em>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })()}
               </div>
 
               {pickerOpen ? (
@@ -609,11 +836,13 @@ export function AnnouncementsPage() {
                           ? coachOptions
                           : kind === 'athlete'
                             ? athleteOptions
-                            : parentOptions.map((p) => ({
-                                id: p.id,
-                                label: p.label,
-                                hint: p.email,
-                              }));
+                            : kind === 'staff'
+                              ? staffOptions
+                              : parentOptions.map((p) => ({
+                                  id: p.id,
+                                  label: p.label,
+                                  hint: p.email,
+                                }));
                       const filteredRows = rows.filter(
                         (row) =>
                           !q ||
@@ -632,17 +861,24 @@ export function AnnouncementsPage() {
                       return filteredRows.map((row) => {
                         const checked = isRecipientSelected(kind, row.id);
                         return (
-                          <label key={row.id} className={`ann-pick-row${checked ? ' is-on' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleRecipient(kind, row.id)}
-                            />
-                            <span>
-                              <strong>{row.label}</strong>
-                              {row.hint ? <em>{row.hint}</em> : null}
-                            </span>
-                          </label>
+                          <div key={row.id} className={`ann-pick-row${checked ? ' is-on' : ''}`}>
+                            <label className="ann-pick-check">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleRecipient(kind, row.id)}
+                              />
+                              <span>
+                                <strong>{row.label}</strong>
+                                {row.hint ? <em>{row.hint}</em> : null}
+                              </span>
+                            </label>
+                            {kind === 'athlete' ? (
+                              <Link className="ann-pick-profile" to={`/athletes/${row.id}`}>
+                                Προφίλ
+                              </Link>
+                            ) : null}
+                          </div>
                         );
                       });
                     })()}
@@ -657,25 +893,6 @@ export function AnnouncementsPage() {
                   Χωρίς επιλογή → ολόκληρος σύλλογος. Κλικ σε κατηγορία για συγκεκριμένους παραλήπτες.
                 </p>
               )}
-            </div>
-
-            <div className="ann-side-block">
-              <span className="ann-label">Προτεραιότητα</span>
-              <div className="ann-priority-toggles">
-                {PRIORITY_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={`ann-priority-btn is-${option.id}${
-                      (form.priority ?? 'normal') === option.id ? ' is-active' : ''
-                    }`}
-                    onClick={() => setPriority(option.id)}
-                  >
-                    <Flag size={14} />
-                    {option.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="ann-side-block">
@@ -755,20 +972,6 @@ export function AnnouncementsPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={priorityFilter}
-              onChange={(e) => {
-                setPriorityFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Όλες οι προτεραιότητες</option>
-              {PRIORITY_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
             <label className="ann-search">
               <Search size={15} aria-hidden />
               <input
@@ -793,7 +996,6 @@ export function AnnouncementsPage() {
                 <tr>
                   <th>Τίτλος</th>
                   <th>Ακροατήριο</th>
-                  <th>Προτεραιότητα</th>
                   <th>Δημοσίευση</th>
                   <th>Δημιουργός</th>
                   <th />
@@ -801,12 +1003,10 @@ export function AnnouncementsPage() {
               </thead>
               <tbody>
                 {pageRows.map((item) => {
-                  const priority = resolvePriority(item);
                   return (
                     <tr key={item.id}>
                       <td>
                         <div className="ann-title-cell">
-                          <i className={`ann-dot is-${priority}`} aria-hidden />
                           <div>
                             <strong>{item.title}</strong>
                             <span>{htmlToPlain(item.message).slice(0, 90)}</span>
@@ -834,34 +1034,28 @@ export function AnnouncementsPage() {
                           ) : null}
                         </div>
                       </td>
-                      <td>
-                        <span className={`ann-priority-label is-${priority}`}>
-                          <Flag size={13} />
-                          {PRIORITY_LABELS[priority]}
-                        </span>
-                      </td>
                       <td>{formatDate(item.visibleFrom || item.createdAt)}</td>
                       <td>{item.createdBy || 'Διαχειριστής'}</td>
                       <td className="ann-row-actions">
-                        <div className="ann-menu-wrap">
+                        <div className="ann-row-btns">
                           <button
                             type="button"
-                            className="ann-menu-btn"
-                            aria-label="Ενέργειες"
-                            onClick={() => setMenuId(menuId === item.id ? null : item.id)}
+                            className="ann-icon-btn"
+                            aria-label="Επεξεργασία"
+                            title="Επεξεργασία"
+                            onClick={() => openEdit(item)}
                           >
-                            <MoreHorizontal size={16} />
+                            <Pencil size={15} />
                           </button>
-                          {menuId === item.id ? (
-                            <div className="ann-menu">
-                              <button type="button" onClick={() => openEdit(item)}>
-                                Επεξεργασία
-                              </button>
-                              <button type="button" onClick={() => void handleDelete(item.id)}>
-                                Διαγραφή
-                              </button>
-                            </div>
-                          ) : null}
+                          <button
+                            type="button"
+                            className="ann-icon-btn is-danger"
+                            aria-label="Διαγραφή"
+                            title="Διαγραφή"
+                            onClick={() => void handleDelete(item.id)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
                         </div>
                       </td>
                     </tr>

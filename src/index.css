@@ -3003,6 +3003,38 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
   color: #fff;
 }
 
+.tx-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid #e2e8e5;
+  background: #f7faf8;
+}
+
+.tx-filter-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: min(220px, 100%);
+}
+
+.tx-filter-field > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tx-filter-field select {
+  border: 1px solid #cfd8d4;
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
 .tx-nav {
   width: 32px;
   height: 32px;
@@ -3029,7 +3061,14 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
 }
 
 .tx-table-wrap--athletes {
-  max-height: 280px;
+  max-height: calc(2.2rem + 8 * 2.35rem);
+  overflow-y: auto;
+}
+
+.tx-table-wrap--athletes thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .tx-table-wrap--movements {

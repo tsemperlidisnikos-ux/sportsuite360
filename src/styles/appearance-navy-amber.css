@@ -1441,6 +1441,17 @@ html[data-appearance='navy-amber'] .tx-panel {
   box-shadow: none;
 }
 
+html[data-appearance='navy-amber'] .tx-filters {
+  background: color-mix(in srgb, var(--surface) 88%, #000 12%);
+  border-bottom-color: var(--line);
+}
+
+html[data-appearance='navy-amber'] .tx-filter-field select {
+  background: var(--field-bg, var(--surface));
+  border-color: var(--line);
+  color: var(--ink);
+}
+
 html[data-appearance='navy-amber'] .tx-balance-cell,
 html[data-appearance='navy-amber'] .tx-balance-col {
   background: rgba(212, 160, 23, 0.14) !important;

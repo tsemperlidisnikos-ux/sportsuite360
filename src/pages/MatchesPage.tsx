@@ -76,6 +76,11 @@ export function MatchesPage() {
     return active;
   }, [data.sports, isCoach, coach]);
 
+  const classesForSelectedSport = useMemo(() => {
+    if (!form.sport.trim()) return visibleClasses;
+    return visibleClasses.filter((c) => sportsMatch(c.sport, form.sport));
+  }, [visibleClasses, form.sport]);
+
   const matches = useMemo(
     () =>
       [...(data.matches ?? [])]
@@ -192,7 +197,21 @@ export function MatchesPage() {
               <select
                 value={form.sport}
                 disabled={isCoach}
-                onChange={(e) => setForm((p) => ({ ...p, sport: e.target.value }))}
+                onChange={(e) => {
+                  const sport = e.target.value;
+                  setForm((p) => {
+                    const stillValid =
+                      p.classId &&
+                      visibleClasses.some(
+                        (c) => c.id === p.classId && sportsMatch(c.sport, sport),
+                      );
+                    return {
+                      ...p,
+                      sport,
+                      classId: stillValid ? p.classId : null,
+                    };
+                  });
+                }}
               >
                 {isCoach ? null : <option value="">—</option>}
                 {sportOptions.map((s) => (
@@ -211,7 +230,7 @@ export function MatchesPage() {
                 }
               >
                 <option value="">— χωρίς —</option>
-                {visibleClasses.map((c) => (
+                {classesForSelectedSport.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>

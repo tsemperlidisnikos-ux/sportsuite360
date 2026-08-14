@@ -17,6 +17,7 @@ import type { AthleteTransaction, Student } from '../types';
 import { PAYMENT_METHODS, normalizePaymentMethod } from '../shared/paymentMethods';
 import { formatCurrency, formatDate } from '../utils/labels';
 import { canAccessAmka, formatAmkaForViewer } from '../utils/amkaAccess';
+import { sportsMatch } from '../utils/coachScope';
 
 const MONTHS = [
   { value: 1, label: 'Ιανουάριος' },
@@ -118,6 +119,7 @@ export function TransactionsPage() {
   const { data, refresh } = useAppData();
   const transactions = data.transactions ?? [];
   const [query, setQuery] = useState('');
+  const [sport, setSport] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [seasonStart, setSeasonStart] = useState(2026);
   const [form, setForm] = useState<TransactionInput>(emptyForm());
@@ -135,16 +137,44 @@ export function TransactionsPage() {
   const session = getSession();
   const amkaAllowed = canAccessAmka(session?.role);
 
+  const sportOptions = useMemo(() => {
+    const fromCatalog = (data.sports ?? [])
+      .filter((s) => s.active)
+      .map((s) => s.name);
+    const fromClasses = (data.classes ?? []).map((c) => c.sport).filter(Boolean);
+    const fromAthletes = (data.students ?? []).map((s) => s.sport).filter(Boolean);
+    return Array.from(new Set([...fromCatalog, ...fromClasses, ...fromAthletes]))
+      .filter((n): n is string => Boolean(n && String(n).trim()))
+      .sort((a, b) => a.localeCompare(b, 'el'));
+  }, [data.sports, data.classes, data.students]);
+
   const filteredAthletes = useMemo(() => {
     const q = query.trim().toLowerCase();
     return data.students.filter((s) => {
       if (s.status === 'inactive') return false;
+      if (sport) {
+        if (sportsMatch(s.sport, sport)) {
+          /* ok */
+        } else {
+          const classSport = data.classes.find((c) => c.id === s.classId)?.sport;
+          if (!sportsMatch(classSport, sport)) return false;
+        }
+      }
       if (!q) return true;
       const amkaPart = amkaAllowed ? (s.amka ?? '') : '';
       const hay = `${amkaPart} ${s.registrationNumber ?? ''} ${s.lastName} ${s.firstName} ${s.fatherFirstName ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [data.students, query, amkaAllowed]);
+  }, [data.students, data.classes, query, sport, amkaAllowed]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (!filteredAthletes.some((s) => s.id === selectedId)) {
+      setSelectedId(null);
+      setEditingId(null);
+      setForm(emptyForm('', seasonStart));
+    }
+  }, [filteredAthletes, selectedId, seasonStart]);
 
   const selectedTx = useMemo(
     () =>
@@ -303,6 +333,23 @@ export function TransactionsPage() {
               onPrev={() => changeSeason(seasonStart - 1)}
               onNext={() => changeSeason(seasonStart + 1)}
             />
+            <div className="tx-filters">
+              <label className="tx-filter-field" htmlFor="tx-sport">
+                <span>Άθλημα</span>
+                <select
+                  id="tx-sport"
+                  value={sport}
+                  onChange={(e) => setSport(e.target.value)}
+                >
+                  <option value="">Όλα τα αθλήματα</option>
+                  {sportOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="tx-table-wrap tx-table-wrap--athletes">
               <table className="tx-table">
                 <thead>

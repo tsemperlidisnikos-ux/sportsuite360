@@ -1724,3 +1724,51 @@
   gap: 0.4rem;
 }
 
+.ap-athlete-announcements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ap-athlete-announcement {
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, var(--line));
+  background: var(--field-bg, var(--color-surface));
+}
+
+.ap-athlete-announcement-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ap-athlete-announcement-head strong {
+  color: var(--color-text, var(--ink));
+  font-size: 0.98rem;
+}
+
+.ap-athlete-announcement-head time {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, var(--muted));
+}
+
+.ap-athlete-announcement-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, var(--muted));
+}
+
+.ap-athlete-announcement-body {
+  margin: 0.55rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--color-text, var(--ink));
+  white-space: pre-wrap;
+}
+
+

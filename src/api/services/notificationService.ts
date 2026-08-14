@@ -6,6 +6,8 @@ import type {
   Student,
 } from '../../types';
 import type { AnnouncementInput } from '../../schemas';
+import { sportsMatch } from '../../utils/coachScope';
+import { normalizeSportKey } from '../../utils/sport';
 import { sendClubEmail } from './emailService';
 
 function uniqueEmails(emails: Array<string | undefined | null>): string[] {
@@ -25,28 +27,51 @@ function idsOf(recipients: AnnouncementRecipient[], kind: AnnouncementRecipient[
   return recipients.filter((r) => r.kind === kind).map((r) => r.id);
 }
 
+function studentMatchesScope(
+  student: Student,
+  input: Pick<AnnouncementInput, 'sportCategories' | 'teamsLabel'>,
+  data: ReturnType<typeof getData>,
+): boolean {
+  const sport = (input.sportCategories ?? '').trim();
+  const club = (input.teamsLabel ?? '').trim();
+  if (club && normalizeSportKey(student.clubName) !== normalizeSportKey(club)) return false;
+  if (!sport) return true;
+  if (sportsMatch(student.sport, sport)) return true;
+  const cls = data.classes.find((c) => c.id === student.classId);
+  return sportsMatch(cls?.sport, sport);
+}
+
 function athleteIdsForAnnouncement(
-  input: Pick<AnnouncementInput, 'classIds' | 'recipientIds' | 'targetType' | 'targetId'>,
+  input: Pick<
+    AnnouncementInput,
+    'classIds' | 'recipientIds' | 'targetType' | 'targetId' | 'sportCategories' | 'teamsLabel'
+  >,
   data: ReturnType<typeof getData>,
 ): string[] {
   const recipients = input.recipientIds ?? [];
   const specificAthletes = idsOf(recipients, 'athlete');
-  if (specificAthletes.length > 0) return [...new Set(specificAthletes)];
-
-  const classIds = input.classIds ?? [];
-  if (classIds.length > 0) {
-    return data.students
-      .filter((s) => s.classId && classIds.includes(s.classId) && s.status !== 'inactive')
-      .map((s) => s.id);
+  let ids: string[];
+  if (specificAthletes.length > 0) {
+    ids = [...new Set(specificAthletes)];
+  } else {
+    const classIds = input.classIds ?? [];
+    if (classIds.length > 0) {
+      ids = data.students
+        .filter((s) => s.classId && classIds.includes(s.classId) && s.status !== 'inactive')
+        .map((s) => s.id);
+    } else if (input.targetType === 'team' && input.targetId) {
+      ids = data.students
+        .filter((s) => s.classId === input.targetId && s.status !== 'inactive')
+        .map((s) => s.id);
+    } else {
+      ids = data.students.filter((s) => s.status !== 'inactive').map((s) => s.id);
+    }
   }
 
-  if (input.targetType === 'team' && input.targetId) {
-    return data.students
-      .filter((s) => s.classId === input.targetId && s.status !== 'inactive')
-      .map((s) => s.id);
-  }
-
-  return data.students.filter((s) => s.status !== 'inactive').map((s) => s.id);
+  return ids.filter((id) => {
+    const student = data.students.find((s) => s.id === id);
+    return student ? studentMatchesScope(student, input, data) : false;
+  });
 }
 
 export function resolveAnnouncementEmails(
@@ -57,12 +82,15 @@ export function resolveAnnouncementEmails(
     | 'recipientIds'
     | 'targetType'
     | 'targetId'
+    | 'sportCategories'
+    | 'teamsLabel'
   >,
 ): string[] {
   const data = getData();
   const roles = new Set<AnnouncementAudienceRole>(input.audienceRoles ?? []);
   const recipients = input.recipientIds ?? [];
   const emails: Array<string | undefined | null> = [];
+  const sport = (input.sportCategories ?? '').trim();
 
   const wholeClub = roles.size === 0 && recipients.length === 0 && (input.classIds ?? []).length === 0;
   const wantAthletes = wholeClub || roles.has('athletes') || idsOf(recipients, 'athlete').length > 0;
@@ -101,6 +129,7 @@ export function resolveAnnouncementEmails(
     for (const coach of data.coaches) {
       if (!coach.active) continue;
       if (coachIds.size > 0 && !coachIds.has(coach.id)) continue;
+      if (sport && !sportsMatch(coach.sport, sport)) continue;
       emails.push(coach.email);
     }
   }
@@ -108,6 +137,7 @@ export function resolveAnnouncementEmails(
   if (wantStaff) {
     const staffIds = new Set(idsOf(recipients, 'staff'));
     for (const member of data.staff ?? []) {
+      if (!member.active) continue;
       if (staffIds.size > 0 && !staffIds.has(member.id)) continue;
       emails.push(member.email);
     }
