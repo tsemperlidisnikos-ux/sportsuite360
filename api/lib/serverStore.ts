@@ -468,6 +468,14 @@ export async function updateClubWaitlist(
   return nextEntry;
 }
 
+export async function deleteClubWaitlist(id: string): Promise<boolean> {
+  const prev = await readClubWaitlist();
+  const next = prev.filter((e) => e.id !== id);
+  if (next.length === prev.length) return false;
+  await writeClubWaitlist(next);
+  return true;
+}
+
 /** Sync API auth (kept here to avoid an extra Hobby serverless file under api/). */
 export function assertSyncAuthorized(
   req: { headers: Record<string, unknown>; query?: Record<string, unknown> },

@@ -13,6 +13,7 @@ import {
   loadAccountBundle,
   saveAccountBundle,
   signSession,
+  deleteClubWaitlist,
   updateClubWaitlist,
   uploadClubMedia,
   verifyPassword,
@@ -170,14 +171,26 @@ async function handleClubWaitlist(req: VercelRequest, res: VercelResponse) {
       if (!id) {
         return res.status(400).json({ ok: false, error: 'Missing waitlist id' });
       }
+      if (action === 'reject') {
+        const deleted = await deleteClubWaitlist(id);
+        if (!deleted) {
+          return res.status(404).json({ ok: false, error: 'Waitlist entry not found' });
+        }
+        return res.status(200).json({
+          ok: true,
+          durable: isDurableStoreEnabled(),
+          deleted: true,
+          id,
+        });
+      }
       const now = new Date().toISOString();
       const clubId = clip(body.clubId, 80) || null;
-      const updated = await updateClubWaitlist(
-        id,
-        action === 'approve'
-          ? { status: 'approved', approvedAt: now, rejectedAt: null, clubId }
-          : { status: 'rejected', rejectedAt: now },
-      );
+      const updated = await updateClubWaitlist(id, {
+        status: 'approved',
+        approvedAt: now,
+        rejectedAt: null,
+        clubId,
+      });
       if (!updated) {
         return res.status(404).json({ ok: false, error: 'Waitlist entry not found' });
       }

@@ -173,14 +173,8 @@ export function ClubWaitlistPanel({
       onSaved?.(updated.error ?? 'Αποτυχία απόρριψης.');
       return;
     }
-    onSaved?.(`Απορρίφθηκε η αίτηση «${entry.clubName}».`);
-    setEntries((prev) =>
-      prev.map((item) =>
-        item.id === entry.id
-          ? { ...item, status: 'rejected', rejectedAt: new Date().toISOString() }
-          : item,
-      ),
-    );
+    onSaved?.(`Διαγράφηκε η αίτηση «${entry.clubName}».`);
+    setEntries((prev) => prev.filter((item) => item.id !== entry.id));
   }
 
   async function copyCredentials() {

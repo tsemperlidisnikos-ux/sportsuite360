@@ -91,6 +91,10 @@ function upsertLocal(entry: ClubWaitlistEntry): void {
   writeLocal([entry, ...prev.filter((e) => e.id !== entry.id)]);
 }
 
+function removeLocal(id: string): void {
+  writeLocal(readLocal().filter((e) => e.id !== id));
+}
+
 function parseEntries(raw: unknown): ClubWaitlistEntry[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -164,7 +168,9 @@ export async function fetchClubWaitlist(limit = 200) {
     if (!response.ok || !json.ok) {
       throw new Error(json.error || `Waitlist HTTP ${response.status}`);
     }
-    const merged = mergeEntries(parseEntries(json.entries), readLocal()).slice(0, limit);
+    const merged = mergeEntries(parseEntries(json.entries), readLocal())
+      .filter((e) => e.status !== 'rejected')
+      .slice(0, limit);
     writeLocal(merged);
     return { entries: merged, durable: Boolean(json.durable) };
   });
@@ -193,6 +199,10 @@ export async function updateClubWaitlistStatus(input: {
     };
     if (!response.ok || !json.ok) {
       throw new Error(json.error || `Waitlist update HTTP ${response.status}`);
+    }
+    if (input.action === 'reject') {
+      removeLocal(input.id);
+      return { entry: null, durable: Boolean(json.durable) };
     }
     const parsed = waitlistSchema.safeParse(json.entry);
     if (parsed.success) {
