@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import * as amkaAuditService from '../api/services/amkaAuditService';
 import * as legalComplianceService from '../api/services/legalComplianceService';
-import { getSession } from '../auth/auth';
+import { getSession, isPlatformAdmin } from '../auth/auth';
 import { acceptClubDpa, getClubById } from '../auth/clubs';
 import { getPreviewClubId } from '../platform/platformConfig';
 import { Button } from '../components/ui/Button';
@@ -42,7 +42,10 @@ export function AmkaCompliancePanel() {
   const [error, setError] = useState('');
   const [dpaAcceptedAt, setDpaAcceptedAt] = useState<string | null>(null);
   const [acceptingDpa, setAcceptingDpa] = useState(false);
+  const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
+  const [clearingLogs, setClearingLogs] = useState(false);
   const allowed = canAccessAmka(session?.role);
+  const canDeleteLogs = isPlatformAdmin();
   const clubId = getPreviewClubId() || session?.clubId || null;
 
   useEffect(() => {
@@ -133,6 +136,38 @@ export function AmkaCompliancePanel() {
     );
   }
 
+  async function handleDeleteLog(id: string) {
+    if (!canDeleteLogs || deletingLogId || clearingLogs) return;
+    if (!confirm('Διαγραφή αυτής της καταγραφής ΑΜΚΑ;')) return;
+    setDeletingLogId(id);
+    setError('');
+    setMessage('');
+    const result = await amkaAuditService.deleteAmkaAccessLog(id);
+    setDeletingLogId(null);
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία διαγραφής');
+      return;
+    }
+    refresh();
+    setMessage('Η καταγραφή διαγράφηκε.');
+  }
+
+  async function handleClearLogs() {
+    if (!canDeleteLogs || clearingLogs || deletingLogId || logs.length === 0) return;
+    if (!confirm(`Διαγραφή και των ${logs.length} καταγραφών ΑΜΚΑ;`)) return;
+    setClearingLogs(true);
+    setError('');
+    setMessage('');
+    const result = await amkaAuditService.clearAmkaAccessLogs();
+    setClearingLogs(false);
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία διαγραφής');
+      return;
+    }
+    refresh();
+    setMessage(`Διαγράφηκαν ${result.data?.deleted ?? 0} καταγραφές.`);
+  }
+
   if (!allowed) {
     return (
       <section className="panel settings-panel">
@@ -216,7 +251,19 @@ export function AmkaCompliancePanel() {
       </div>
 
       <div className="settings-amka-logs">
-        <h4>Audit logs ΑΜΚΑ (12 μήνες)</h4>
+        <div className="settings-amka-logs-head">
+          <h4>Audit logs ΑΜΚΑ (12 μήνες)</h4>
+          {canDeleteLogs && logs.length > 0 ? (
+            <Button
+              type="button"
+              variant="danger"
+              disabled={clearingLogs || Boolean(deletingLogId)}
+              onClick={() => void handleClearLogs()}
+            >
+              {clearingLogs ? 'Διαγραφή…' : 'Διαγραφή όλων'}
+            </Button>
+          ) : null}
+        </div>
         {logs.length === 0 ? (
           <p className="lede">Δεν υπάρχουν καταγραφές ακόμη.</p>
         ) : (
@@ -228,6 +275,7 @@ export function AmkaCompliancePanel() {
                   <th>Χρήστης</th>
                   <th>Αθλητής</th>
                   <th>Ενέργεια</th>
+                  {canDeleteLogs ? <th></th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -237,6 +285,18 @@ export function AmkaCompliancePanel() {
                     <td>{row.userName}</td>
                     <td>{row.athleteName}</td>
                     <td>{ACTION_LABELS[row.action]}</td>
+                    {canDeleteLogs ? (
+                      <td>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          disabled={clearingLogs || deletingLogId === row.id}
+                          onClick={() => void handleDeleteLog(row.id)}
+                        >
+                          {deletingLogId === row.id ? 'Διαγραφή…' : 'Διαγραφή'}
+                        </Button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

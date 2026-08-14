@@ -1689,6 +1689,19 @@
   color: var(--color-title);
 }
 
+.settings-amka-logs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+}
+
+.settings-amka-logs-head h4 {
+  margin: 0;
+}
+
 .settings-amka-checklist ul {
   list-style: none;
   margin: 0;
