@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { UserPlus } from 'lucide-react';
 import * as clubUsersService from '../api/services/clubUsersService';
 import { getSession, type AppUser } from '../auth/auth';
@@ -27,8 +26,8 @@ function generatePassword(): string {
 
 export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) {
   const session = getSession();
-  const navigate = useNavigate();
   const { data: appData, refresh: refreshAppData } = useAppData();
+  const formRef = useRef<HTMLFormElement>(null);
   const isInvitations = mode === 'invitations';
   const [users, setUsers] = useState<AppUser[]>([]);
   const [directory, setDirectory] = useState<clubUsersService.ClubDirectoryRow[]>([]);
@@ -52,6 +51,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     clubUsersService.defaultPermissionsForRole('coach'),
   );
   const [creating, setCreating] = useState(true);
+  const [creatingFromRow, setCreatingFromRow] = useState(false);
 
   const editingUser = useMemo(
     () => users.find((u) => u.id === editingId) ?? null,
@@ -156,6 +156,23 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     );
   }
 
+  function scrollToUserForm() {
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  function roleFromDirectoryRow(row: clubUsersService.ClubDirectoryRow): ClubRole {
+    if (row.kind === 'athlete') return 'athlete';
+    if (row.kind === 'coach') return 'coach';
+    if (row.roleLabel === CLUB_ROLE_LABELS.admin) return 'admin';
+    if (row.roleLabel === CLUB_ROLE_LABELS.secretariat) return 'secretariat';
+    if (row.roleLabel === CLUB_ROLE_LABELS.doctor) return 'doctor';
+    if (row.roleLabel === CLUB_ROLE_LABELS.staff) return 'staff';
+    if (row.roleLabel === CLUB_ROLE_LABELS.parent) return 'parent';
+    return 'coach';
+  }
+
   function composedFullName(): string {
     return `${lastName.trim()} ${firstName.trim()}`.trim();
   }
@@ -177,11 +194,13 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     setAthleteId('');
     setCoachId('');
     applyRoleDefaults('coach');
+    setCreatingFromRow(false);
   }
 
   function startCreate() {
     setEditingId(null);
     setCreating(true);
+    setCreatingFromRow(false);
     setLastName('');
     setFirstName('');
     setEmail('');
@@ -195,6 +214,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
 
   function startEdit(user: AppUser) {
     setCreating(false);
+    setCreatingFromRow(true);
     setEditingId(user.id);
     const split = splitFullName(user.fullName);
     setLastName(split.lastName);
@@ -218,6 +238,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     );
     setError('');
     setMessage('');
+    scrollToUserForm();
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -289,19 +310,22 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       startEdit(loginUser);
       return;
     }
-    if (row.kind === 'athlete' && row.entityId) {
-      navigate(`/athletes/${row.entityId}`, { state: { editing: true } });
-      return;
-    }
-    if (row.kind === 'coach') {
-      navigate('/coaches');
-      return;
-    }
-    if (row.kind === 'staff') {
-      navigate('/staff');
-      return;
-    }
-    setError('Δεν υπάρχει φόρμα επεξεργασίας για αυτή την εγγραφή.');
+
+    const split = splitFullName(row.fullName);
+    const nextRole = roleFromDirectoryRow(row);
+    setEditingId(null);
+    setCreating(true);
+    setCreatingFromRow(true);
+    setLastName(split.lastName);
+    setFirstName(split.firstName);
+    setEmail(row.email.includes('@') ? row.email : '');
+    setPassword(generatePassword());
+    applyRoleDefaults(nextRole);
+    setAthleteId(row.kind === 'athlete' ? row.entityId ?? '' : '');
+    setCoachId(row.kind === 'coach' ? row.entityId ?? '' : '');
+    setError('');
+    setMessage('');
+    scrollToUserForm();
   }
 
   async function handleDelete(row: clubUsersService.ClubDirectoryRow) {
@@ -365,8 +389,13 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       </div>
 
       {showForm ? (
-        <form className="entry-form club-users-form settings-form" onSubmit={handleSubmit}>
-          <h4>{editingUser ? 'Επεξεργασία χρήστη' : 'Νέος χρήστης / Πρόσκληση'}</h4>
+        <form
+          ref={formRef}
+          id="club-user-edit-form"
+          className="entry-form club-users-form settings-form"
+          onSubmit={handleSubmit}
+        >
+          <h4>{editingUser || creatingFromRow ? 'Επεξεργασία χρήστη' : 'Νέος χρήστης / Πρόσκληση'}</h4>
 
           <SettingsFormRow label="Επώνυμο" htmlFor="club-user-last-name">
             <input
@@ -602,17 +631,15 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
                         className="btn btn-ghost"
                         onClick={() => handleEdit(row)}
                       >
-                        {row.hasLogin ? 'Κωδικός / επεξεργασία' : 'Επεξεργασία'}
+                        Κωδικός / Επεξεργασία
                       </button>
-                      {row.userId !== session?.id ? (
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => void handleDelete(row)}
-                        >
-                          Διαγραφή
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => void handleDelete(row)}
+                      >
+                        Διαγραφή
+                      </button>
                     </div>
                   </div>
                 </div>
