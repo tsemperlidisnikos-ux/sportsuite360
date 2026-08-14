@@ -20,10 +20,6 @@ type ClubUsersPanelProps = {
   mode?: 'users' | 'invitations';
 };
 
-function generatePassword(): string {
-  return `ss${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) {
   const session = getSession();
   const { data: appData, refresh: refreshAppData } = useAppData();
@@ -43,7 +39,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
   const [lastName, setLastName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(() => generatePassword());
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<ClubRole>('coach');
   const [athleteId, setAthleteId] = useState('');
   const [coachId, setCoachId] = useState('');
@@ -57,6 +53,8 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     () => users.find((u) => u.id === editingId) ?? null,
     [users, editingId],
   );
+  const isEditMode = Boolean(editingId) || creatingFromRow;
+  const passwordRequired = !editingId;
 
   const showForm = true;
 
@@ -190,7 +188,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     setLastName('');
     setFirstName('');
     setEmail('');
-    setPassword(generatePassword());
+    setPassword('');
     setAthleteId('');
     setCoachId('');
     applyRoleDefaults('coach');
@@ -204,7 +202,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     setLastName('');
     setFirstName('');
     setEmail('');
-    setPassword(generatePassword());
+    setPassword('');
     setAthleteId('');
     setCoachId('');
     applyRoleDefaults('coach');
@@ -252,6 +250,16 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       return;
     }
 
+    const passwordValue = password.trim();
+    if (!editingId && passwordValue.length < 6) {
+      setError('Ο κωδικός εισόδου πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
+      return;
+    }
+    if (editingId && passwordValue && passwordValue.length < 6) {
+      setError('Ο κωδικός εισόδου πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
+      return;
+    }
+
     const savedPermissions =
       role === 'doctor' ? [...DOCTOR_CLUB_PERMISSIONS] : permissions;
 
@@ -260,7 +268,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
         fullName,
         role,
         permissions: savedPermissions,
-        password: password.trim() ? password : undefined,
+        password: passwordValue || undefined,
         athleteId: role === 'athlete' ? athleteId || null : null,
         coachId: role === 'coach' ? coachId || null : null,
       });
@@ -268,7 +276,11 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
         setError(result.error ?? 'Αποτυχία ενημέρωσης');
         return;
       }
-      setMessage('Ο χρήστης ενημερώθηκε.');
+      setMessage(
+        passwordValue
+          ? 'Ο χρήστης αποθηκεύτηκε. Ο νέος κωδικός είναι έτοιμος για σύνδεση.'
+          : 'Ο χρήστης αποθηκεύτηκε.',
+      );
       resetForm();
       await refresh();
       return;
@@ -278,7 +290,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       clubId,
       fullName,
       email,
-      password,
+      password: passwordValue,
       role,
       permissions: savedPermissions,
       athleteId: role === 'athlete' ? athleteId || null : null,
@@ -288,19 +300,10 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       setError(result.error ?? 'Αποτυχία πρόσκλησης');
       return;
     }
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(password);
-      copied = true;
-    } catch {
-      copied = false;
-    }
     setMessage(
-      copied
-        ? `Προσκλήθηκε: ${result.data?.email}. Ο προσωρινός κωδικός αντιγράφηκε στο clipboard (δεν εμφανίζεται εδώ).`
-        : `Προσκλήθηκε: ${result.data?.email}. Αντιγράψτε τον κωδικό από το πεδίο πριν κλείσετε — δεν θα ξαναεμφανιστεί.`,
+      `Αποθηκεύτηκε: ${result.data?.email}. Σύνδεση με το email και τον κωδικό που ορίσατε.`,
     );
-    if (copied) resetForm();
+    resetForm();
     await refresh();
   }
 
@@ -319,7 +322,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     setLastName(split.lastName);
     setFirstName(split.firstName);
     setEmail(row.email.includes('@') ? row.email : '');
-    setPassword(generatePassword());
+    setPassword('');
     applyRoleDefaults(nextRole);
     setAthleteId(row.kind === 'athlete' ? row.entityId ?? '' : '');
     setCoachId(row.kind === 'coach' ? row.entityId ?? '' : '');
@@ -395,7 +398,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
           className="entry-form club-users-form settings-form"
           onSubmit={handleSubmit}
         >
-          <h4>{editingUser || creatingFromRow ? 'Επεξεργασία χρήστη' : 'Νέος χρήστης / Πρόσκληση'}</h4>
+          <h4>{isEditMode ? 'Επεξεργασία χρήστη' : 'Νέος χρήστης / Πρόσκληση'}</h4>
 
           <SettingsFormRow label="Επώνυμο" htmlFor="club-user-last-name">
             <input
@@ -438,17 +441,22 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
             <input
               id="club-user-password"
               className="field-input"
+              type="text"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required={!editingId}
-              minLength={editingId ? undefined : 6}
+              required={passwordRequired}
+              minLength={passwordRequired || password.trim() ? 6 : undefined}
               autoComplete="new-password"
-              placeholder={editingId ? 'Αφήστε κενό για να μην αλλάξει' : 'Τουλάχιστον 6 χαρακτήρες'}
+              placeholder={
+                editingId
+                  ? 'Πληκτρολογήστε νέο κωδικό ή αφήστε κενό'
+                  : 'Πληκτρολογήστε κωδικό (τουλάχιστον 6 χαρακτήρες)'
+              }
             />
             <p className="ap-field-hint">
               {editingId
-                ? 'Συμπληρώστε μόνο αν θέλετε νέο κωδικό για αυτόν τον λογαριασμό.'
-                : 'Αυτόν τον κωδικό θα χρησιμοποιήσει ο χρήστης στο /login μαζί με το email. Αντιγράψτε τον πριν την αποθήκευση.'}
+                ? 'Πληκτρολογήστε χειροκίνητα νέο κωδικό μόνο αν θέλετε να αλλάξει.'
+                : 'Πληκτρολογήστε χειροκίνητα τον κωδικό. Θα τον χρησιμοποιήσει ο χρήστης στο /login μαζί με το email.'}
             </p>
           </SettingsFormRow>
 
@@ -533,20 +541,11 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
 
           <div className="settings-form-actions admin-entry-actions">
             <Button type="submit">
-              <UserPlus size={16} /> {editingId ? 'Αποθήκευση' : 'Δημιουργία χρήστη'}
+              <UserPlus size={16} /> {isEditMode ? 'Αποθήκευση' : 'Δημιουργία χρήστη'}
             </Button>
-            {editingId || creating ? (
+            {editingId || creating || creatingFromRow ? (
               <Button type="button" variant="secondary" onClick={resetForm}>
                 Άκυρο
-              </Button>
-            ) : null}
-            {!editingId ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setPassword(generatePassword())}
-              >
-                Νέος κωδικός
               </Button>
             ) : null}
           </div>
