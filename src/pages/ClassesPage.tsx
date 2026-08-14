@@ -1,12 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import * as classesService from '../api/services/classesService';
+import { getSession } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import type { ClassInput } from '../schemas';
 import type { AcademyClass } from '../types';
+import {
+  resolveCoachRecord,
+  visibleClassesForSession,
+} from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
+import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm: ClassInput = {
   name: '',
@@ -22,25 +28,42 @@ const emptyForm: ClassInput = {
 
 export function ClassesPage() {
   const { data, refresh } = useAppData();
+  const session = getSession();
+  const isCoach = session?.role === 'coach';
+  const coach = useMemo(
+    () => resolveCoachRecord(data.coaches, session?.coachId),
+    [data.coaches, session?.coachId],
+  );
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AcademyClass | null>(null);
   const [form, setForm] = useState<ClassInput>(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const sportOptions = useMemo(
-    () => [
+  const sportOptions = useMemo(() => {
+    const activeSports = (data.sports ?? []).filter((s) => s.active);
+    if (isCoach && coach?.sport) {
+      const key = normalizeSportKey(coach.sport);
+      const matched = activeSports.filter((s) => normalizeSportKey(s.name) === key);
+      const options = matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
+      return options.map((s) => ({ value: s.name, label: s.name }));
+    }
+    return [
       { value: '', label: '—' },
-      ...(data.sports ?? [])
-        .filter((s) => s.active)
-        .map((s) => ({ value: s.name, label: s.name })),
-    ],
-    [data.sports],
-  );
+      ...activeSports.map((s) => ({ value: s.name, label: s.name })),
+    ];
+  }, [data.sports, isCoach, coach]);
 
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      sport: isCoach && coach?.sport ? coach.sport : '',
+    });
     setError('');
     setOpen(true);
   }
@@ -70,8 +93,13 @@ export function ClassesPage() {
   async function handleSave() {
     setSaving(true);
     setError('');
+    const sport =
+      isCoach && coach?.sport
+        ? coach.sport
+        : form.sport;
     const payload: ClassInput = {
       ...form,
+      sport,
       coachId: null,
       scheduleSummary:
         form.scheduleSummary ||
@@ -110,7 +138,7 @@ export function ClassesPage() {
       />
 
       <section className="panel table-wrap">
-        {data.classes.length === 0 ? (
+        {visibleClasses.length === 0 ? (
           <div className="empty-state">
             <h3>Δεν υπάρχουν τμήματα</h3>
             <p>Πάτα «Νέο τμήμα» για να προσθέσεις το πρώτο.</p>
@@ -131,7 +159,7 @@ export function ClassesPage() {
               </tr>
             </thead>
             <tbody>
-              {data.classes.map((cls) => {
+              {visibleClasses.map((cls) => {
                 const count = data.students.filter((s) => s.classId === cls.id).length;
                 return (
                   <tr key={cls.id}>
@@ -209,6 +237,7 @@ export function ClassesPage() {
                 <span>Άθλημα</span>
                 <select
                   value={form.sport ?? ''}
+                  disabled={isCoach}
                   onChange={(e) => setForm({ ...form, sport: e.target.value })}
                 >
                   {sportOptions.map((opt) => (

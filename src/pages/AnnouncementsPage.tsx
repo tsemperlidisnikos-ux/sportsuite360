@@ -29,6 +29,11 @@ import type {
   AnnouncementRecipientKind,
 } from '../types';
 import { listParentRecipients } from '../utils/announcementAudience';
+import {
+  classIdsOf,
+  visibleClassesForSession,
+  visibleStudentsForSession,
+} from '../utils/coachScope';
 
 const PAGE_SIZE = 5;
 
@@ -126,6 +131,12 @@ export function AnnouncementsPage() {
     }));
   }, [session?.fullName]);
 
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
+
   const coachOptions = useMemo(
     () =>
       (data.coaches ?? [])
@@ -141,7 +152,7 @@ export function AnnouncementsPage() {
 
   const athleteOptions = useMemo(() => {
     const classFilter = form.classIds ?? [];
-    return (data.students ?? [])
+    return visibleStudentsForSession(data.students, allowedClassIds, session)
       .filter((s) => s.status !== 'inactive')
       .filter((s) => (classFilter.length === 0 ? true : s.classId && classFilter.includes(s.classId)))
       .map((s) => ({
@@ -150,20 +161,20 @@ export function AnnouncementsPage() {
         hint: data.classes.find((c) => c.id === s.classId)?.name ?? '',
       }))
       .sort((a, b) => a.label.localeCompare(b.label, 'el'));
-  }, [data.students, data.classes, form.classIds]);
+  }, [data.students, data.classes, form.classIds, allowedClassIds, session]);
 
   const parentOptions = useMemo(() => listParentRecipients(), [data.parentLinks, data.students]);
 
   const classOptions = useMemo(
     () =>
-      (data.classes ?? [])
+      visibleClasses
         .map((c) => ({
           id: c.id,
           label: c.name,
           hint: c.ageGroup || c.sport || '',
         }))
         .sort((a, b) => a.label.localeCompare(b.label, 'el')),
-    [data.classes],
+    [visibleClasses],
   );
 
   const announcements = useMemo(

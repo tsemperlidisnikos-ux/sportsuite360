@@ -10,6 +10,7 @@ import * as notificationService from '../api/services/notificationService';
 import { getSession } from '../auth/auth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
+import { visibleClassesForSession } from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 
 function shiftDate(iso: string, days: number): string {
@@ -40,20 +41,30 @@ function formatShortDate(iso: string): string {
 
 export function AttendancePage() {
   const { data, refresh } = useAppData();
-  const [classId, setClassId] = useState(data.classes[0]?.id ?? '');
+  const session = getSession();
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const [classId, setClassId] = useState(visibleClasses[0]?.id ?? '');
   const [date, setDate] = useState(() => localDateIso());
   const [notifyAbsence, setNotifyAbsence] = useState(false);
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const activeClassId =
+    classId && visibleClasses.some((c) => c.id === classId)
+      ? classId
+      : visibleClasses[0]?.id ?? '';
+
   const students = useMemo(
     () =>
       data.students
-        .filter((s) => s.classId === classId && s.status !== 'inactive')
+        .filter((s) => s.classId === activeClassId && s.status !== 'inactive')
         .sort((a, b) =>
           `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
         ),
-    [data.students, classId],
+    [data.students, activeClassId],
   );
 
   const historyDates = useMemo(() => {
@@ -70,30 +81,31 @@ export function AttendancePage() {
     let unrecorded = 0;
     for (const student of students) {
       const record = data.attendance.find(
-        (a) => a.classId === classId && a.studentId === student.id && a.date === date,
+        (a) => a.classId === activeClassId && a.studentId === student.id && a.date === date,
       );
       if (!record) unrecorded += 1;
       else if (record.present) present += 1;
       else absent += 1;
     }
     return { present, absent, unrecorded, total: students.length };
-  }, [students, data.attendance, classId, date]);
+  }, [students, data.attendance, activeClassId, date]);
 
   function statusFor(studentId: string, day: string): 'present' | 'absent' | 'none' {
     const record = data.attendance.find(
-      (a) => a.classId === classId && a.studentId === studentId && a.date === day,
+      (a) => a.classId === activeClassId && a.studentId === studentId && a.date === day,
     );
     if (!record) return 'none';
     return record.present ? 'present' : 'absent';
   }
 
   async function togglePresent(studentId: string, present: boolean) {
+    if (!activeClassId) return;
     setNotice('');
     setSaving(true);
-    await upsertAttendance({ classId, studentId, date, present });
+    await upsertAttendance({ classId: activeClassId, studentId, date, present });
     if (!present && notifyAbsence) {
       const clubId = getSession()?.clubId;
-      const className = data.classes.find((c) => c.id === classId)?.name;
+      const className = visibleClasses.find((c) => c.id === activeClassId)?.name;
       if (clubId) {
         const result = await notificationService.notifyAbsenceByEmail({
           clubId,
@@ -124,7 +136,7 @@ export function AttendancePage() {
           `${student.lastName} ${student.firstName}`,
           label,
           date,
-          data.classes.find((c) => c.id === classId)?.name ?? '',
+          visibleClasses.find((c) => c.id === activeClassId)?.name ?? '',
         ].join(';');
       }),
     ];
@@ -152,12 +164,12 @@ export function AttendancePage() {
           <div className="att-select">
             <Users size={18} className="att-select-icon" aria-hidden />
             <select
-              value={classId}
+              value={activeClassId}
               onChange={(e) => setClassId(e.target.value)}
               aria-label="Ομάδα / Τμήμα"
             >
-              {data.classes.length === 0 ? <option value="">—</option> : null}
-              {data.classes.map((c) => (
+              {visibleClasses.length === 0 ? <option value="">—</option> : null}
+              {visibleClasses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

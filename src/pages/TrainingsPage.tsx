@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import * as trainingsService from '../api/services/trainingsService';
+import { getSession } from '../auth/auth';
 import { TrainingsIcon } from '../components/icons/TrainingsIcon';
 import { useAppData } from '../hooks/useAppData';
 import type { TrainingInput } from '../schemas';
 import type { Training } from '../types';
+import {
+  classIdsOf,
+  isClassInCoachScope,
+  visibleClassesForSession,
+} from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
 
 const emptyForm: TrainingInput = {
@@ -39,6 +45,13 @@ const weekdays = [
 
 export function TrainingsPage() {
   const { data, refresh } = useAppData();
+  const session = getSession();
+  const isCoach = session?.role === 'coach';
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
   const [showAdd, setShowAdd] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
   const [editing, setEditing] = useState<Training | null>(null);
@@ -51,12 +64,14 @@ export function TrainingsPage() {
 
   const trainings = useMemo(
     () =>
-      [...(data.trainings ?? [])].sort((a, b) => {
-        const byDate = b.date.localeCompare(a.date);
-        if (byDate !== 0) return byDate;
-        return b.startTime.localeCompare(a.startTime);
-      }),
-    [data.trainings],
+      [...(data.trainings ?? [])]
+        .filter((t) => isClassInCoachScope(t.classId, allowedClassIds, isCoach))
+        .sort((a, b) => {
+          const byDate = b.date.localeCompare(a.date);
+          if (byDate !== 0) return byDate;
+          return b.startTime.localeCompare(a.startTime);
+        }),
+    [data.trainings, allowedClassIds, isCoach],
   );
 
   const allSelected =
@@ -329,7 +344,7 @@ export function TrainingsPage() {
                   }
                 >
                   <option value="">—</option>
-                  {data.classes.map((cls) => (
+                  {visibleClasses.map((cls) => (
                     <option key={cls.id} value={cls.id}>
                       {cls.name}
                     </option>
@@ -374,6 +389,25 @@ export function TrainingsPage() {
           >
             <h2 id="recurring-modal-title">Επαναλαμβανόμενες προπονήσεις</h2>
             <div className="training-modal-fields">
+              <label>
+                <span>Τμήμα</span>
+                <select
+                  value={recForm.classId ?? ''}
+                  onChange={(e) =>
+                    setRecForm({
+                      ...recForm,
+                      classId: e.target.value ? e.target.value : null,
+                    })
+                  }
+                >
+                  <option value="">—</option>
+                  {visibleClasses.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label>
                 <span>Ημέρα εβδομάδας</span>
                 <select

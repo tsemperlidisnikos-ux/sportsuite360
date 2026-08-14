@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react';
 import { CalendarPlus, ChevronLeft, ChevronRight, Link2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getSession } from '../auth/auth';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
+import {
+  classIdsOf,
+  isClassInCoachScope,
+  resolveCoachRecord,
+  sportsMatch,
+  visibleClassesForSession,
+} from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 import { dayNames } from '../utils/labels';
 
@@ -84,6 +92,17 @@ function buildMonthCells(year: number, monthIndex: number) {
 
 export function CalendarPage() {
   const { data } = useAppData();
+  const session = getSession();
+  const isCoach = session?.role === 'coach';
+  const coach = useMemo(
+    () => resolveCoachRecord(data.coaches, session?.coachId),
+    [data.coaches, session?.coachId],
+  );
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
   const today = localDateIso();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -95,8 +114,8 @@ export function CalendarPage() {
   const [selectedIso, setSelectedIso] = useState(today);
 
   const classById = useMemo(
-    () => new Map(data.classes.map((cls) => [cls.id, cls])),
-    [data.classes],
+    () => new Map(visibleClasses.map((cls) => [cls.id, cls])),
+    [visibleClasses],
   );
 
   const locations = useMemo(() => {
@@ -118,6 +137,7 @@ export function CalendarPage() {
     for (const training of data.trainings ?? []) {
       const date = training.date?.slice(0, 10);
       if (!date) continue;
+      if (!isClassInCoachScope(training.classId, allowedClassIds, isCoach)) continue;
       const cls = training.classId ? classById.get(training.classId) : undefined;
       push(date, {
         id: training.id,
@@ -132,6 +152,10 @@ export function CalendarPage() {
     for (const match of data.matches ?? []) {
       const date = match.date?.slice(0, 10);
       if (!date) continue;
+      const matchInScope = match.classId
+        ? isClassInCoachScope(match.classId, allowedClassIds, isCoach)
+        : !isCoach || sportsMatch(match.sport, coach?.sport);
+      if (!matchInScope) continue;
       push(date, {
         id: match.id,
         title: `Αγώνας vs ${match.opponent}`,
@@ -146,7 +170,7 @@ export function CalendarPage() {
       list.sort((a, b) => a.time.localeCompare(b.time));
     }
     return map;
-  }, [data.trainings, data.matches, classById]);
+  }, [data.trainings, data.matches, classById, allowedClassIds, isCoach, coach]);
 
   function passesFilters(event: CalEvent) {
     if (categoryFilter && event.kind !== categoryFilter) return false;
@@ -396,7 +420,7 @@ export function CalendarPage() {
             </select>
             <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)}>
               <option value="">Όλες οι Ομάδες</option>
-              {data.classes.map((c) => (
+              {visibleClasses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

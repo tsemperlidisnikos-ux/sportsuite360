@@ -11,9 +11,14 @@ import { upsertAttendance } from '../api/services/attendanceService';
 import { getSession } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { useAppData } from '../hooks/useAppData';
-import { dayNames, formatDate } from '../utils/labels';
-import { localDateIso } from '../utils/dates';
 import { announcementVisibleToCoach } from '../utils/announcementAudience';
+import {
+  classIdsOf,
+  resolveCoachRecord,
+  visibleClassesForSession,
+} from '../utils/coachScope';
+import { localDateIso } from '../utils/dates';
+import { dayNames, formatDate } from '../utils/labels';
 
 function initials(name: string): string {
   return name
@@ -32,23 +37,20 @@ export function CoachPortalPage() {
   const [notice, setNotice] = useState('');
   const [presentMap, setPresentMap] = useState<Record<string, boolean>>({});
 
-  const coach = useMemo(() => {
-    if (!session?.coachId) return null;
-    return (data.coaches ?? []).find((c) => c.id === session.coachId && c.active) ?? null;
-  }, [data.coaches, session?.coachId]);
+  const coach = useMemo(
+    () => resolveCoachRecord(data.coaches, session?.coachId),
+    [data.coaches, session?.coachId],
+  );
 
-  const classIds = useMemo(() => {
-    if (!coach) return new Set<string>();
-    return new Set((data.classes ?? []).filter((c) => c.coachId === coach.id).map((c) => c.id));
-  }, [data.classes, coach]);
+  const myClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+
+  const classIds = useMemo(() => classIdsOf(myClasses), [myClasses]);
 
   const linkMissing = Boolean(session && !session.coachId);
   const linkBroken = Boolean(session?.coachId && !coach);
-
-  const myClasses = useMemo(
-    () => (data.classes ?? []).filter((c) => classIds.has(c.id)),
-    [data.classes, classIds],
-  );
 
   const [classId, setClassId] = useState('');
   const activeClassId = classId && classIds.has(classId) ? classId : myClasses[0]?.id ?? '';

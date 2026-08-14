@@ -37,6 +37,11 @@ import {
   MEDICAL_ACCESS_HINT,
 } from '../shared/termsDefaults';
 import { canAccessAmka, canAccessMedical, formatAmkaForViewer } from '../utils/amkaAccess';
+import {
+  classIdsOf,
+  isClassInCoachScope,
+  visibleClassesForSession,
+} from '../utils/coachScope';
 
 type ProfileTab =
   | 'personal'
@@ -251,6 +256,13 @@ export function AthleteProfilePage() {
   const session = getSession();
   const amkaAllowed = canAccessAmka(session?.role);
   const medicalAllowed = canAccessMedical(session?.role);
+  const feesTabAllowed = session?.role !== 'coach';
+  const isCoach = session?.role === 'coach';
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
   const student = data.students.find((s) => s.id === athleteId);
 
   const [editing, setEditing] = useState(
@@ -319,6 +331,12 @@ export function AthleteProfilePage() {
       action: 'view',
     });
   }, [amkaAllowed, profileTab, session, student]);
+
+  useEffect(() => {
+    if (!feesTabAllowed && profileTab === 'fees') {
+      setProfileTab('personal');
+    }
+  }, [feesTabAllowed, profileTab]);
 
   useEffect(() => {
     if ((location.state as { editing?: boolean } | null)?.editing) {
@@ -447,6 +465,14 @@ export function AthleteProfilePage() {
   );
 
   if (session?.role === 'doctor') {
+    return <Navigate to="/athletes" replace />;
+  }
+
+  if (
+    isCoach &&
+    student &&
+    !isClassInCoachScope(student.classId, allowedClassIds, true)
+  ) {
     return <Navigate to="/athletes" replace />;
   }
 
@@ -840,7 +866,8 @@ export function AthleteProfilePage() {
       {error ? <p className="form-error">{error}</p> : null}
 
       <div className="ap-tabs" role="tablist" aria-label="Υποκατηγορίες προφίλ">
-        {PROFILE_TABS.map(({ id, label, icon: Icon }) => (
+        {PROFILE_TABS.filter((tab) => tab.id !== 'fees' || feesTabAllowed).map(
+          ({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -968,7 +995,7 @@ export function AthleteProfilePage() {
                       onChange={(e) => setField('classId', e.target.value || null)}
                     >
                       <option value="">Δεν έχει οριστεί σε τμήμα</option>
-                      {data.classes.map((c) => (
+                      {visibleClasses.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
@@ -1261,7 +1288,7 @@ export function AthleteProfilePage() {
           </ApCard>
         ) : null}
 
-        {profileTab === 'fees' ? (
+        {profileTab === 'fees' && feesTabAllowed ? (
           <div className="ap-stack">
             <ApCard title="Συνδρομές & χρεώσεις">
               <div className="ap-grid-2">

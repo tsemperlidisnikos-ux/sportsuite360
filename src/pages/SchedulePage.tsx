@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Info, Pencil, Plus } from 'lucide-react';
 import * as scheduleService from '../api/services/scheduleService';
+import { getSession } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -8,6 +9,13 @@ import { Select } from '../components/ui/Select';
 import { useAppData } from '../hooks/useAppData';
 import type { ScheduleSlotInput } from '../schemas';
 import type { ScheduleSlot } from '../types';
+import {
+  classIdsOf,
+  isClassInCoachScope,
+  resolveCoachRecord,
+  sportsMatch,
+  visibleClassesForSession,
+} from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 import { dayNames } from '../utils/labels';
 
@@ -80,16 +88,34 @@ type GridBlock = {
 
 export function SchedulePage() {
   const { data, refresh } = useAppData();
-  const [classId, setClassId] = useState(data.classes[0]?.id ?? '');
+  const session = getSession();
+  const isCoach = session?.role === 'coach';
+  const coach = useMemo(
+    () => resolveCoachRecord(data.coaches, session?.coachId),
+    [data.coaches, session?.coachId],
+  );
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
+  const [classId, setClassId] = useState(visibleClasses[0]?.id ?? '');
   const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(new Date()));
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ScheduleSlotInput>({
     ...emptyForm,
-    classId: data.classes[0]?.id ?? '',
+    classId: visibleClasses[0]?.id ?? '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const activeClassId =
+    classId && visibleClasses.some((c) => c.id === classId)
+      ? classId
+      : isCoach
+        ? visibleClasses[0]?.id ?? ''
+        : classId;
 
   const weekDays = useMemo(
     () => WEEKDAY_ORDER.map((dow, index) => {
@@ -101,13 +127,15 @@ export function SchedulePage() {
 
   const blocks = useMemo(() => {
     const result: GridBlock[] = [];
-    const selectedClass = classId || null;
+    const selectedClass = activeClassId || null;
 
     for (const slot of data.schedule) {
+      if (!isClassInCoachScope(slot.classId, allowedClassIds, isCoach)) continue;
       if (selectedClass && slot.classId !== selectedClass) continue;
       const dayIndex = WEEKDAY_ORDER.indexOf(slot.dayOfWeek as (typeof WEEKDAY_ORDER)[number]);
       if (dayIndex < 0) continue;
-      const cls = data.classes.find((c) => c.id === slot.classId);
+      const cls = visibleClasses.find((c) => c.id === slot.classId)
+        ?? data.classes.find((c) => c.id === slot.classId);
       result.push({
         id: slot.id,
         kind: 'training',
@@ -122,6 +150,10 @@ export function SchedulePage() {
 
     for (const match of data.matches ?? []) {
       if (match.status === 'cancelled') continue;
+      const matchInScope = match.classId
+        ? isClassInCoachScope(match.classId, allowedClassIds, isCoach)
+        : !isCoach || sportsMatch(match.sport, coach?.sport);
+      if (!matchInScope) continue;
       if (selectedClass && match.classId && match.classId !== selectedClass) continue;
       const iso = match.date?.slice(0, 10);
       const dayIndex = weekDays.findIndex((d) => d.iso === iso);
@@ -140,13 +172,23 @@ export function SchedulePage() {
     }
 
     return result;
-  }, [data.schedule, data.matches, data.classes, classId, weekDays]);
+  }, [
+    data.schedule,
+    data.matches,
+    data.classes,
+    visibleClasses,
+    activeClassId,
+    weekDays,
+    allowedClassIds,
+    isCoach,
+    coach,
+  ]);
 
   function openCreate() {
     setEditingId(null);
     setForm({
       ...emptyForm,
-      classId: classId || data.classes[0]?.id || '',
+      classId: activeClassId || visibleClasses[0]?.id || '',
       dayOfWeek: 1,
     });
     setError('');
@@ -206,9 +248,9 @@ export function SchedulePage() {
       <div className="prog-toolbar panel">
         <label className="prog-field">
           <span>Επιλογή Τμήματος</span>
-          <select value={classId} onChange={(e) => setClassId(e.target.value)}>
-            <option value="">Όλα τα τμήματα</option>
-            {data.classes.map((cls) => (
+          <select value={activeClassId} onChange={(e) => setClassId(e.target.value)}>
+            {isCoach ? null : <option value="">Όλα τα τμήματα</option>}
+            {visibleClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name}
                 {cls.ageGroup ? ` · ${cls.ageGroup}` : ''}
@@ -346,7 +388,7 @@ export function SchedulePage() {
             label="Τμήμα"
             value={form.classId}
             onChange={(e) => setForm({ ...form, classId: e.target.value })}
-            options={data.classes.map((c) => ({ value: c.id, label: c.name }))}
+            options={visibleClasses.map((c) => ({ value: c.id, label: c.name }))}
           />
           <Select
             label="Ημέρα"

@@ -13,6 +13,11 @@ import { getPreviewClubId } from '../platform/platformConfig';
 import type { StudentInput } from '../schemas';
 import type { RegistrationApplication, RegistrationApplicationKind } from '../types';
 import { formatAmkaForViewer } from '../utils/amkaAccess';
+import {
+  classIdsOf,
+  visibleClassesForSession,
+  visibleStudentsForSession,
+} from '../utils/coachScope';
 import { openAthleteHealthCardPreview } from '../utils/healthCardPreview';
 import { studentStatusLabels } from '../utils/labels';
 
@@ -92,6 +97,12 @@ export function StudentsPage() {
   const { data, refresh } = useAppData();
   const session = getSession();
   const isDoctor = session?.role === 'doctor';
+  const isCoach = session?.role === 'coach';
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [busyAppId, setBusyAppId] = useState<string | null>(null);
@@ -114,13 +125,18 @@ export function StudentsPage() {
 
   const pendingApplications = useMemo(
     () =>
-      (data.registrationApplications ?? []).filter((app) => app.status === 'pending'),
-    [data.registrationApplications],
+      (data.registrationApplications ?? []).filter((app) => {
+        if (app.status !== 'pending') return false;
+        if (!isCoach) return true;
+        return Boolean(app.classId && allowedClassIds.has(app.classId));
+      }),
+    [data.registrationApplications, isCoach, allowedClassIds],
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return data.students.filter((s) => {
+    const scoped = visibleStudentsForSession(data.students, allowedClassIds, session);
+    return scoped.filter((s) => {
       if (s.status === 'inactive') return false;
       if (!q) return true;
       const hay = isDoctor
@@ -128,7 +144,7 @@ export function StudentsPage() {
         : `${s.firstName} ${s.lastName} ${s.email} ${s.guardianName}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [data.students, query, isDoctor]);
+  }, [data.students, query, isDoctor, allowedClassIds, session]);
 
   async function handleHealthCard(studentId: string) {
     const student = data.students.find((s) => s.id === studentId);
@@ -343,7 +359,7 @@ export function StudentsPage() {
                             }
                           >
                             <option value="">—</option>
-                            {data.classes.map((c) => (
+                            {visibleClasses.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.name}
                               </option>

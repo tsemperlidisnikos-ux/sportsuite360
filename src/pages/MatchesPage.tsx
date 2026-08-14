@@ -1,13 +1,22 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import * as matchesService from '../api/services/matchesService';
+import { getSession } from '../auth/auth';
 import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import type { MatchInput } from '../schemas';
 import type { Match, MatchStatus, MatchVenue } from '../types';
+import {
+  classIdsOf,
+  isClassInCoachScope,
+  resolveCoachRecord,
+  sportsMatch,
+  visibleClassesForSession,
+} from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 import { formatDate } from '../utils/labels';
+import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm = (): MatchInput => ({
   date: localDateIso(),
@@ -37,18 +46,46 @@ const statusLabels: Record<MatchStatus, string> = {
 
 export function MatchesPage() {
   const { data, refresh } = useAppData();
-  const [form, setForm] = useState<MatchInput>(emptyForm);
+  const session = getSession();
+  const isCoach = session?.role === 'coach';
+  const coach = useMemo(
+    () => resolveCoachRecord(data.coaches, session?.coachId),
+    [data.coaches, session?.coachId],
+  );
+  const visibleClasses = useMemo(
+    () => visibleClassesForSession(data.classes, data.coaches, session),
+    [data.classes, data.coaches, session],
+  );
+  const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
+  const [form, setForm] = useState<MatchInput>(() => ({
+    ...emptyForm(),
+    sport: coach?.sport ?? '',
+  }));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const sportOptions = useMemo(() => {
+    const active = (data.sports ?? []).filter((s) => s.active);
+    if (isCoach && coach?.sport) {
+      const key = normalizeSportKey(coach.sport);
+      const matched = active.filter((s) => normalizeSportKey(s.name) === key);
+      return matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
+    }
+    return active;
+  }, [data.sports, isCoach, coach]);
+
   const matches = useMemo(
     () =>
-      [...(data.matches ?? [])].sort((a, b) =>
-        `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`),
-      ),
-    [data.matches],
+      [...(data.matches ?? [])]
+        .filter((m) => {
+          if (!isCoach) return true;
+          if (m.classId) return isClassInCoachScope(m.classId, allowedClassIds, true);
+          return sportsMatch(m.sport, coach?.sport);
+        })
+        .sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`)),
+    [data.matches, isCoach, allowedClassIds, coach],
   );
 
   function startEdit(match: Match) {
@@ -72,7 +109,10 @@ export function MatchesPage() {
 
   function resetForm() {
     setEditingId(null);
-    setForm(emptyForm());
+    setForm({
+      ...emptyForm(),
+      sport: isCoach && coach?.sport ? coach.sport : '',
+    });
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -82,6 +122,7 @@ export function MatchesPage() {
     setMessage('');
     const payload: MatchInput = {
       ...form,
+      sport: isCoach && coach?.sport ? coach.sport : form.sport,
       opponent: form.opponent.trim(),
       ourScore: form.status === 'played' ? Number(form.ourScore ?? 0) : null,
       opponentScore: form.status === 'played' ? Number(form.opponentScore ?? 0) : null,
@@ -150,16 +191,15 @@ export function MatchesPage() {
               <span>Άθλημα</span>
               <select
                 value={form.sport}
+                disabled={isCoach}
                 onChange={(e) => setForm((p) => ({ ...p, sport: e.target.value }))}
               >
-                <option value="">—</option>
-                {(data.sports ?? [])
-                  .filter((s) => s.active)
-                  .map((s) => (
-                    <option key={s.id} value={s.name}>
-                      {s.name}
-                    </option>
-                  ))}
+                {isCoach ? null : <option value="">—</option>}
+                {sportOptions.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="field">
@@ -171,7 +211,7 @@ export function MatchesPage() {
                 }
               >
                 <option value="">— χωρίς —</option>
-                {data.classes.map((c) => (
+                {visibleClasses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
