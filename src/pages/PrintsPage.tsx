@@ -265,6 +265,18 @@ function GenderSelect({
   );
 }
 
+function parseMoney(value: string | undefined): number {
+  if (!value) return 0;
+  const n = Number(value.replace(/[^\d,.-]/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function moneyColumnKey(columns: Array<{ key: string }>): string | null {
+  if (columns.some((c) => c.key === 'amount')) return 'amount';
+  if (columns.some((c) => c.key === 'balance')) return 'balance';
+  return null;
+}
+
 function ResultsModal({
   open,
   title,
@@ -291,6 +303,11 @@ function ResultsModal({
   deleting?: boolean;
 }) {
   const showActions = Boolean(onDeleteRow);
+  const moneyKey = columns.some((c) => c.key === 'label') ? null : moneyColumnKey(columns);
+  const moneyTotal =
+    moneyKey && rows.length > 0
+      ? rows.reduce((sum, row) => sum + parseMoney(row[moneyKey]), 0)
+      : null;
   return (
     <Modal
       open={open}
@@ -365,6 +382,22 @@ function ResultsModal({
                 </tr>
               ))}
             </tbody>
+            {moneyKey && moneyTotal != null ? (
+              <tfoot>
+                <tr className="prints-results-total">
+                  {columns.map((col, colIndex) => (
+                    <td key={col.key}>
+                      {colIndex === 0
+                        ? 'Σύνολο'
+                        : col.key === moneyKey
+                          ? `${moneyTotal.toFixed(2)} €`
+                          : ''}
+                    </td>
+                  ))}
+                  {showActions ? <td></td> : null}
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
       ) : (

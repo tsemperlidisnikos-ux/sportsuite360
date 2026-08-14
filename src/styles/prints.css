@@ -206,6 +206,12 @@
   min-width: max-content;
 }
 
+.prints-results-table tfoot td,
+.prints-results-table .prints-results-total td {
+  font-weight: 700;
+  background: #eef2f7;
+}
+
 .prints-results-empty {
   margin: 1rem 0;
   color: var(--color-text-muted);
@@ -263,5 +269,9 @@
     box-shadow: none;
     max-width: none;
     width: 100%;
+  }
+
+  .prints-results-table tfoot {
+    display: table-footer-group;
   }
 }

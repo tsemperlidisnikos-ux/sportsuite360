@@ -1542,6 +1542,12 @@ html[data-appearance='navy-amber'] .modal.prints-results-modal .prints-results-t
   border-color: #d7dee8;
 }
 
+html[data-appearance='navy-amber'] .modal.prints-results-modal .prints-results-table tfoot td {
+  background: #e8eef6;
+  color: #0b1f3a;
+  font-weight: 700;
+}
+
 html[data-appearance='navy-amber'] .modal.prints-results-modal .prints-results-empty {
   color: #5b6b7c;
 }
