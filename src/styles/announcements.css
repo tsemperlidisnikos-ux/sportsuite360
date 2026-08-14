@@ -867,10 +867,6 @@
   padding: 0.55rem 0.7rem;
   font: inherit;
 }
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
 
 .ann-audience-toggles,
 .ann-priority-toggles {
