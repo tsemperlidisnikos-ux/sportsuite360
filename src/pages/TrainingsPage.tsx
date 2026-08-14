@@ -237,6 +237,7 @@ export function TrainingsPage() {
                 <th>Έναρξη</th>
                 <th>Λήξη</th>
                 <th>Τοποθεσία</th>
+                <th>Άθλημα</th>
                 <th>Τμήμα</th>
                 <th>Σημειώσεις</th>
                 <th></th>
@@ -262,6 +263,7 @@ export function TrainingsPage() {
                     <td>{training.startTime}</td>
                     <td>{training.endTime}</td>
                     <td>{training.location || '—'}</td>
+                    <td>{cls?.sport || '—'}</td>
                     <td>{cls?.name ?? '—'}</td>
                     <td>{training.notes || '—'}</td>
                     <td className="row-actions">

@@ -126,6 +126,14 @@ export function LoginPage() {
       await syncClubOnLogin(result.data?.clubId ?? null);
       clearDataCache();
       try {
+        const { migrateUsersToPlatformRoleDefaults } = await import(
+          '../api/services/clubUsersService'
+        );
+        migrateUsersToPlatformRoleDefaults();
+      } catch {
+        /* best-effort role defaults */
+      }
+      try {
         const { runDueFeeGenerations } = await import('../api/services/feeChargesService');
         await runDueFeeGenerations();
       } catch {

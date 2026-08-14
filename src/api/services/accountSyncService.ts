@@ -3,6 +3,7 @@ import { syncAuthHeaders } from '../syncAuth';
 import { getUsers, saveUsers, type AppUser } from '../../auth/auth';
 import { getClubs, saveClubs, type Club } from '../../auth/clubs';
 import {
+  clearStampedRoleDefaultPermissions,
   loadPlatformConfig,
   savePlatformConfig,
   type PlatformConfig,
@@ -73,9 +74,15 @@ export function applyAccountBundle(
   bundle: AccountBundlePayload,
   options?: { mergeLocalUsers?: boolean },
 ) {
+  if (bundle.platformConfig) {
+    savePlatformConfig(bundle.platformConfig);
+  }
+
+  const cleanedUsers = clearStampedRoleDefaultPermissions(bundle.users);
+
   if (options?.mergeLocalUsers) {
-    const cloudUsers = bundle.users;
-    const localUsers = getUsers();
+    const cloudUsers = cleanedUsers;
+    const localUsers = clearStampedRoleDefaultPermissions(getUsers());
     const byId = new Map(cloudUsers.map((u) => [u.id, u]));
     const cloudEmails = new Set(cloudUsers.map((u) => u.email.toLowerCase()));
     for (const local of localUsers) {
@@ -85,10 +92,7 @@ export function applyAccountBundle(
     }
     saveUsers([...byId.values()]);
   } else {
-    saveUsers(bundle.users);
+    saveUsers(cleanedUsers);
   }
   saveClubs(bundle.clubs);
-  if (bundle.platformConfig) {
-    savePlatformConfig(bundle.platformConfig);
-  }
 }

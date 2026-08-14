@@ -1,6 +1,7 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getSession, logout, saveUsers } from '../auth/auth';
+import { pushAccountBundle } from '../api/services/accountSyncService';
+import { getSession, getUsers, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { BackupSchedulePanel } from '../components/BackupSchedulePanel';
 import { ClubWaitlistPanel } from '../components/ClubWaitlistPanel';
@@ -15,6 +16,7 @@ import {
   CLUB_PERMISSIONS,
   CLUB_ROLE_LABELS,
   CLUB_ROLES,
+  clearStampedRoleDefaultPermissions,
   endPreview,
   getAcademyModulesForClub,
   getPreviewClubId,
@@ -168,6 +170,9 @@ export function PlatformAdminPage() {
     saveFinanceCatalogAsDefaults(loaded);
     return loaded;
   });
+  const roleDefaultsBaselineRef = useRef(
+    structuredClone(loadPlatformConfig().clubRolePermissions),
+  );
   const [catalogClubId, setCatalogClubId] = useState(clubs[0]?.id ?? '');
   const [clubRole, setClubRole] = useState<ClubRole>('admin');
   const [message, setMessage] = useState('');
@@ -905,7 +910,29 @@ export function PlatformAdminPage() {
                 </div>
                 <Button
                   type="button"
-                  onClick={() => flash('Τα δικαιώματα ρόλων αποθηκεύτηκαν για όλα τα σωματεία.')}
+                  onClick={() => {
+                    void (async () => {
+                      const previous = structuredClone(roleDefaultsBaselineRef.current);
+                      persist(config);
+                      saveUsers(
+                        clearStampedRoleDefaultPermissions(getUsers(), previous),
+                      );
+                      roleDefaultsBaselineRef.current = structuredClone(
+                        config.clubRolePermissions,
+                      );
+                      const pushed = await pushAccountBundle();
+                      if (!pushed.success) {
+                        flash(
+                          pushed.error ??
+                            'Αποθηκεύτηκε τοπικά, αλλά όχι στο cloud. Κάντε Push από Backup.',
+                        );
+                        return;
+                      }
+                      flash(
+                        'Τα δικαιώματα ρόλων αποθηκεύτηκαν ως προεπιλογή για όλα τα σωματεία.',
+                      );
+                    })();
+                  }}
                 >
                   Αποθήκευση δικαιωμάτων
                 </Button>

@@ -173,12 +173,16 @@ export function AppLayout() {
     if (session?.role === 'coach') {
       return {
         dashboard: 'Αρχική',
+        calendar: 'Ημερολόγιο',
         classes: 'Τα Τμήματά μου',
         trainings: 'Προπονήσεις',
+        matches: 'Αγώνες',
         attendance: 'Απουσίες / Παρουσίες',
         announcements: 'Ανακοινώσεις',
         athletes: 'Αθλητές',
         schedule: 'Πρόγραμμα',
+        partnerBusinesses: 'Συμβεβλημένες Επιχειρήσεις',
+        photos: 'Φωτογραφίες',
         settings: 'Ρυθμίσεις',
       };
     }

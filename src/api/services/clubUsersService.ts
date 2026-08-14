@@ -14,9 +14,11 @@ import { createId, getData, mutateData } from '../../data/repository';
 import {
   CLUB_ROLE_LABELS,
   CLUB_ROLES,
+  clearStampedRoleDefaultPermissions,
   getPermissionsForClubRole,
   isClubRole,
-  permissionsForClubRoleAssignment,
+  permissionsToStoreForRole,
+  usesPlatformRolePermissionDefaults,
   type ClubPermission,
   type ClubRole,
 } from '../../platform/platformConfig';
@@ -162,7 +164,7 @@ export async function listClubDirectory(clubId: string) {
         hasLogin: true,
         userId: user.id,
         entityId,
-        customPermissions: Boolean(user.permissions),
+        customPermissions: !usesPlatformRolePermissionDefaults(user.role, user.permissions),
         linkedLabel,
       });
     }
@@ -314,7 +316,7 @@ export async function inviteClubUser(input: InviteClubUserInput) {
       throw new Error('Το email χρησιμοποιείται ήδη');
     }
 
-    const permissions = permissionsForClubRoleAssignment(input.role, input.permissions);
+    const permissions = permissionsToStoreForRole(input.role, input.permissions);
 
     const user: AppUser = {
       id: createId('user'),
@@ -365,7 +367,7 @@ export async function updateClubUser(
     }
     if (patch.permissions !== undefined) {
       const nextRole = patch.role ?? (target.role as ClubRole);
-      nextPatch.permissions = permissionsForClubRoleAssignment(nextRole, patch.permissions);
+      nextPatch.permissions = permissionsToStoreForRole(nextRole, patch.permissions);
     }
     if (patch.password !== undefined && patch.password.trim()) {
       if (patch.password.trim().length < 6) {
@@ -377,7 +379,7 @@ export async function updateClubUser(
 
     const nextRole = patch.role ?? (target.role as ClubRole);
     if (nextRole === 'doctor') {
-      nextPatch.permissions = permissionsForClubRoleAssignment('doctor', []);
+      nextPatch.permissions = null;
     }
     if (patch.athleteId !== undefined || patch.role !== undefined) {
       nextPatch.athleteId =
@@ -469,4 +471,16 @@ export async function removeClubDirectoryMember(
 
 export function defaultPermissionsForRole(role: ClubRole): ClubPermission[] {
   return getPermissionsForClubRole(role);
+}
+
+/** Καθαρίζει stamped defaults ώστε οι χρήστες να ακολουθούν το Platform Admin. */
+export function migrateUsersToPlatformRoleDefaults(): number {
+  const users = getUsers();
+  const next = clearStampedRoleDefaultPermissions(users);
+  let changed = 0;
+  for (let i = 0; i < users.length; i += 1) {
+    if (users[i].permissions !== next[i].permissions) changed += 1;
+  }
+  if (changed > 0) saveUsers(next);
+  return changed;
 }

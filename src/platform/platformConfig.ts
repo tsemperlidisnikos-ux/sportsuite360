@@ -336,31 +336,9 @@ function sanitizeClubRolePermissions(
   for (const role of CLUB_ROLES) {
     const list = stored[role];
     if (!list) continue;
+    // Ό,τι ορίζει ο Platform Admin — χωρίς αυτόματη προσθήκη modules
+    // (π.χ. partnerBusinesses) που αγνοεί τις επιλογές του admin.
     result[role] = list.filter((p): p is ClubPermission => allowed.has(p));
-    // Newer modules: εμφανίζονται δίπλα στις Ρυθμίσεις αν ο ρόλος τις είχε ήδη
-    if (result[role].includes('settings') && !result[role].includes('partnerBusinesses')) {
-      const settingsIndex = result[role].indexOf('settings');
-      result[role].splice(settingsIndex, 0, 'partnerBusinesses');
-    }
-    if (result[role].includes('prints') && !result[role].includes('photos')) {
-      const printsIndex = result[role].indexOf('prints');
-      result[role].splice(printsIndex + 1, 0, 'photos');
-    }
-    if (result[role].includes('classes') && !result[role].includes('parents')) {
-      const classesIndex = result[role].indexOf('classes');
-      result[role].splice(classesIndex + 1, 0, 'parents');
-    }
-    if (result[role].includes('trainings') && !result[role].includes('matches')) {
-      const trainingsIndex = result[role].indexOf('trainings');
-      result[role].splice(trainingsIndex + 1, 0, 'matches');
-    }
-    if (!result[role].includes('calendar')) {
-      const hasRelated =
-        result[role].includes('schedule') ||
-        result[role].includes('trainings') ||
-        result[role].includes('settings');
-      if (hasRelated) result[role] = ['calendar', ...result[role]];
-    }
   }
   result.doctor = [...DOCTOR_CLUB_PERMISSIONS];
   return result;
@@ -722,6 +700,92 @@ export function getPermissionsForClubRole(role: ClubRole): ClubPermission[] {
   return [...(loadPlatformConfig().clubRolePermissions[role] ?? [])];
 }
 
+export function sameClubPermissionSet(
+  a: readonly string[] | null | undefined,
+  b: readonly string[] | null | undefined,
+): boolean {
+  const left = [...(a ?? [])].filter(Boolean).sort();
+  const right = [...(b ?? [])].filter(Boolean).sort();
+  if (left.length !== right.length) return false;
+  return left.every((p, i) => p === right[i]);
+}
+
+/** Modules που προστέθηκαν αργότερα — παλιά snapshots χωρίς αυτά θεωρούνται defaults. */
+const LEGACY_ROLE_PERMISSION_MODULES: ClubPermission[] = [
+  'partnerBusinesses',
+  'photos',
+  'parents',
+  'matches',
+  'warehouse',
+  'calendar',
+];
+
+/** true αν ο χρήστης ακολουθεί (ή πρέπει να ακολουθεί) τα defaults ρόλου του Platform Admin. */
+export function usesPlatformRolePermissionDefaults(
+  role: string,
+  permissions: readonly string[] | null | undefined,
+): boolean {
+  if (permissions == null) return true;
+  if (role === 'doctor' || role === 'platform_admin') return true;
+  if (!isClubRole(role)) return false;
+  if (permissions.length === 0) return true;
+  if (sameClubPermissionSet(permissions, getPermissionsForClubRole(role))) return true;
+  if (sameClubPermissionSet(permissions, DEFAULT_CLUB_ROLE_PERMISSIONS[role])) return true;
+
+  // Παλιό stamped σύνολο: ίδια με τα defaults, απλώς λείπουν νεότερα modules
+  const current = getPermissionsForClubRole(role);
+  const stampSet = new Set(permissions);
+  const onlyInStamp = permissions.filter((p) => !current.includes(p as ClubPermission));
+  if (onlyInStamp.length > 0) return false;
+  const onlyInCurrent = current.filter((p) => !stampSet.has(p));
+  if (onlyInCurrent.length === 0) return true;
+  return onlyInCurrent.every((p) =>
+    (LEGACY_ROLE_PERMISSION_MODULES as readonly string[]).includes(p),
+  );
+}
+
+/**
+ * Αποθήκευση δικαιωμάτων χρήστη: null = ζωντανά defaults Platform Admin.
+ * Μόνο πραγματικά custom σύνολα αποθηκεύονται ως snapshot.
+ */
+export function permissionsToStoreForRole(
+  role: ClubRole,
+  permissions: readonly string[],
+): ClubPermission[] | null {
+  if (role === 'doctor') return null;
+  const assigned = permissionsForClubRoleAssignment(role, permissions);
+  if (usesPlatformRolePermissionDefaults(role, assigned)) return null;
+  return assigned;
+}
+
+/** Καθαρίζει stamped defaults ώστε όλοι οι σύλλογοι να ακολουθούν το Platform Admin. */
+export function clearStampedRoleDefaultPermissions<T extends { role: string; permissions?: string[] | null }>(
+  users: T[],
+  previousRoleDefaults?: Record<ClubRole, ClubPermission[]>,
+): T[] {
+  return users.map((user) => {
+    if (!isClubRole(user.role)) return user;
+    if (user.role === 'doctor') {
+      return user.permissions == null ? user : { ...user, permissions: null };
+    }
+    if (user.permissions == null) return user;
+    // κενό snapshot ή αντίγραφο defaults → ζωντανά Platform Admin
+    if (user.permissions.length === 0) {
+      return { ...user, permissions: null };
+    }
+    if (usesPlatformRolePermissionDefaults(user.role, user.permissions)) {
+      return { ...user, permissions: null };
+    }
+    if (
+      previousRoleDefaults &&
+      sameClubPermissionSet(user.permissions, previousRoleDefaults[user.role])
+    ) {
+      return { ...user, permissions: null };
+    }
+    return user;
+  });
+}
+
 export function permissionsForClubRoleAssignment(
   role: ClubRole,
   permissions: readonly string[],
@@ -747,11 +811,15 @@ export function getEffectiveClubPermissions(user: {
 }): ClubPermission[] {
   if (user.role === 'platform_admin') return [...CLUB_PERMISSIONS];
   if (user.role === 'doctor') return [...DOCTOR_CLUB_PERMISSIONS];
+  // null/undefined ή stamped αντίγραφο defaults → ζωντανά Platform Admin defaults
+  if (usesPlatformRolePermissionDefaults(user.role, user.permissions)) {
+    if (isClubRole(user.role)) return getPermissionsForClubRole(user.role);
+    return [];
+  }
   if (user.permissions) {
     const allowed = new Set<string>(CLUB_PERMISSIONS);
     return user.permissions.filter((p): p is ClubPermission => allowed.has(p));
   }
-  if (isClubRole(user.role)) return getPermissionsForClubRole(user.role);
   return [];
 }
 

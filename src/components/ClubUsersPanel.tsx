@@ -14,6 +14,7 @@ import {
   CLUB_ROLE_LABELS,
   CLUB_ROLES,
   DOCTOR_CLUB_PERMISSIONS,
+  getEffectiveClubPermissions,
   type ClubPermission,
   type ClubRole,
 } from '../platform/platformConfig';
@@ -231,11 +232,9 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     setPermissions(
       nextRole === 'doctor'
         ? [...DOCTOR_CLUB_PERMISSIONS]
-        : user.permissions
-          ? (user.permissions.filter((p) =>
-              (CLUB_PERMISSIONS as readonly string[]).includes(p),
-            ) as ClubPermission[])
-          : clubUsersService.defaultPermissionsForRole(nextRole),
+        : (getEffectiveClubPermissions(user).filter((p) =>
+            (CLUB_PERMISSIONS as readonly string[]).includes(p),
+          ) as ClubPermission[]),
     );
     setError('');
     setMessage('');
@@ -547,7 +546,12 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
                 Ο ιατρός έχει πρόσβαση μόνο σε Αθλητές. Οικονομικά, ρυθμίσεις και άλλες καρτέλες δεν
                 μπορούν να ενεργοποιηθούν.
               </p>
-            ) : null}
+            ) : (
+              <p className="ap-field-hint">
+                Προεπιλογή από Platform Admin για όλους τους συλλόγους. Αλλάξτε τα μόνο αν θέλετε
+                εξαίρεση για αυτόν τον χρήστη.
+              </p>
+            )}
             <div className="club-users-permissions-grid">
               {(role === 'doctor' ? DOCTOR_CLUB_PERMISSIONS : CLUB_PERMISSIONS).map(
                 (permission) => (

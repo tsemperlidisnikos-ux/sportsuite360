@@ -311,7 +311,7 @@ export async function inviteParent(input: InviteParentInput) {
         role: 'parent',
         active: false,
         clubId: input.clubId,
-        permissions: [],
+        permissions: null,
       } satisfies AppUser;
       saveUsers([...users, parent]);
     } else {
@@ -395,7 +395,7 @@ export async function connectParent(input: ConnectParentInput) {
         role: 'parent',
         active: true,
         clubId: input.clubId,
-        permissions: [],
+        permissions: null,
       } satisfies AppUser;
       saveUsers([...users, parent]);
     } else {
