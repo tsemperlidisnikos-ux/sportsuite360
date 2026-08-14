@@ -1091,16 +1091,6 @@ export function AthleteProfilePage() {
         {profileTab === 'guardians' ? (
           <ApCard title="Γονείς">
             <div className="ap-grid-2">
-              <ApField label="Όνομα γονέα">
-                {textInput(form.guardianName, (v) => setField('guardianName', v), {
-                  upper: true,
-                })}
-              </ApField>
-              <ApField label="Τηλέφωνο γονέα">
-                {textInput(form.guardianPhone, (v) => setField('guardianPhone', v), {
-                  type: 'tel',
-                })}
-              </ApField>
               <ApField label="Πατρώνυμο">
                 {textInput(form.fatherFirstName, (v) => setField('fatherFirstName', v), {
                   upper: true,
