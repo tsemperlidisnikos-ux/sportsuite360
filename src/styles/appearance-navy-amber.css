@@ -453,12 +453,17 @@ html[data-appearance='navy-amber'] .feed-list li {
 }
 
 html[data-appearance='navy-amber'] .quick-links a {
-  color: var(--brand);
-  font-weight: 700;
-  border: 1px solid var(--line);
+  color: var(--amber-ink, #0b1f3a);
+  font-weight: 800;
+  border: 1px solid var(--accent);
   border-radius: 8px;
-  padding: 0.35rem 0.65rem;
-  background: var(--surface);
+  padding: 0.4rem 0.75rem;
+  background: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .quick-links a:hover {
+  color: var(--amber-ink, #0b1f3a);
+  filter: brightness(1.06);
 }
 
 /* ---- Modal ---- */
@@ -2380,5 +2385,90 @@ html[data-appearance='navy-amber'] .club-users-panel h4 {
 
 html[data-appearance='navy-amber'] .club-users-panel .lede {
   color: #d0dae8;
+}
+
+/* Dark-on-dark leftovers: --brand/--brand-dark are navy in this theme */
+html[data-appearance='navy-amber'] .btn-ghost {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] .btn-ghost:hover {
+  color: #ffffff;
+}
+
+html[data-appearance='navy-amber'] .athlete-name-link,
+html[data-appearance='navy-amber'] .athlete-name-link strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .athlete-name-link:hover strong {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .athlete-avatar,
+html[data-appearance='navy-amber'] .tx-page-icon,
+html[data-appearance='navy-amber'] .stat-icon {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .settings-success {
+  color: #7dffc0;
+}
+
+html[data-appearance='navy-amber'] .ann-chip.is-active,
+html[data-appearance='navy-amber'] .ann-chip.is-on {
+  color: #f5d27a;
+  background: rgba(224, 177, 58, 0.16);
+  border-color: rgba(224, 177, 58, 0.45);
+}
+
+html[data-appearance='navy-amber'] .platform-admin-banner {
+  color: #f4f7fb;
+  background: rgba(224, 177, 58, 0.16);
+}
+
+html[data-appearance='navy-amber'] .ta-total,
+html[data-appearance='navy-amber'] .calendar-event-time {
+  color: var(--accent);
+}
+
+html[data-appearance='navy-amber'] .empty-state p,
+html[data-appearance='navy-amber'] .empty-state h3 {
+  color: #d0dae8;
+}
+
+html[data-appearance='navy-amber'] .panel-head h2,
+html[data-appearance='navy-amber'] .dashboard-sport-title {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .feed-list strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .feed-list span {
+  color: #d0dae8;
+}
+
+/* Public join card is white — instructional text must stay dark */
+html[data-appearance='navy-amber'] .public-join-page {
+  color: #152a48;
+}
+
+html[data-appearance='navy-amber'] .public-join-card,
+html[data-appearance='navy-amber'] .public-join-card h2,
+html[data-appearance='navy-amber'] .public-join-kind,
+html[data-appearance='navy-amber'] .public-join-kind legend,
+html[data-appearance='navy-amber'] .public-join-terms,
+html[data-appearance='navy-amber'] .public-join-terms summary,
+html[data-appearance='navy-amber'] .public-join-terms span,
+html[data-appearance='navy-amber'] .public-join-terms-body {
+  color: #152a48;
+}
+
+html[data-appearance='navy-amber'] .public-join-card .lede,
+html[data-appearance='navy-amber'] .public-join-card .muted,
+html[data-appearance='navy-amber'] .public-join-card .field-label {
+  color: #3a4f68;
 }
 

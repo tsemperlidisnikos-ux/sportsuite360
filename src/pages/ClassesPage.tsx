@@ -141,7 +141,7 @@ export function ClassesPage() {
                     <td>{cls.sport || '—'}</td>
                     <td>{cls.ageGroup || '—'}</td>
                     <td>
-                      {count}/{cls.maxStudents}
+                      {count}
                     </td>
                     <td>
                       {cls.startDate || cls.endDate

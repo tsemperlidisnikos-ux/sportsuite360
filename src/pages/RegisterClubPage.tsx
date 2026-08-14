@@ -46,6 +46,7 @@ type WaitlistEntry = {
   sport: string;
   levels: string[];
   createdAt: string;
+  dpaAcceptedAt: string;
 };
 
 function saveWaitlistEntry(entry: Omit<WaitlistEntry, 'id' | 'createdAt'>) {
@@ -113,6 +114,7 @@ export function RegisterClubPage() {
       phone: phone.trim(),
       sport,
       levels,
+      dpaAcceptedAt: new Date().toISOString(),
     });
     setSaving(false);
     if (!ok) {

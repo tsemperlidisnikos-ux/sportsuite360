@@ -116,7 +116,7 @@ export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
 
 export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> = {
   admin: [...CLUB_PERMISSIONS],
-  doctor: ['calendar', 'athletes', 'announcements', 'settings'],
+  doctor: ['athletes'],
   coach: [
     'calendar',
     'athletes',
@@ -359,6 +359,7 @@ function sanitizeClubRolePermissions(
       if (hasRelated) result[role] = ['calendar', ...result[role]];
     }
   }
+  result.doctor = ['athletes'];
   return result;
 }
 
@@ -733,6 +734,7 @@ export function getEffectiveClubPermissions(user: {
   permissions?: string[] | null;
 }): ClubPermission[] {
   if (user.role === 'platform_admin') return [...CLUB_PERMISSIONS];
+  if (user.role === 'doctor') return ['athletes'];
   if (user.permissions) {
     const allowed = new Set<string>(CLUB_PERMISSIONS);
     return user.permissions.filter((p): p is ClubPermission => allowed.has(p));
@@ -759,6 +761,9 @@ export function userCanAccessModule(
   moduleId: AcademyModuleId,
 ): boolean {
   if (user.role === 'platform_admin') return true;
+  if (user.role === 'doctor') {
+    return moduleId === 'dashboard' || moduleId === 'athletes';
+  }
   if (moduleId === 'dashboard') return true;
   if (moduleId === 'associations' || moduleId === 'sports') {
     return userHasClubPermission(user, 'settings');

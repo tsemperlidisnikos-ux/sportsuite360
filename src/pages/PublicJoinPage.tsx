@@ -58,7 +58,6 @@ export function PublicJoinPage() {
   const [guardianName, setGuardianName] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [classId, setClassId] = useState('');
   const [kind, setKind] = useState<RegistrationApplicationKind>('full');
   const [notes, setNotes] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -140,7 +139,7 @@ export function PublicJoinPage() {
       guardianName,
       guardianPhone,
       email,
-      classId: classId || null,
+      classId: null,
       kind,
       notes,
       acceptedTerms,
@@ -299,7 +298,7 @@ export function PublicJoinPage() {
               </select>
             </label>
             <label className="field">
-              <span className="field-label">Κηδεμόνας *</span>
+              <span className="field-label">Γονέας *</span>
               <input
                 className="field-input"
                 value={guardianName}
@@ -308,7 +307,7 @@ export function PublicJoinPage() {
               />
             </label>
             <label className="field">
-              <span className="field-label">Τηλ. κηδεμόνα *</span>
+              <span className="field-label">Τηλ. γονέα *</span>
               <input
                 className="field-input"
                 value={guardianPhone}
@@ -317,7 +316,7 @@ export function PublicJoinPage() {
               />
             </label>
             <label className="field">
-              <span className="field-label">Email κηδεμόνα</span>
+              <span className="field-label">Email γονέα</span>
               <input
                 className="field-input"
                 type="email"
@@ -325,22 +324,6 @@ export function PublicJoinPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Για επιβεβαίωση αίτησης"
               />
-            </label>
-            <label className="field">
-              <span className="field-label">Τμήμα</span>
-              <select
-                className="field-input"
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-              >
-                <option value="">—</option>
-                {club.classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                    {cls.sport ? ` · ${cls.sport}` : ''}
-                  </option>
-                ))}
-              </select>
             </label>
           </div>
 

@@ -3,6 +3,8 @@ import { ShieldCheck } from 'lucide-react';
 import * as amkaAuditService from '../api/services/amkaAuditService';
 import * as legalComplianceService from '../api/services/legalComplianceService';
 import { getSession } from '../auth/auth';
+import { acceptClubDpa, getClubById } from '../auth/clubs';
+import { getPreviewClubId } from '../platform/platformConfig';
 import { Button } from '../components/ui/Button';
 import { SettingsFormRow } from '../components/ui/SettingsFormRow';
 import { useAppData } from '../hooks/useAppData';
@@ -38,7 +40,10 @@ export function AmkaCompliancePanel() {
   const [runningRetention, setRunningRetention] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [dpaAcceptedAt, setDpaAcceptedAt] = useState<string | null>(null);
+  const [acceptingDpa, setAcceptingDpa] = useState(false);
   const allowed = canAccessAmka(session?.role);
+  const clubId = getPreviewClubId() || session?.clubId || null;
 
   useEffect(() => {
     if (!allowed) return;
@@ -58,6 +63,31 @@ export function AmkaCompliancePanel() {
       }
     });
   }, [allowed, data.amkaAccessLogs]);
+
+  useEffect(() => {
+    function readDpaDate() {
+      const club = getClubById(clubId);
+      setDpaAcceptedAt(club?.dpaAcceptedAt ?? null);
+    }
+    readDpaDate();
+    window.addEventListener('academyhub-clubs-updated', readDpaDate);
+    return () => window.removeEventListener('academyhub-clubs-updated', readDpaDate);
+  }, [clubId]);
+
+  async function handleAcceptDpa() {
+    if (!clubId || dpaAcceptedAt) return;
+    setAcceptingDpa(true);
+    setError('');
+    setMessage('');
+    const result = acceptClubDpa(clubId);
+    setAcceptingDpa(false);
+    if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία καταγραφής αποδοχής DPA');
+      return;
+    }
+    setDpaAcceptedAt(result.data.dpaAcceptedAt ?? null);
+    setMessage('Η αποδοχή της DPA καταγράφηκε.');
+  }
 
   async function handleSaveRetention() {
     setSaving(true);
@@ -125,6 +155,17 @@ export function AmkaCompliancePanel() {
       <p className="ap-field-hint">{MEDICAL_ACCESS_HINT}</p>
 
       <div className="ap-amka-privacy" dangerouslySetInnerHTML={{ __html: dpaHtml }} />
+      <div className="settings-form-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        {dpaAcceptedAt ? (
+          <p className="settings-success" style={{ margin: 0 }}>
+            DPA αποδεκτή στις {new Date(dpaAcceptedAt).toLocaleString('el-GR')}.
+          </p>
+        ) : (
+          <Button type="button" disabled={acceptingDpa || !clubId} onClick={() => void handleAcceptDpa()}>
+            {acceptingDpa ? 'Καταγραφή…' : 'Καταγραφή αποδοχής DPA'}
+          </Button>
+        )}
+      </div>
       <div className="ap-amka-privacy" dangerouslySetInnerHTML={{ __html: retentionPolicyHtml }} />
       <div className="ap-amka-privacy" dangerouslySetInnerHTML={{ __html: AMKA_SECURITY_POLICY_HTML }} />
       <div className="ap-amka-privacy" dangerouslySetInnerHTML={{ __html: AMKA_DPIA_HTML }} />

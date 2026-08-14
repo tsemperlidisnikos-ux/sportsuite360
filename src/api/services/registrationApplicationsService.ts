@@ -128,7 +128,7 @@ export async function approveRegistrationApplication(
       }));
       if (duplicates.length > 0 && !options?.force) {
         throw new Error(
-          `Πιθανό διπλότυπο: υπάρχει ήδη αθλητής «${duplicates[0].name}» με ίδιο τηλ. κηδεμόνα. Επιβεβαιώστε για συνέχεια.`,
+          `Πιθανό διπλότυπο: υπάρχει ήδη αθλητής «${duplicates[0].name}» με ίδιο τηλ. γονέα. Επιβεβαιώστε για συνέχεια.`,
         );
       }
 
@@ -263,7 +263,7 @@ export async function notifyClubNewRegistration(input: {
       '',
       `Αθλητής: ${input.lastName} ${input.firstName}`,
       `Τύπος: ${kindLabel}`,
-      `Τηλ. κηδεμόνα: ${input.guardianPhone}`,
+      `Τηλ. γονέα: ${input.guardianPhone}`,
       '',
       'Άνοιξε Αθλητές για έγκριση ή απόρριψη.',
     ].join('\n'),

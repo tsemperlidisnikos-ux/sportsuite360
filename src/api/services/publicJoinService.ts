@@ -46,7 +46,7 @@ export async function submitPublicJoin(input: PublicJoinInput) {
       throw new Error('Συμπληρώστε όνομα και επώνυμο.');
     }
     if (!input.guardianName.trim() || !input.guardianPhone.trim()) {
-      throw new Error('Συμπληρώστε στοιχεία κηδεμόνα.');
+      throw new Error('Συμπληρώστε στοιχεία γονέα.');
     }
     if (input.kind === 'trial' && !settings.allowTrial) {
       throw new Error('Η δοκιμαστική προπόνηση δεν επιτρέπεται.');

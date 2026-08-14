@@ -1,9 +1,12 @@
+import * as amkaAuditService from '../api/services/amkaAuditService';
+import { getSession } from '../auth/auth';
 import type { Student } from '../types';
 import { buildHealthCardPdf } from './healthCardPdf';
 
 export async function openAthleteHealthCardPreview(
   athlete: Pick<
     Student,
+    | 'id'
     | 'sport'
     | 'amka'
     | 'gender'
@@ -88,5 +91,17 @@ export async function openAthleteHealthCardPreview(
 </html>`);
   previewWindow.document.close();
   previewWindow.addEventListener('unload', () => URL.revokeObjectURL(pdfUrl));
+
+  const session = getSession();
+  if (session) {
+    void amkaAuditService.recordAmkaAccess({
+      userId: session.id,
+      userName: session.fullName || session.email || session.id,
+      athleteId: athlete.id,
+      athleteName: `${athlete.lastName} ${athlete.firstName}`.trim(),
+      action: 'view',
+    });
+  }
+
   return { success: true };
 }

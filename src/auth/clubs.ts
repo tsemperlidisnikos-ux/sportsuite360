@@ -66,6 +66,8 @@ export interface Club {
   smtpSendLog?: ClubSmtpSendLog[];
   viva?: ClubVivaSettings;
   publicRegistration?: ClubPublicRegistrationSettings;
+  /** ISO timestamp αποδοχής DPA από τον σύλλογο. */
+  dpaAcceptedAt?: string | null;
 }
 
 const CLUBS_KEY = 'academyhub-clubs-v1';
@@ -198,6 +200,7 @@ export async function registerClub(
     createdAt: localDateIso(),
     athleteLicenseLimit: 10,
     athleteLicenseUsed: 0,
+    dpaAcceptedAt: new Date().toISOString(),
   };
 
   saveUsers([...users, user]);
@@ -227,6 +230,20 @@ export function updateClubLicenses(
     athleteLicenseUsed: used,
   };
   saveClubs(clubs);
+  return ok(clubs[index]);
+}
+
+export function acceptClubDpa(clubId: string): ApiResult<Club> {
+  const clubs = getClubs();
+  const index = clubs.findIndex((c) => c.id === clubId);
+  if (index < 0) return fail('Ο σύλλογος δεν βρέθηκε');
+  if (clubs[index].dpaAcceptedAt) return ok(clubs[index]);
+  clubs[index] = {
+    ...clubs[index],
+    dpaAcceptedAt: new Date().toISOString(),
+  };
+  saveClubs(clubs);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
   return ok(clubs[index]);
 }
 

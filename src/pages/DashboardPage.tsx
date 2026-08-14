@@ -389,9 +389,7 @@ export function DashboardPage() {
                                 ) : null}
                               </td>
                               <td>{cls.ageGroup || '—'}</td>
-                              <td>
-                                {count}/{cls.maxStudents}
-                              </td>
+                              <td>{count}</td>
                             </tr>
                           );
                         })
