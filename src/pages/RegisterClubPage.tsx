@@ -9,9 +9,8 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import { submitClubWaitlist } from '../api/services/clubWaitlistService';
 import { isAuthenticated } from '../auth/auth';
-
-const WAITLIST_KEY = 'sportsuite360-academy-waitlist-v1';
 
 const FEATURES = [
   { icon: Users, title: 'ΟΡΓΑΝΩΣΗ', subtitle: 'Αθλητές & Ομάδες' },
@@ -36,34 +35,6 @@ const LEVEL_OPTIONS = [
   { id: 'pre', label: 'Προαγωνιστικό' },
   { id: 'comp', label: 'Αγωνιστικό' },
 ] as const;
-
-type WaitlistEntry = {
-  id: string;
-  clubName: string;
-  adminFullName: string;
-  email: string;
-  phone: string;
-  sport: string;
-  levels: string[];
-  createdAt: string;
-  dpaAcceptedAt: string;
-};
-
-function saveWaitlistEntry(entry: Omit<WaitlistEntry, 'id' | 'createdAt'>) {
-  try {
-    const raw = localStorage.getItem(WAITLIST_KEY);
-    const list: WaitlistEntry[] = raw ? (JSON.parse(raw) as WaitlistEntry[]) : [];
-    list.push({
-      ...entry,
-      id: `wl_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem(WAITLIST_KEY, JSON.stringify(list));
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function Req({ children }: { children: string }) {
   return (
@@ -95,7 +66,7 @@ export function RegisterClubPage() {
     );
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!acceptedTerms) {
       setError('Απαιτείται αποδοχή Όρων Χρήσης και Πολιτικής Απορρήτου.');
@@ -107,7 +78,7 @@ export function RegisterClubPage() {
     }
     setSaving(true);
     setError('');
-    const ok = saveWaitlistEntry({
+    const result = await submitClubWaitlist({
       clubName: clubName.trim(),
       adminFullName: adminFullName.trim(),
       email: email.trim().toLowerCase(),
@@ -117,8 +88,8 @@ export function RegisterClubPage() {
       dpaAcceptedAt: new Date().toISOString(),
     });
     setSaving(false);
-    if (!ok) {
-      setError('Αποτυχία αποθήκευσης. Δοκίμασε ξανά.');
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία αποθήκευσης. Δοκίμασε ξανά.');
       return;
     }
     setDone(true);

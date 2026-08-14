@@ -1,19 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
 import {
+  appendClubWaitlist,
   appendLoginActivity,
   assertSyncAuthorized,
   consumePasswordResetToken,
   createPasswordResetToken,
   hashPassword,
   isDurableStoreEnabled,
+  listClubWaitlist,
   listLoginActivity,
   loadAccountBundle,
   saveAccountBundle,
   signSession,
+  updateClubWaitlist,
   uploadClubMedia,
   verifyPassword,
   verifySessionToken,
+  type ClubWaitlistEntry,
   type LoginActivityEvent,
 } from '../lib/serverStore.js';
 
@@ -96,6 +100,137 @@ function parseLoginEvent(body: unknown): LoginActivityEvent | null {
 
 function kindOf(req: VercelRequest): string {
   return String(req.query.kind ?? req.query.view ?? '').trim();
+}
+
+function clip(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+function assertWaitlistAdmin(req: VercelRequest, res: VercelResponse): boolean {
+  if (!assertSyncAuthorized(req, res)) return false;
+  const auth = String(req.headers['authorization'] ?? '').trim();
+  const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : auth;
+  if (!token.includes('.')) return true;
+  const claims = verifySessionToken(token);
+  if (claims && claims.role !== 'platform_admin') {
+    res.status(403).json({ ok: false, error: 'Μόνο Platform Admin' });
+    return false;
+  }
+  return true;
+}
+
+function parseWaitlistSubmit(body: unknown): ClubWaitlistEntry | null {
+  if (!body || typeof body !== 'object') return null;
+  const raw = body as Record<string, unknown>;
+  const clubName = clip(raw.clubName, 120);
+  const adminFullName = clip(raw.adminFullName, 120);
+  const email = clip(raw.email, 160).toLowerCase();
+  const phone = clip(raw.phone, 40);
+  const sport = clip(raw.sport, 80);
+  const dpaAcceptedAt = clip(raw.dpaAcceptedAt, 40);
+  if (clubName.length < 2 || adminFullName.length < 2) return null;
+  if (!email.includes('@') || phone.length < 6 || sport.length < 2) return null;
+  if (!dpaAcceptedAt) return null;
+
+  const levels = Array.isArray(raw.levels)
+    ? raw.levels
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim().slice(0, 40))
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+
+  const rawId = clip(raw.id, 80);
+  const id = /^wl_[a-zA-Z0-9_-]+$/.test(rawId)
+    ? rawId
+    : `wl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  return {
+    id,
+    clubName,
+    adminFullName,
+    email,
+    phone,
+    sport,
+    levels,
+    createdAt: clip(raw.createdAt, 40) || new Date().toISOString(),
+    dpaAcceptedAt,
+    status: 'pending',
+  };
+}
+
+async function handleClubWaitlist(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'POST') {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const action = typeof body.action === 'string' ? body.action.trim() : '';
+
+    if (action === 'approve' || action === 'reject') {
+      if (!assertWaitlistAdmin(req, res)) return;
+      const id = clip(body.id, 80);
+      if (!id) {
+        return res.status(400).json({ ok: false, error: 'Missing waitlist id' });
+      }
+      const now = new Date().toISOString();
+      const clubId = clip(body.clubId, 80) || null;
+      const updated = await updateClubWaitlist(
+        id,
+        action === 'approve'
+          ? { status: 'approved', approvedAt: now, rejectedAt: null, clubId }
+          : { status: 'rejected', rejectedAt: now },
+      );
+      if (!updated) {
+        return res.status(404).json({ ok: false, error: 'Waitlist entry not found' });
+      }
+      return res.status(200).json({
+        ok: true,
+        durable: isDurableStoreEnabled(),
+        entry: updated,
+      });
+    }
+
+    const entry = parseWaitlistSubmit(body);
+    if (!entry) {
+      return res.status(400).json({ ok: false, error: 'Invalid waitlist payload' });
+    }
+    const existing = await listClubWaitlist();
+    const duplicate = existing.find(
+      (item) =>
+        item.email === entry.email &&
+        (item.status === 'pending' || item.status === 'approved'),
+    );
+    if (duplicate) {
+      return res.status(409).json({
+        ok: false,
+        error:
+          duplicate.status === 'approved'
+            ? 'Υπάρχει ήδη εγκεκριμένος λογαριασμός με αυτό το email'
+            : 'Υπάρχει ήδη αίτηση σε αναμονή με αυτό το email',
+        id: duplicate.id,
+      });
+    }
+    const entries = await appendClubWaitlist(entry);
+    return res.status(200).json({
+      ok: true,
+      durable: isDurableStoreEnabled(),
+      id: entry.id,
+      total: entries.length,
+    });
+  }
+
+  if (req.method === 'GET') {
+    if (!assertWaitlistAdmin(req, res)) return;
+    const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : 200;
+    const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
+    const entries = await listClubWaitlist(limit);
+    return res.status(200).json({
+      ok: true,
+      durable: isDurableStoreEnabled(),
+      entries,
+    });
+  }
+
+  res.setHeader('Allow', 'GET, POST');
+  return res.status(405).json({ ok: false, error: 'Method not allowed' });
 }
 
 function publicUser(user: BundleUser) {
@@ -371,6 +506,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (kind === 'media') {
     return handleMedia(req, res);
+  }
+
+  if (kind === 'club-waitlist') {
+    return handleClubWaitlist(req, res);
   }
 
   if (!assertSyncAuthorized(req, res)) return;

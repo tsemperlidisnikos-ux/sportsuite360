@@ -91,6 +91,22 @@ export type LoginActivityEvent = {
   userAgent?: string | null;
 };
 
+export type ClubWaitlistEntry = {
+  id: string;
+  clubName: string;
+  adminFullName: string;
+  email: string;
+  phone: string;
+  sport: string;
+  levels: string[];
+  createdAt: string;
+  dpaAcceptedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  clubId?: string | null;
+};
+
 type GlobalStore = {
   settlements: VivaSettlement[];
   mirrors: Record<string, MirrorRecord>;
@@ -99,6 +115,7 @@ type GlobalStore = {
   pendingApps: Record<string, RemoteRegistrationApplication[]>;
   accountBundle?: AccountBundle;
   loginActivity?: LoginActivityEvent[];
+  clubWaitlist?: ClubWaitlistEntry[];
   passwordResets?: Record<string, { userId: string; email: string; exp: number }>;
 };
 
@@ -112,6 +129,8 @@ const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
 const ACCOUNT_BUNDLE_KEY = 'ss360:account-bundle';
 const LOGIN_ACTIVITY_KEY = 'ss360:login-activity';
 const LOGIN_ACTIVITY_MAX = 500;
+const CLUB_WAITLIST_KEY = 'ss360:club-waitlist';
+const CLUB_WAITLIST_MAX = 500;
 
 function memory(): GlobalStore {
   const g = globalThis as typeof globalThis & { __ss360?: GlobalStore };
@@ -123,12 +142,14 @@ function memory(): GlobalStore {
       notifyConfigs: {},
       pendingApps: {},
       loginActivity: [],
+      clubWaitlist: [],
     };
   }
   if (!g.__ss360.publicClubs) g.__ss360.publicClubs = {};
   if (!g.__ss360.notifyConfigs) g.__ss360.notifyConfigs = {};
   if (!g.__ss360.pendingApps) g.__ss360.pendingApps = {};
   if (!g.__ss360.loginActivity) g.__ss360.loginActivity = [];
+  if (!g.__ss360.clubWaitlist) g.__ss360.clubWaitlist = [];
   return g.__ss360;
 }
 
@@ -399,6 +420,52 @@ export async function listLoginActivity(limit = 100): Promise<LoginActivityEvent
   const all = await readLoginActivity();
   const capped = Math.min(Math.max(1, limit), LOGIN_ACTIVITY_MAX);
   return all.slice(0, capped);
+}
+
+async function readClubWaitlist(): Promise<ClubWaitlistEntry[]> {
+  if (!isDurableKvEnabled()) return memory().clubWaitlist ?? [];
+  const raw = await kvGet<ClubWaitlistEntry[]>(CLUB_WAITLIST_KEY);
+  return Array.isArray(raw) ? raw : [];
+}
+
+async function writeClubWaitlist(entries: ClubWaitlistEntry[]): Promise<void> {
+  const next = entries.slice(0, CLUB_WAITLIST_MAX);
+  if (!isDurableKvEnabled()) {
+    memory().clubWaitlist = next;
+    return;
+  }
+  await kvSet(CLUB_WAITLIST_KEY, next);
+}
+
+export async function appendClubWaitlist(
+  entry: ClubWaitlistEntry,
+): Promise<ClubWaitlistEntry[]> {
+  const prev = await readClubWaitlist();
+  const next = [entry, ...prev.filter((e) => e.id !== entry.id)].slice(0, CLUB_WAITLIST_MAX);
+  await writeClubWaitlist(next);
+  return next;
+}
+
+export async function listClubWaitlist(limit = 200): Promise<ClubWaitlistEntry[]> {
+  const all = await readClubWaitlist();
+  const capped = Math.min(Math.max(1, limit), CLUB_WAITLIST_MAX);
+  return all.slice(0, capped);
+}
+
+export async function updateClubWaitlist(
+  id: string,
+  patch: Partial<
+    Pick<ClubWaitlistEntry, 'status' | 'approvedAt' | 'rejectedAt' | 'clubId'>
+  >,
+): Promise<ClubWaitlistEntry | null> {
+  const prev = await readClubWaitlist();
+  const index = prev.findIndex((e) => e.id === id);
+  if (index < 0) return null;
+  const nextEntry: ClubWaitlistEntry = { ...prev[index], ...patch };
+  const next = [...prev];
+  next[index] = nextEntry;
+  await writeClubWaitlist(next);
+  return nextEntry;
 }
 
 /** Sync API auth (kept here to avoid an extra Hobby serverless file under api/). */

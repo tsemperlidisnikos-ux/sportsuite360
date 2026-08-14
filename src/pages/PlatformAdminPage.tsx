@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getSession, logout, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { BackupSchedulePanel } from '../components/BackupSchedulePanel';
+import { ClubWaitlistPanel } from '../components/ClubWaitlistPanel';
 import { LoginActivityPanel } from '../components/LoginActivityPanel';
 import { PlatformDiagnosticPanel } from '../components/PlatformDiagnosticPanel';
 import { Button } from '../components/ui/Button';
@@ -367,6 +368,9 @@ export function PlatformAdminPage() {
           <Link className="btn btn-secondary" to="/platform/users">
             Χρήστες
           </Link>
+          <a className="btn btn-secondary" href="#club-waitlist">
+            Λίστα αναμονής
+          </a>
           <a className="btn btn-secondary" href="#login-activity">
             Ιστορικό εισόδων
           </a>
@@ -396,6 +400,26 @@ export function PlatformAdminPage() {
             <div>Εισαγωγή δεδομένων</div>
             <div>Καταχωρημένα δεδομένα</div>
           </div>
+
+          <AdminRow
+            id="club-waitlist"
+            title="Λίστα αναμονής ακαδημιών"
+            description="Αιτήσεις από /register. Έγκριση με κωδικό δημιουργεί σύλλογο και admin λογαριασμό."
+            entry={<ClubWaitlistPanel onSaved={flash} />}
+            records={
+              <RecordsTable>
+                <RecordsRow title="Πηγή">
+                  Δημόσια φόρμα εγγραφής ακαδημίας (/register).
+                </RecordsRow>
+                <RecordsRow title="Έγκριση">
+                  Ο Platform Admin ορίζει κωδικό και δημιουργεί σύλλογο + admin.
+                </RecordsRow>
+                <RecordsRow title="Αποθήκευση">
+                  Cloud durable store + τοπικό αντίγραφο. Μετά την έγκριση γίνεται Push λογαριασμών.
+                </RecordsRow>
+              </RecordsTable>
+            }
+          />
 
           <AdminRow
             id="login-activity"

@@ -156,6 +156,69 @@ export function ensureSessionClub(
   return stub;
 }
 
+export async function provisionClub(input: {
+  clubName: string;
+  adminFullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  city?: string;
+  dpaAcceptedAt?: string | null;
+}): Promise<ApiResult<{ club: Club; user: AppUser }>> {
+  const clubName = input.clubName.trim();
+  const adminFullName = input.adminFullName.trim();
+  const email = input.email.trim().toLowerCase();
+  const password = input.password.trim();
+  const phone = (input.phone ?? '').trim();
+  const city = (input.city ?? '').trim();
+
+  if (clubName.length < 2) return fail('Το όνομα συλλόγου είναι υποχρεωτικό');
+  if (adminFullName.length < 2) return fail('Το ονοματεπώνυμο είναι υποχρεωτικό');
+  if (!email.includes('@')) return fail('Μη έγκυρο email');
+  if (password.length < 6) return fail('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες');
+
+  const users = getUsers();
+  if (users.some((u) => u.email.toLowerCase() === email)) {
+    return fail('Υπάρχει ήδη λογαριασμός με αυτό το email');
+  }
+
+  const clubs = getClubs();
+  if (clubs.some((c) => c.name.trim().toLowerCase() === clubName.toLowerCase())) {
+    return fail('Υπάρχει ήδη σύλλογος με αυτό το όνομα');
+  }
+
+  const userId = `user_${Date.now()}`;
+  const clubId = `club_${Date.now()}`;
+  const hashedPassword = await prepareStoredPassword(password);
+
+  const user: AppUser = {
+    id: userId,
+    email,
+    password: hashedPassword,
+    fullName: adminFullName,
+    role: 'admin',
+    active: true,
+    clubId,
+  };
+
+  const club: Club = {
+    id: clubId,
+    name: clubName,
+    city,
+    phone,
+    adminUserId: userId,
+    createdAt: localDateIso(),
+    athleteLicenseLimit: 10,
+    athleteLicenseUsed: 0,
+    dpaAcceptedAt: input.dpaAcceptedAt || new Date().toISOString(),
+  };
+
+  saveUsers([...users, user]);
+  saveClubs([...clubs, club]);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+  return ok({ club, user });
+}
+
 export async function registerClub(
   input: ClubRegistrationInput,
 ): Promise<ApiResult<{ club: Club; user: AppUser }>> {
@@ -165,54 +228,24 @@ export async function registerClub(
   }
 
   const data = parsed.data;
-  const email = data.email.trim().toLowerCase();
-  const users = getUsers();
-
-  if (users.some((u) => u.email.toLowerCase() === email)) {
-    return fail('Υπάρχει ήδη λογαριασμός με αυτό το email');
+  const provisioned = await provisionClub({
+    clubName: data.clubName,
+    adminFullName: data.adminFullName,
+    email: data.email,
+    password: data.password,
+    phone: data.phone,
+    city: data.city,
+  });
+  if (!provisioned.success || !provisioned.data) {
+    return fail(provisioned.error ?? 'Αποτυχία δημιουργίας συλλόγου');
   }
 
-  const clubs = getClubs();
-  if (clubs.some((c) => c.name.trim().toLowerCase() === data.clubName.trim().toLowerCase())) {
-    return fail('Υπάρχει ήδη σύλλογος με αυτό το όνομα');
-  }
-
-  const userId = `user_${Date.now()}`;
-  const clubId = `club_${Date.now()}`;
-  const hashedPassword = await prepareStoredPassword(data.password);
-
-  const user: AppUser = {
-    id: userId,
-    email,
-    password: hashedPassword,
-    fullName: data.adminFullName.trim(),
-    role: 'admin',
-    active: true,
-    clubId,
-  };
-
-  const club: Club = {
-    id: clubId,
-    name: data.clubName.trim(),
-    city: data.city?.trim() ?? '',
-    phone: data.phone?.trim() ?? '',
-    adminUserId: userId,
-    createdAt: localDateIso(),
-    athleteLicenseLimit: 10,
-    athleteLicenseUsed: 0,
-    dpaAcceptedAt: new Date().toISOString(),
-  };
-
-  saveUsers([...users, user]);
-  saveClubs([...clubs, club]);
-  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
-
-  const sessionResult = await login(email, data.password);
+  const sessionResult = await login(data.email.trim().toLowerCase(), data.password);
   if (!sessionResult.success) {
     return fail(sessionResult.error ?? 'Η εγγραφή ολοκληρώθηκε, αλλά απέτυχε η σύνδεση');
   }
 
-  return ok({ club, user });
+  return ok(provisioned.data);
 }
 
 export function updateClubLicenses(
