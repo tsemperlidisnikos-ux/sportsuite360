@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, Plus, Pencil, Trash2, Search, X } from 'lucide-react';
+import { Check, Plus, Pencil, Trash2, Search, X, HeartPulse } from 'lucide-react';
 import * as publicClubCloudService from '../api/services/publicClubCloudService';
 import * as registrationApplicationsService from '../api/services/registrationApplicationsService';
 import * as studentsService from '../api/services/studentsService';
@@ -12,6 +12,8 @@ import { useAppData } from '../hooks/useAppData';
 import { getPreviewClubId } from '../platform/platformConfig';
 import type { StudentInput } from '../schemas';
 import type { RegistrationApplication, RegistrationApplicationKind } from '../types';
+import { formatAmkaForViewer } from '../utils/amkaAccess';
+import { openAthleteHealthCardPreview } from '../utils/healthCardPreview';
 import { studentStatusLabels } from '../utils/labels';
 
 const draftAthlete: StudentInput = {
@@ -88,6 +90,8 @@ function toEditDraft(app: RegistrationApplication): EditDraft {
 export function StudentsPage() {
   const navigate = useNavigate();
   const { data, refresh } = useAppData();
+  const session = getSession();
+  const isDoctor = session?.role === 'doctor';
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [busyAppId, setBusyAppId] = useState<string | null>(null);
@@ -95,6 +99,7 @@ export function StudentsPage() {
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [appMessage, setAppMessage] = useState('');
   const [appError, setAppError] = useState('');
+  const [healthCardBusyId, setHealthCardBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const clubId = getSession()?.clubId ?? getPreviewClubId();
@@ -118,10 +123,23 @@ export function StudentsPage() {
     return data.students.filter((s) => {
       if (s.status === 'inactive') return false;
       if (!q) return true;
-      const hay = `${s.firstName} ${s.lastName} ${s.email} ${s.guardianName}`.toLowerCase();
+      const hay = isDoctor
+        ? `${s.firstName} ${s.lastName} ${s.amka ?? ''} ${s.guardianName}`.toLowerCase()
+        : `${s.firstName} ${s.lastName} ${s.email} ${s.guardianName}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [data.students, query]);
+  }, [data.students, query, isDoctor]);
+
+  async function handleHealthCard(studentId: string) {
+    const student = data.students.find((s) => s.id === studentId);
+    if (!student) return;
+    setHealthCardBusyId(studentId);
+    const result = await openAthleteHealthCardPreview(student);
+    setHealthCardBusyId(null);
+    if (!result.success) {
+      window.alert(result.error ?? 'Αποτυχία προεπισκόπησης κάρτας υγείας');
+    }
+  }
 
   async function handleCreate() {
     if (creating) return;
@@ -230,15 +248,21 @@ export function StudentsPage() {
     <div className="stack-lg">
       <PageHeader
         title="Αθλητές"
-        subtitle="Μητρώο αθλητών, κηδεμόνες και σύνδεση με τμήματα."
+        subtitle={
+          isDoctor
+            ? 'Μητρώο αθλητών για κάρτα υγείας (ΑΜΚΑ / γονέας).'
+            : 'Μητρώο αθλητών, γονείς και σύνδεση με τμήματα.'
+        }
         actions={
-          <Button type="button" disabled={creating} onClick={() => void handleCreate()}>
-            <Plus size={16} /> {creating ? 'Δημιουργία...' : 'Νέος αθλητής'}
-          </Button>
+          isDoctor ? undefined : (
+            <Button type="button" disabled={creating} onClick={() => void handleCreate()}>
+              <Plus size={16} /> {creating ? 'Δημιουργία...' : 'Νέος αθλητής'}
+            </Button>
+          )
         }
       />
 
-      {pendingApplications.length > 0 ? (
+      {!isDoctor && pendingApplications.length > 0 ? (
         <section className="panel registration-apps-panel">
           <div className="registration-apps-head">
             <h3>Εκκρεμείς αιτήσεις εγγραφής</h3>
@@ -280,7 +304,7 @@ export function StudentsPage() {
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Κηδεμόνας</span>
+                          <span className="field-label">Γονέας</span>
                           <input
                             className="field-input"
                             value={editDraft.guardianName}
@@ -385,7 +409,7 @@ export function StudentsPage() {
                           {app.notes ? <div className="muted">{app.notes}</div> : null}
                         </div>
                         <div>
-                          <span className="muted">Κηδεμόνας</span>
+                          <span className="muted">Γονέας</span>
                           <div>{app.guardianName}</div>
                           <div className="muted">{app.guardianPhone}</div>
                         </div>
@@ -439,7 +463,11 @@ export function StudentsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Αναζήτηση αθλητή ή κηδεμόνα..."
+            placeholder={
+              isDoctor
+                ? 'Αναζήτηση αθλητή, ΑΜΚΑ ή γονέα...'
+                : 'Αναζήτηση αθλητή ή γονέα...'
+            }
           />
         </label>
       </div>
@@ -449,8 +477,8 @@ export function StudentsPage() {
           <thead>
             <tr>
               <th>Αθλητής</th>
-              <th>Τμήμα</th>
-              <th>Κηδεμόνας</th>
+              <th>{isDoctor ? 'ΑΜΚΑ' : 'Τμήμα'}</th>
+              <th>Γονέας</th>
               <th>Κατάσταση</th>
               <th></th>
             </tr>
@@ -461,8 +489,10 @@ export function StudentsPage() {
               return (
                 <tr
                   key={student.id}
-                  className="clickable-row"
-                  onClick={() => navigate(`/athletes/${student.id}`)}
+                  className={isDoctor ? undefined : 'clickable-row'}
+                  onClick={
+                    isDoctor ? undefined : () => navigate(`/athletes/${student.id}`)
+                  }
                 >
                   <td>
                     <div className="athlete-cell">
@@ -474,23 +504,41 @@ export function StudentsPage() {
                         )}
                       </span>
                       <div>
-                        <Link
-                          to={`/athletes/${student.id}`}
-                          className="athlete-name-link"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        {isDoctor ? (
                           <strong>
                             {student.lastName} {student.firstName}
                           </strong>
-                        </Link>
-                        <div className="muted">{student.email}</div>
+                        ) : (
+                          <Link
+                            to={`/athletes/${student.id}`}
+                            className="athlete-name-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <strong>
+                              {student.lastName} {student.firstName}
+                            </strong>
+                          </Link>
+                        )}
+                        {!isDoctor ? <div className="muted">{student.email}</div> : null}
                       </div>
                     </div>
                   </td>
-                  <td>{cls?.name ?? '—'}</td>
                   <td>
-                    {student.guardianName}
-                    <div className="muted">{student.guardianPhone}</div>
+                    {isDoctor
+                      ? formatAmkaForViewer(student.amka, true)
+                      : (cls?.name ?? '—')}
+                  </td>
+                  <td>
+                    {isDoctor ? (
+                      student.guardianName || '—'
+                    ) : (
+                      <>
+                        {student.guardianName || '—'}
+                        {student.guardianPhone ? (
+                          <div className="muted">{student.guardianPhone}</div>
+                        ) : null}
+                      </>
+                    )}
                   </td>
                   <td>
                     <span className={`badge badge-${student.status}`}>
@@ -498,22 +546,41 @@ export function StudentsPage() {
                     </span>
                   </td>
                   <td className="row-actions" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      onClick={() =>
-                        navigate(`/athletes/${student.id}`, { state: { editing: true } })
-                      }
-                    >
-                      <Pencil size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      onClick={() => void handleDelete(student.id)}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+                    {isDoctor ? (
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        title="Προεπισκόπηση / εκτύπωση κάρτας υγείας"
+                        disabled={healthCardBusyId === student.id}
+                        onClick={() => void handleHealthCard(student.id)}
+                      >
+                        <HeartPulse size={16} />
+                        <span className="btn-label-inline">
+                          {healthCardBusyId === student.id
+                            ? '…'
+                            : 'Κάρτα υγείας'}
+                        </span>
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          onClick={() =>
+                            navigate(`/athletes/${student.id}`, { state: { editing: true } })
+                          }
+                        >
+                          <Pencil size={16} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          onClick={() => void handleDelete(student.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </>
+                    )}
                   </td>
                 </tr>
               );

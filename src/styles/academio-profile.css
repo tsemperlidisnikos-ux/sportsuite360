@@ -1068,7 +1068,7 @@
 
 .ap-hero-main {
   display: flex;
-  gap: 1.15rem;
+  gap: 1.5rem;
   min-width: 0;
   flex: 1;
 }
@@ -1076,6 +1076,11 @@
 .ap-hero-photo-wrap {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 7.5rem;
 }
 
 .ap-hero-photo {
@@ -1091,18 +1096,41 @@
   display: block;
 }
 
-.ap-hero-photo-upload {
-  position: absolute;
-  left: 50%;
-  bottom: -0.35rem;
-  transform: translateX(-50%);
+.ap-hero-photo-actions {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.ap-hero-photo-upload,
+.ap-hero-photo-delete {
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
+  cursor: pointer;
+  line-height: 1.2;
+  border: none;
+}
+
+.ap-hero-photo-upload {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
   background: var(--accent, var(--brand));
   color: var(--amber-ink, #0b1f3a);
-  cursor: pointer;
+}
+
+.ap-hero-photo-delete {
+  background: color-mix(in srgb, #ef4444 82%, #0b1f3a);
+  color: #fff;
 }
 
 .ap-hero-photo-upload input {

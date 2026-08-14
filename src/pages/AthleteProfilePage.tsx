@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Calendar,
   ChevronDown,
@@ -62,7 +62,7 @@ function isAthleteMinor(birthDate: string | undefined): boolean {
 }
 const PROFILE_TABS: { id: ProfileTab; label: string; icon: typeof User }[] = [
   { id: 'personal', label: 'Προσωπικά Στοιχεία', icon: User },
-  { id: 'guardians', label: 'Κηδεμόνες', icon: Users },
+  { id: 'guardians', label: 'Γονείς', icon: Users },
   { id: 'identity', label: 'AMKA & Ταυτοποίηση', icon: IdCard },
   { id: 'fees', label: 'Συνδρομές / Οφειλές', icon: CreditCard },
   { id: 'health', label: 'Κάρτα Υγείας', icon: HeartPulse },
@@ -446,6 +446,10 @@ export function AthleteProfilePage() {
     [data.progressReports, athleteId],
   );
 
+  if (session?.role === 'doctor') {
+    return <Navigate to="/athletes" replace />;
+  }
+
   if (!student || !form) {
     return (
       <div className="stack-lg">
@@ -697,17 +701,28 @@ export function AthleteProfilePage() {
               <div className="ap-hero-photo ap-hero-photo--empty" aria-hidden="true" />
             )}
             {editing ? (
-              <label className="ap-hero-photo-upload">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    handlePhoto(e.target.files?.[0]);
-                    e.target.value = '';
-                  }}
-                />
-                Αλλαγή
-              </label>
+              <div className="ap-hero-photo-actions">
+                <label className="ap-hero-photo-upload">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      handlePhoto(e.target.files?.[0]);
+                      e.target.value = '';
+                    }}
+                  />
+                  Αλλαγή
+                </label>
+                {form.photoUrl ? (
+                  <button
+                    type="button"
+                    className="ap-hero-photo-delete"
+                    onClick={() => setField('photoUrl', null)}
+                  >
+                    Διαγραφή
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
 
@@ -877,12 +892,6 @@ export function AthleteProfilePage() {
                       <option value="girl">Κορίτσι</option>
                       <option value="other">Άλλο</option>
                     </select>
-                  </ApField>
-                  <ApField label="Γλώσσα επικοινωνίας">
-                    {textInput(
-                      form.communicationLanguage,
-                      (v) => setField('communicationLanguage', v),
-                    )}
                   </ApField>
                   <ApField label="Email αθλητή">
                     {textInput(form.email, (v) => setField('email', v), { type: 'email' })}
@@ -1080,14 +1089,14 @@ export function AthleteProfilePage() {
         ) : null}
 
         {profileTab === 'guardians' ? (
-          <ApCard title="Κηδεμόνες">
+          <ApCard title="Γονείς">
             <div className="ap-grid-2">
-              <ApField label="Όνομα κηδεμόνα">
+              <ApField label="Όνομα γονέα">
                 {textInput(form.guardianName, (v) => setField('guardianName', v), {
                   upper: true,
                 })}
               </ApField>
-              <ApField label="Τηλέφωνο κηδεμόνα">
+              <ApField label="Τηλέφωνο γονέα">
                 {textInput(form.guardianPhone, (v) => setField('guardianPhone', v), {
                   type: 'tel',
                 })}

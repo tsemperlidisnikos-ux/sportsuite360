@@ -1,13 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, Banknote, UserCog } from 'lucide-react';
+import { HeartPulse, Layers, Banknote, UserCog } from 'lucide-react';
+import { getSession } from '../auth/auth';
 import { AthletesIcon } from '../components/icons/AthletesIcon';
+import { Button } from '../components/ui/Button';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { getAccountBalances } from '../api/services/cashAccountsService';
 import { useAppData } from '../hooks/useAppData';
 import type { Coach, Student } from '../types';
+import { formatAmkaForViewer } from '../utils/amkaAccess';
 import { localDateIso } from '../utils/dates';
+import { openAthleteHealthCardPreview } from '../utils/healthCardPreview';
 import { formatCurrency, studentStatusLabels } from '../utils/labels';
 import { normalizeSportKey } from '../utils/sport';
 
@@ -37,8 +41,135 @@ function matchesSport(value: string | undefined | null, sportKey: string): boole
   return normalizeSportKey(value) === sportKey;
 }
 
+function DoctorDashboard() {
+  const { data } = useAppData();
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const athletes = useMemo(
+    () =>
+      [...data.students]
+        .filter((s) => s.status !== 'inactive')
+        .sort((a, b) =>
+          `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
+        ),
+    [data.students],
+  );
+
+  const withAmka = athletes.filter((s) => Boolean((s.amka ?? '').trim())).length;
+  const withHealthCard = athletes.filter((s) => Boolean(s.healthCard)).length;
+
+  async function handleHealthCard(student: Student) {
+    setBusyId(student.id);
+    const result = await openAthleteHealthCardPreview(student);
+    setBusyId(null);
+    if (!result.success) {
+      window.alert(result.error ?? 'Αποτυχία προεπισκόπησης κάρτας υγείας');
+    }
+  }
+
+  return (
+    <div className="stack-lg doctor-dashboard">
+      <PageHeader
+        title="Επισκόπηση ιατρού"
+        subtitle="Αθλητές και κάρτα υγείας — χωρίς οικονομικά ή διαχείριση συλλόγου."
+        actions={
+          <Link className="btn btn-primary" to="/athletes">
+            Όλοι οι αθλητές
+          </Link>
+        }
+      />
+
+      <div className="stats-grid cols-3">
+        <StatCard
+          label="Ενεργοί αθλητές"
+          value={String(athletes.length)}
+          hint="Διαθέσιμοι για κάρτα υγείας"
+          icon={AthletesIcon}
+        />
+        <StatCard
+          label="Με ΑΜΚΑ"
+          value={String(withAmka)}
+          hint={`${athletes.length - withAmka} χωρίς ΑΜΚΑ`}
+          icon={HeartPulse}
+        />
+        <StatCard
+          label="Κάρτα υγείας"
+          value={String(withHealthCard)}
+          hint="Σημειωμένη ως έγκυρη"
+          icon={HeartPulse}
+        />
+      </div>
+
+      <article className="panel">
+        <div className="panel-head">
+          <h2>Αθλητές</h2>
+          <Link to="/athletes" className="text-link">
+            Πλήρης λίστα →
+          </Link>
+        </div>
+        {athletes.length === 0 ? (
+          <p className="muted">Δεν υπάρχουν ενεργοί αθλητές.</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Αθλητής</th>
+                  <th>ΑΜΚΑ</th>
+                  <th>Γονέας</th>
+                  <th>Κατάσταση</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {athletes.slice(0, 12).map((student) => (
+                  <tr key={student.id}>
+                    <td>
+                      <strong>
+                        {student.lastName} {student.firstName}
+                      </strong>
+                    </td>
+                    <td>{formatAmkaForViewer(student.amka, true)}</td>
+                    <td>{student.guardianName || '—'}</td>
+                    <td>
+                      <span className={`badge badge-${student.status}`}>
+                        {studentStatusLabels[student.status]}
+                      </span>
+                    </td>
+                    <td className="row-actions">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        title="Προεπισκόπηση / εκτύπωση κάρτας υγείας"
+                        disabled={busyId === student.id}
+                        onClick={() => void handleHealthCard(student)}
+                      >
+                        <HeartPulse size={16} />
+                        <span className="btn-label-inline">
+                          {busyId === student.id ? '…' : 'Κάρτα υγείας'}
+                        </span>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {athletes.length > 12 ? (
+          <p className="lede" style={{ marginTop: '0.75rem' }}>
+            Εμφανίζονται οι πρώτοι 12. Δες όλους από{' '}
+            <Link to="/athletes">Αθλητές</Link>.
+          </p>
+        ) : null}
+      </article>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { data } = useAppData();
+  const isDoctor = getSession()?.role === 'doctor';
   const today = localDateIso();
 
   const classSportById = useMemo(() => {
@@ -100,7 +231,6 @@ export function DashboardPage() {
       )
       .reduce((sum, t) => sum + t.amount, 0);
 
-    // Χειροκίνητα έσοδα αθλητή χωρίς mirror από πληρωμή (αποφυγή διπλομέτρησης).
     const fromAthleteRevenues = data.revenues
       .filter((r) => {
         if (r.linkedTransactionId) return false;
@@ -153,12 +283,13 @@ export function DashboardPage() {
     return { monthCollections, outstanding, cashBalance };
   }, [data.transactions, data.revenues, data.expenses, data.cashAccounts, today]);
 
+  if (isDoctor) {
+    return <DoctorDashboard />;
+  }
+
   return (
     <div className="stack-lg">
-      <PageHeader
-        title="Επισκόπηση"
-        subtitle="Διαχείριση ακαδημίας σε μία οθόνη."
-      />
+      <PageHeader title="Επισκόπηση" subtitle="Διαχείριση ακαδημίας σε μία οθόνη." />
 
       <div className="money-strip" aria-label="Οικονομική σύνοψη">
         <div className="money-strip-item">

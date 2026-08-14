@@ -791,6 +791,13 @@ th {
   display: flex;
   gap: 0.25rem;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.row-actions .btn-label-inline {
+  margin-left: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 650;
 }
 
 .badge {
