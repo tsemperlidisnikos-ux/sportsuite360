@@ -1269,7 +1269,6 @@ html[data-appearance='navy-amber'] .pb-pager-btns button,
 html[data-appearance='navy-amber'] .stf-search,
 html[data-appearance='navy-amber'] .stf-toolbar select,
 html[data-appearance='navy-amber'] .stf-export,
-html[data-appearance='navy-amber'] .stf-menu-btn,
 html[data-appearance='navy-amber'] .stf-page-size select,
 html[data-appearance='navy-amber'] .stf-pager-btns button {
   background: #0e1a2e;
@@ -1329,15 +1328,6 @@ html[data-appearance='navy-amber'] .stf-status.is-active {
 html[data-appearance='navy-amber'] .stf-status.is-inactive {
   background: rgba(255, 255, 255, 0.08);
   color: #b6c3d6;
-}
-
-html[data-appearance='navy-amber'] .stf-menu {
-  background: #121f35;
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-html[data-appearance='navy-amber'] .stf-menu button {
-  color: #f4f7fb;
 }
 
 html[data-appearance='navy-amber'] .pb-pager-btns button.is-active,

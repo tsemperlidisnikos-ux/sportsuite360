@@ -51,14 +51,14 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
   const [permissions, setPermissions] = useState<ClubPermission[]>(() =>
     clubUsersService.defaultPermissionsForRole('coach'),
   );
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(true);
 
   const editingUser = useMemo(
     () => users.find((u) => u.id === editingId) ?? null,
     [users, editingId],
   );
 
-  const showForm = isInvitations || creating || Boolean(editingUser);
+  const showForm = true;
 
   const roleOptions = useMemo(() => {
     const labels = new Set(directory.map((row) => row.roleLabel));
@@ -169,7 +169,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
 
   function resetForm() {
     setEditingId(null);
-    setCreating(false);
+    setCreating(true);
     setLastName('');
     setFirstName('');
     setEmail('');
@@ -354,10 +354,10 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
           <p className="lede">
             {isInvitations
               ? 'Προσκαλέστε μέλη στον σύλλογο και ορίστε ρόλο + δικαιώματα πρόσβασης.'
-              : 'Στο μητρώο φαίνονται όλοι οι εγγεγραμμένοι (αθλητές, προπονητές, προσωπικό, λογαριασμοί). Ανενεργά μέλη δεν εμφανίζονται στις αντίστοιχες λίστες της εφαρμογής.'}
+              : 'Δημιουργήστε λογαριασμό με email και κωδικό εισόδου. Ο διαχειριστής ορίζει τον κωδικό εδώ και τον δίνει στον χρήστη (δεν στέλνεται αυτόματα).'}
           </p>
         </div>
-        {!isInvitations && !showForm ? (
+        {!isInvitations && !editingUser ? (
           <Button type="button" onClick={startCreate}>
             <UserPlus size={16} /> Νέος χρήστης
           </Button>
@@ -403,7 +403,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
           </SettingsFormRow>
 
           <SettingsFormRow
-            label={editingId ? 'Νέος κωδικός (προαιρετικό)' : 'Κωδικός εισόδου'}
+            label="Κωδικός εισόδου"
             htmlFor="club-user-password"
           >
             <input
@@ -413,8 +413,14 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
               onChange={(e) => setPassword(e.target.value)}
               required={!editingId}
               minLength={editingId ? undefined : 6}
-              placeholder={editingId ? 'Αφήστε κενό για να μην αλλάξει' : ''}
+              autoComplete="new-password"
+              placeholder={editingId ? 'Αφήστε κενό για να μην αλλάξει' : 'Τουλάχιστον 6 χαρακτήρες'}
             />
+            <p className="ap-field-hint">
+              {editingId
+                ? 'Συμπληρώστε μόνο αν θέλετε νέο κωδικό για αυτόν τον λογαριασμό.'
+                : 'Αυτόν τον κωδικό θα χρησιμοποιήσει ο χρήστης στο /login μαζί με το email. Αντιγράψτε τον πριν την αποθήκευση.'}
+            </p>
           </SettingsFormRow>
 
           <SettingsFormRow label="Ρόλος" htmlFor="club-user-role">
@@ -596,7 +602,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
                         className="btn btn-ghost"
                         onClick={() => handleEdit(row)}
                       >
-                        Επεξεργασία
+                        {row.hasLogin ? 'Κωδικός / επεξεργασία' : 'Επεξεργασία'}
                       </button>
                       {row.userId !== session?.id ? (
                         <button

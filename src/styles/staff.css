@@ -205,52 +205,6 @@
   border: 1px solid var(--line);
 }
 
-.stf-menu-wrap {
-  position: relative;
-}
-
-.stf-menu-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--ink);
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.stf-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 6;
-  min-width: 150px;
-  padding: 0.3rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  display: grid;
-}
-
-.stf-menu button {
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  text-align: left;
-  font: inherit;
-  font-weight: 650;
-  padding: 0.5rem 0.6rem;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.stf-menu button:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
-
 .stf-empty {
   display: grid;
   place-items: center;

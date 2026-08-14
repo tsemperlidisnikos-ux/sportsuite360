@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
   Download,
-  MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Trash2,
   Users,
 } from 'lucide-react';
 import * as staffService from '../api/services/staffService';
@@ -70,7 +71,6 @@ export function StaffPage() {
   const [form, setForm] = useState<StaffInput>(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [menuId, setMenuId] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -130,7 +130,6 @@ export function StaffPage() {
       photoUrl: member.photoUrl ?? null,
     });
     setError('');
-    setMenuId(null);
     setOpen(true);
   }
 
@@ -152,7 +151,6 @@ export function StaffPage() {
   async function handleDelete(id: string) {
     if (!confirm('Διαγραφή μέλους προσωπικού;')) return;
     await staffService.deleteStaff(id);
-    setMenuId(null);
     refresh();
   }
 
@@ -306,27 +304,23 @@ export function StaffPage() {
                         {member.active ? 'Ενεργός' : 'Ανενεργός'}
                       </span>
                     </td>
-                    <td className="stf-actions">
-                      <div className="stf-menu-wrap">
-                        <button
-                          type="button"
-                          className="stf-menu-btn"
-                          aria-label="Ενέργειες"
-                          onClick={() => setMenuId(menuId === member.id ? null : member.id)}
-                        >
-                          <MoreHorizontal size={16} />
-                        </button>
-                        {menuId === member.id ? (
-                          <div className="stf-menu">
-                            <button type="button" onClick={() => openEdit(member)}>
-                              Επεξεργασία
-                            </button>
-                            <button type="button" onClick={() => void handleDelete(member.id)}>
-                              Διαγραφή
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
+                    <td className="row-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => openEdit(member)}
+                        aria-label="Επεξεργασία"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => void handleDelete(member.id)}
+                        aria-label="Διαγραφή"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}
