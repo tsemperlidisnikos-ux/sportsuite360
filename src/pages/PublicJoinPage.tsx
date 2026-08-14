@@ -190,7 +190,6 @@ export function PublicJoinPage() {
     setGuardianName('');
     setGuardianPhone('');
     setEmail('');
-    setClassId('');
     setNotes('');
     setKind('full');
     setAcceptedTerms(false);
