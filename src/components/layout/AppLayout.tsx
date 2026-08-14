@@ -173,7 +173,7 @@ export function AppLayout() {
     if (session?.role === 'coach') {
       return {
         dashboard: 'Αρχική',
-        classes: 'Οι Τάξεις μου',
+        classes: 'Τα Τμήματά μου',
         trainings: 'Προπονήσεις',
         attendance: 'Απουσίες / Παρουσίες',
         announcements: 'Ανακοινώσεις',
@@ -214,12 +214,6 @@ export function AppLayout() {
   const headerGreeting = useMemo(() => {
     if (!session) return null;
     if (session.role === 'coach') return 'Καλωσήρθες, Coach!';
-    if (session.role === 'athlete') {
-      const first = (session.fullName ?? '').trim().split(/\s+/)[0] || 'αθλητή';
-      const hour = new Date().getHours();
-      const hello = hour < 12 ? 'Καλημέρα' : hour < 18 ? 'Καλησπέρα' : 'Καληνύχτα';
-      return `${hello}, ${first}!`;
-    }
     return null;
   }, [session]);
 

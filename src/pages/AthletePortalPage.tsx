@@ -29,7 +29,8 @@ function athleteBalance(
 
 function greetingName(fullName?: string | null): string {
   const first = (fullName ?? '').trim().split(/\s+/)[0];
-  return first || 'αθλητή';
+  if (!first) return 'αθλητή';
+  return first.charAt(0).toLocaleUpperCase('el') + first.slice(1).toLocaleLowerCase('el');
 }
 
 function shortDayBadge(iso: string): string {
@@ -132,15 +133,10 @@ export function AthletePortalPage() {
     window.location.href = result.data.checkoutUrl;
   }
 
-  const hour = new Date().getHours();
-  const hello = hour < 12 ? 'Καλημέρα' : hour < 18 ? 'Καλησπέρα' : 'Καληνύχτα';
-
   return (
     <div className="aport">
       <header className="aport-welcome">
-        <h1>
-          {hello}, {greetingName(session?.fullName)}! Καλωσήρθες στο SportSuite 360
-        </h1>
+        <h1>Καλωσήρθες στο SportSuite 360, {greetingName(session?.fullName)}!</h1>
         {className ? <p className="aport-class">Τμήμα · {className}</p> : null}
       </header>
 

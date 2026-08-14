@@ -187,9 +187,9 @@ export function CoachPortalPage() {
             <article className="cport-stat panel">
               <Layers size={18} />
               <div>
-                <span>Οι Τάξεις μου</span>
+                <span>Τα Τμήματά μου</span>
                 <strong>{myClasses.length} ενεργά τμήματα</strong>
-                <Link to="/classes">Προβολή τάξεων</Link>
+                <Link to="/classes">Προβολή τμημάτων</Link>
               </div>
             </article>
             <article className="cport-stat panel">
@@ -229,7 +229,7 @@ export function CoachPortalPage() {
             <section className="cport-card panel" id="attendance">
               <div className="cport-card-head">
                 <h2>
-                  <ClipboardCheck size={16} /> Οι Τάξεις μου — Απουσίες / Παρουσίες
+                  <ClipboardCheck size={16} /> Τα Τμήματά μου — Απουσίες / Παρουσίες
                 </h2>
                 <div className="cport-att-filters">
                   <select value={activeClassId} onChange={(e) => setClassId(e.target.value)}>

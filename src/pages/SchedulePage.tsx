@@ -205,9 +205,9 @@ export function SchedulePage() {
     <div className="prog-page">
       <div className="prog-toolbar panel">
         <label className="prog-field">
-          <span>Επιλογή Τάξης</span>
+          <span>Επιλογή Τμήματος</span>
           <select value={classId} onChange={(e) => setClassId(e.target.value)}>
-            <option value="">Όλες οι τάξεις</option>
+            <option value="">Όλα τα τμήματα</option>
             {data.classes.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name}
