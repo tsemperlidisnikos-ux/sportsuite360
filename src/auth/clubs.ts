@@ -559,6 +559,12 @@ export function updateClubPublicRegistration(
   );
   if (conflict) return fail('Το slug χρησιμοποιείται ήδη από άλλο σύλλογο.');
 
+  if (parsed.data.enabled && !club.dpaAcceptedAt) {
+    return fail(
+      'Απαιτείται αποδοχή DPA (Ρυθμίσεις → GDPR) πριν ενεργοποιηθεί η δημόσια εγγραφή.',
+    );
+  }
+
   const publicRegistration: ClubPublicRegistrationSettings = {
     enabled: parsed.data.enabled,
     autoApprove: parsed.data.autoApprove,

@@ -474,7 +474,7 @@ export function AthleteProfilePage() {
       setSaving(false);
       setError(
         isAthleteMinor(form.birthDate)
-          ? 'Απαιτείται ρητή συγκατάθεση γονέα/κηδεμόνα για τη συλλογή του ΑΜΚΑ.'
+          ? 'Απαιτείται ρητή συγκατάθεση γονέα για τη συλλογή του ΑΜΚΑ.'
           : 'Απαιτείται ρητή συγκατάθεση για τη συλλογή και επεξεργασία του ΑΜΚΑ.',
       );
       return;
@@ -1211,7 +1211,7 @@ export function AthleteProfilePage() {
                       {isAthleteMinor(form.birthDate) ? (
                         <>
                           {' '}
-                          <em>(γονέας/κηδεμόνας)</em>
+                          <em>(γονέας)</em>
                         </>
                       ) : null}
                     </span>

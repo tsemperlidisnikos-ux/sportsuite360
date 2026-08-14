@@ -11,6 +11,7 @@ import {
   CLUB_PERMISSIONS,
   CLUB_ROLE_LABELS,
   CLUB_ROLES,
+  DOCTOR_CLUB_PERMISSIONS,
   type ClubPermission,
   type ClubRole,
 } from '../platform/platformConfig';
@@ -147,6 +148,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
   }
 
   function togglePermission(permission: ClubPermission) {
+    if (role === 'doctor') return;
     setPermissions((current) =>
       current.includes(permission)
         ? current.filter((p) => p !== permission)
@@ -206,11 +208,13 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     setAthleteId(user.athleteId ?? '');
     setCoachId(user.coachId ?? '');
     setPermissions(
-      user.permissions
-        ? (user.permissions.filter((p) =>
-            (CLUB_PERMISSIONS as readonly string[]).includes(p),
-          ) as ClubPermission[])
-        : clubUsersService.defaultPermissionsForRole(nextRole),
+      nextRole === 'doctor'
+        ? [...DOCTOR_CLUB_PERMISSIONS]
+        : user.permissions
+          ? (user.permissions.filter((p) =>
+              (CLUB_PERMISSIONS as readonly string[]).includes(p),
+            ) as ClubPermission[])
+          : clubUsersService.defaultPermissionsForRole(nextRole),
     );
     setError('');
     setMessage('');
@@ -227,11 +231,14 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       return;
     }
 
+    const savedPermissions =
+      role === 'doctor' ? [...DOCTOR_CLUB_PERMISSIONS] : permissions;
+
     if (editingId) {
       const result = await clubUsersService.updateClubUser(clubId, editingId, {
         fullName,
         role,
-        permissions,
+        permissions: savedPermissions,
         password: password.trim() ? password : undefined,
         athleteId: role === 'athlete' ? athleteId || null : null,
         coachId: role === 'coach' ? coachId || null : null,
@@ -252,7 +259,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       email,
       password,
       role,
-      permissions,
+      permissions: savedPermissions,
       athleteId: role === 'athlete' ? athleteId || null : null,
       coachId: role === 'coach' ? coachId || null : null,
     });
@@ -462,17 +469,30 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
           ) : null}
 
           <SettingsFormRow label="Δικαιώματα πρόσβασης">
+            {role === 'doctor' ? (
+              <p className="ap-field-hint">
+                Ο ιατρός έχει πρόσβαση μόνο σε Αθλητές. Οικονομικά, ρυθμίσεις και άλλες καρτέλες δεν
+                μπορούν να ενεργοποιηθούν.
+              </p>
+            ) : null}
             <div className="club-users-permissions-grid">
-              {CLUB_PERMISSIONS.map((permission) => (
-                <label key={permission} className="admin-check">
-                  <input
-                    type="checkbox"
-                    checked={permissions.includes(permission)}
-                    onChange={() => togglePermission(permission)}
-                  />
-                  <span>{CLUB_PERMISSION_LABELS[permission]}</span>
-                </label>
-              ))}
+              {(role === 'doctor' ? DOCTOR_CLUB_PERMISSIONS : CLUB_PERMISSIONS).map(
+                (permission) => (
+                  <label key={permission} className="admin-check">
+                    <input
+                      type="checkbox"
+                      checked={
+                        role === 'doctor'
+                          ? true
+                          : permissions.includes(permission)
+                      }
+                      disabled={role === 'doctor'}
+                      onChange={() => togglePermission(permission)}
+                    />
+                    <span>{CLUB_PERMISSION_LABELS[permission]}</span>
+                  </label>
+                ),
+              )}
             </div>
           </SettingsFormRow>
 

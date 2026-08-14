@@ -594,7 +594,7 @@ export function SettingsPage() {
             <UserPlus size={18} />
             <h2>Δημόσια εγγραφή</h2>
           </div>
-          <ClubPublicRegistrationPanel clubId={clubId} />
+          <ClubPublicRegistrationPanel clubId={clubId} onOpenGdpr={() => setTab('amka')} />
         </div>
       ) : null}
       {tab === 'password' ? <ChangePasswordPanel /> : null}

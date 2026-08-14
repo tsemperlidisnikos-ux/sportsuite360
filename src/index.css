@@ -5272,6 +5272,17 @@ html[data-appearance='navy-amber'] .login-footer-link a,
   line-height: 1.4;
 }
 
+.public-reg-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .public-reg-info code {
   font-size: 0.85em;
 }

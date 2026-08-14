@@ -12,11 +12,11 @@ import {
 } from '../../auth/auth';
 import { createId, getData, mutateData } from '../../data/repository';
 import {
-  CLUB_PERMISSIONS,
   CLUB_ROLE_LABELS,
   CLUB_ROLES,
   getPermissionsForClubRole,
   isClubRole,
+  permissionsForClubRoleAssignment,
   type ClubPermission,
   type ClubRole,
 } from '../../platform/platformConfig';
@@ -314,8 +314,7 @@ export async function inviteClubUser(input: InviteClubUserInput) {
       throw new Error('Το email χρησιμοποιείται ήδη');
     }
 
-    const allowed = new Set<string>(CLUB_PERMISSIONS);
-    const permissions = input.permissions.filter((p) => allowed.has(p));
+    const permissions = permissionsForClubRoleAssignment(input.role, input.permissions);
 
     const user: AppUser = {
       id: createId('user'),
@@ -365,8 +364,8 @@ export async function updateClubUser(
       nextPatch.role = patch.role;
     }
     if (patch.permissions !== undefined) {
-      const allowed = new Set<string>(CLUB_PERMISSIONS);
-      nextPatch.permissions = patch.permissions.filter((p) => allowed.has(p));
+      const nextRole = patch.role ?? (target.role as ClubRole);
+      nextPatch.permissions = permissionsForClubRoleAssignment(nextRole, patch.permissions);
     }
     if (patch.password !== undefined && patch.password.trim()) {
       if (patch.password.trim().length < 6) {
@@ -377,6 +376,9 @@ export async function updateClubUser(
     if (patch.active !== undefined) nextPatch.active = patch.active;
 
     const nextRole = patch.role ?? (target.role as ClubRole);
+    if (nextRole === 'doctor') {
+      nextPatch.permissions = permissionsForClubRoleAssignment('doctor', []);
+    }
     if (patch.athleteId !== undefined || patch.role !== undefined) {
       nextPatch.athleteId =
         nextRole === 'athlete' ? patch.athleteId ?? target.athleteId ?? null : null;

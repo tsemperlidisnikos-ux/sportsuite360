@@ -14,9 +14,10 @@ const MAX_HERO_BYTES = 700_000;
 
 type Props = {
   clubId: string;
+  onOpenGdpr?: () => void;
 };
 
-export function ClubPublicRegistrationPanel({ clubId }: Props) {
+export function ClubPublicRegistrationPanel({ clubId, onOpenGdpr }: Props) {
   const club = getClubById(clubId);
   const [form, setForm] = useState<ClubPublicRegistrationSettings>(() =>
     getClubPublicRegistration(clubId),
@@ -24,12 +25,24 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [dpaAcceptedAt, setDpaAcceptedAt] = useState<string | null>(
+    () => getClubById(clubId)?.dpaAcceptedAt ?? null,
+  );
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setForm(getClubPublicRegistration(clubId));
     setMessage('');
     setError('');
+  }, [clubId]);
+
+  useEffect(() => {
+    function syncDpa() {
+      setDpaAcceptedAt(getClubById(clubId)?.dpaAcceptedAt ?? null);
+    }
+    syncDpa();
+    window.addEventListener('academyhub-clubs-updated', syncDpa);
+    return () => window.removeEventListener('academyhub-clubs-updated', syncDpa);
   }, [clubId]);
 
   const joinPath = useMemo(() => {
@@ -61,6 +74,13 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
     setSaving(true);
     setError('');
     setMessage('');
+    if (form.enabled && !dpaAcceptedAt) {
+      setSaving(false);
+      setError(
+        'Απαιτείται αποδοχή DPA (Ρυθμίσεις → GDPR) πριν ενεργοποιηθεί η δημόσια εγγραφή.',
+      );
+      return;
+    }
     const result = updateClubPublicRegistration(clubId, {
       ...form,
       notifyEmail: form.notifyEmail ?? '',
@@ -157,10 +177,37 @@ export function ClubPublicRegistrationPanel({ clubId }: Props) {
               id="pub-reg-enabled"
               type="checkbox"
               checked={form.enabled}
-              onChange={(e) => setField('enabled', e.target.checked)}
+              disabled={!dpaAcceptedAt && !form.enabled}
+              onChange={(e) => {
+                if (e.target.checked && !dpaAcceptedAt) {
+                  setError(
+                    'Απαιτείται αποδοχή DPA στις Ρυθμίσεις → GDPR πριν ενεργοποιηθεί η δημόσια εγγραφή.',
+                  );
+                  return;
+                }
+                setError('');
+                setField('enabled', e.target.checked);
+              }}
             />
             <span>Ενεργή</span>
           </label>
+          {!dpaAcceptedAt ? (
+            <div className="public-reg-info">
+              <span className="public-reg-info-icon" aria-hidden>
+                i
+              </span>
+              <p>
+                Πρώτα καταγράψτε αποδοχή DPA στο GDPR.{' '}
+                {onOpenGdpr ? (
+                  <button type="button" className="public-reg-link" onClick={onOpenGdpr}>
+                    Μετάβαση στο GDPR
+                  </button>
+                ) : (
+                  'Ρυθμίσεις → GDPR.'
+                )}
+              </p>
+            </div>
+          ) : null}
         </SettingsFormRow>
 
         <SettingsFormRow label="Άμεση εμφάνιση στη λίστα αθλητών" htmlFor="pub-reg-auto">

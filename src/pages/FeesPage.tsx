@@ -258,7 +258,7 @@ export function FeesPage() {
       to: row.email,
       subject: `Υπενθύμιση οφειλής — ${club?.name ?? 'Σύλλογος'}`,
       text: [
-        `Αγαπητοί γονείς / κηδεμόνες,`,
+        `Αγαπητοί γονείς,`,
         ``,
         `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${row.athleteName}.`,
         `Ποσό: ${formatCurrency(row.balance)}`,
@@ -311,7 +311,7 @@ export function FeesPage() {
         to: row.email,
         subject: `Υπενθύμιση οφειλής — ${club?.name ?? 'Σύλλογος'}`,
         text: [
-          `Αγαπητοί γονείς / κηδεμόνες,`,
+          `Αγαπητοί γονείς,`,
           ``,
           `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${row.athleteName}.`,
           `Ποσό: ${formatCurrency(row.balance)}`,

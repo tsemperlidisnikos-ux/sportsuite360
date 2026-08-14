@@ -1204,7 +1204,7 @@ function RegistrationApplicationsSection() {
         columns={[
           { key: 'index', label: '#' },
           { key: 'name', label: 'Όνομα' },
-          { key: 'guardian', label: 'Κηδεμόνας' },
+          { key: 'guardian', label: 'Γονέας' },
           { key: 'phone', label: 'Τηλέφωνο' },
           { key: 'team', label: 'Τμήμα' },
           { key: 'kind', label: 'Τύπος' },

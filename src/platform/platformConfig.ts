@@ -114,9 +114,12 @@ export const CLUB_PERMISSION_LABELS: Record<ClubPermission, string> = {
   finance: 'Οικονομικά',
 };
 
+/** Ο ιατρός έχει πρόσβαση μόνο σε Αθλητές — όχι οικονομικά/ρυθμίσεις. */
+export const DOCTOR_CLUB_PERMISSIONS: ClubPermission[] = ['athletes'];
+
 export const DEFAULT_CLUB_ROLE_PERMISSIONS: Record<ClubRole, ClubPermission[]> = {
   admin: [...CLUB_PERMISSIONS],
-  doctor: ['athletes'],
+  doctor: [...DOCTOR_CLUB_PERMISSIONS],
   coach: [
     'calendar',
     'athletes',
@@ -359,7 +362,7 @@ function sanitizeClubRolePermissions(
       if (hasRelated) result[role] = ['calendar', ...result[role]];
     }
   }
-  result.doctor = ['athletes'];
+  result.doctor = [...DOCTOR_CLUB_PERMISSIONS];
   return result;
 }
 
@@ -719,6 +722,15 @@ export function getPermissionsForClubRole(role: ClubRole): ClubPermission[] {
   return [...(loadPlatformConfig().clubRolePermissions[role] ?? [])];
 }
 
+export function permissionsForClubRoleAssignment(
+  role: ClubRole,
+  permissions: readonly string[],
+): ClubPermission[] {
+  if (role === 'doctor') return [...DOCTOR_CLUB_PERMISSIONS];
+  const allowed = new Set<string>(CLUB_PERMISSIONS);
+  return permissions.filter((p): p is ClubPermission => allowed.has(p));
+}
+
 export function isClubRole(role: string): role is ClubRole {
   return (CLUB_ROLES as readonly string[]).includes(role);
 }
@@ -734,7 +746,7 @@ export function getEffectiveClubPermissions(user: {
   permissions?: string[] | null;
 }): ClubPermission[] {
   if (user.role === 'platform_admin') return [...CLUB_PERMISSIONS];
-  if (user.role === 'doctor') return ['athletes'];
+  if (user.role === 'doctor') return [...DOCTOR_CLUB_PERMISSIONS];
   if (user.permissions) {
     const allowed = new Set<string>(CLUB_PERMISSIONS);
     return user.permissions.filter((p): p is ClubPermission => allowed.has(p));
