@@ -69,8 +69,24 @@ export async function pullAccountBundle() {
 }
 
 /** Εφαρμόζει cloud users/clubs/config τοπικά (source of truth). */
-export function applyAccountBundle(bundle: AccountBundlePayload) {
-  saveUsers(bundle.users);
+export function applyAccountBundle(
+  bundle: AccountBundlePayload,
+  options?: { mergeLocalUsers?: boolean },
+) {
+  if (options?.mergeLocalUsers) {
+    const cloudUsers = bundle.users;
+    const localUsers = getUsers();
+    const byId = new Map(cloudUsers.map((u) => [u.id, u]));
+    const cloudEmails = new Set(cloudUsers.map((u) => u.email.toLowerCase()));
+    for (const local of localUsers) {
+      if (byId.has(local.id)) continue;
+      if (cloudEmails.has(local.email.toLowerCase())) continue;
+      byId.set(local.id, local);
+    }
+    saveUsers([...byId.values()]);
+  } else {
+    saveUsers(bundle.users);
+  }
   saveClubs(bundle.clubs);
   if (bundle.platformConfig) {
     savePlatformConfig(bundle.platformConfig);

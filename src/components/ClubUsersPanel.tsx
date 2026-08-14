@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { UserPlus } from 'lucide-react';
 import * as clubUsersService from '../api/services/clubUsersService';
+import {
+  pushAccountBundle,
+} from '../api/services/accountSyncService';
 import { getSession, type AppUser } from '../auth/auth';
 import { useAppData } from '../hooks/useAppData';
 import { Button } from './ui/Button';
@@ -239,6 +242,17 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     scrollToUserForm();
   }
 
+  async function pushAccountsToCloud(): Promise<string | null> {
+    const pushed = await pushAccountBundle();
+    if (!pushed.success) {
+      return (
+        pushed.error ??
+        'Ο λογαριασμός αποθηκεύτηκε τοπικά, αλλά όχι στο cloud. Κάντε Push από Backup.'
+      );
+    }
+    return null;
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError('');
@@ -259,6 +273,10 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       setError('Ο κωδικός εισόδου πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
       return;
     }
+    if (!email.trim().includes('@')) {
+      setError('Απαιτείται μοναδικό email για σύνδεση (κάθε αθλητής δικό του email).');
+      return;
+    }
 
     const savedPermissions =
       role === 'doctor' ? [...DOCTOR_CLUB_PERMISSIONS] : permissions;
@@ -276,10 +294,16 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
         setError(result.error ?? 'Αποτυχία ενημέρωσης');
         return;
       }
+      const pushError = await pushAccountsToCloud();
+      if (pushError) {
+        setError(pushError);
+        await refresh();
+        return;
+      }
       setMessage(
         passwordValue
-          ? 'Ο χρήστης αποθηκεύτηκε. Ο νέος κωδικός είναι έτοιμος για σύνδεση.'
-          : 'Ο χρήστης αποθηκεύτηκε.',
+          ? 'Ο χρήστης αποθηκεύτηκε στο cloud. Ο νέος κωδικός είναι έτοιμος για σύνδεση.'
+          : 'Ο χρήστης αποθηκεύτηκε στο cloud.',
       );
       resetForm();
       await refresh();
@@ -300,8 +324,14 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       setError(result.error ?? 'Αποτυχία πρόσκλησης');
       return;
     }
+    const pushError = await pushAccountsToCloud();
+    if (pushError) {
+      setError(pushError);
+      await refresh();
+      return;
+    }
     setMessage(
-      `Αποθηκεύτηκε: ${result.data?.email}. Σύνδεση με το email και τον κωδικό που ορίσατε.`,
+      `Αποθηκεύτηκε στο cloud: ${result.data?.email}. Σύνδεση με το email και τον κωδικό που ορίσατε.`,
     );
     resetForm();
     await refresh();
@@ -381,7 +411,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
           <p className="lede">
             {isInvitations
               ? 'Προσκαλέστε μέλη στον σύλλογο και ορίστε ρόλο + δικαιώματα πρόσβασης.'
-              : 'Δημιουργήστε λογαριασμό με email και κωδικό εισόδου. Ο διαχειριστής ορίζει τον κωδικό εδώ και τον δίνει στον χρήστη (δεν στέλνεται αυτόματα).'}
+              : 'Δημιουργήστε λογαριασμό με μοναδικό email και κωδικό εισόδου. Κάθε χρήστης δικό του email. Μετά την αποθήκευση ο λογαριασμός ανεβαίνει στο cloud για σύνδεση από κάθε συσκευή.'}
           </p>
         </div>
         {!isInvitations && !editingUser ? (

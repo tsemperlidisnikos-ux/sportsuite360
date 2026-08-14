@@ -122,7 +122,9 @@ export async function syncClubOnLogin(clubId: string | null | undefined) {
 
   const account = await accountSyncService.pullAccountBundle();
   if (account.success && account.data) {
-    accountSyncService.applyAccountBundle(account.data);
+    // Κρατά τοπικούς λογαριασμούς που δεν έχουν ακόμα ανέβει στο cloud,
+    // ώστε να μην «εξαφανίζονται» μετά από login άλλου χρήστη.
+    accountSyncService.applyAccountBundle(account.data, { mergeLocalUsers: true });
     pulledAccount = true;
   }
 
