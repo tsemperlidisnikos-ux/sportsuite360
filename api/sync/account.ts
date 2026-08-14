@@ -163,7 +163,9 @@ function parseWaitlistSubmit(body: unknown): ClubWaitlistEntry | null {
 async function handleClubWaitlist(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const action = typeof body.action === 'string' ? body.action.trim() : '';
+    const action =
+      (typeof body.action === 'string' ? body.action.trim() : '') ||
+      (typeof req.query.action === 'string' ? req.query.action.trim() : '');
 
     if (action === 'approve' || action === 'reject') {
       if (!assertWaitlistAdmin(req, res)) return;
@@ -234,7 +236,7 @@ async function handleClubWaitlist(req: VercelRequest, res: VercelResponse) {
     if (!assertWaitlistAdmin(req, res)) return;
     const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : 200;
     const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
-    const entries = await listClubWaitlist(limit);
+    const entries = (await listClubWaitlist(limit)).filter((e) => e.status !== 'rejected');
     return res.status(200).json({
       ok: true,
       durable: isDurableStoreEnabled(),

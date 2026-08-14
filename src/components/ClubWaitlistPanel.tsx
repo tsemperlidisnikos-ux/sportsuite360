@@ -59,16 +59,19 @@ export function ClubWaitlistPanel({
     clubName: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   async function load() {
     setLoading(true);
     const result = await fetchClubWaitlist();
     setLoading(false);
     if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία φόρτωσης λίστας αναμονής.');
       onSaved?.(result.error ?? 'Αποτυχία φόρτωσης λίστας αναμονής.');
       return;
     }
-    setEntries(result.data.entries);
+    setError('');
+    setEntries(result.data.entries.filter((e) => e.status !== 'rejected'));
     setDurable(result.data.durable);
   }
 
@@ -163,18 +166,23 @@ export function ClubWaitlistPanel({
   }
 
   async function handleReject(entry: ClubWaitlistEntry) {
+    setError('');
     setBusyId(entry.id);
+    setEntries((prev) => prev.filter((item) => item.id !== entry.id));
     const updated = await updateClubWaitlistStatus({
       id: entry.id,
       action: 'reject',
     });
     setBusyId(null);
     if (!updated.success) {
-      onSaved?.(updated.error ?? 'Αποτυχία απόρριψης.');
+      const message = updated.error ?? 'Αποτυχία απόρριψης.';
+      setError(message);
+      onSaved?.(message);
+      await load();
       return;
     }
     onSaved?.(`Διαγράφηκε η αίτηση «${entry.clubName}».`);
-    setEntries((prev) => prev.filter((item) => item.id !== entry.id));
+    await load();
   }
 
   async function copyCredentials() {
@@ -196,6 +204,12 @@ export function ClubWaitlistPanel({
         {durable === true ? ' Cloud: ενεργό.' : durable === false ? ' Cloud: ανενεργό.' : ''}
         {pendingCount ? ` Εκκρεμούν ${pendingCount}.` : ''}
       </p>
+
+      {error ? (
+        <p className="admin-entry-note" style={{ color: '#f87171' }}>
+          {error}
+        </p>
+      ) : null}
 
       {created ? (
         <div className="club-waitlist-created">

@@ -103,24 +103,6 @@ function parseEntries(raw: unknown): ClubWaitlistEntry[] {
     .map((r) => normalize(r.data));
 }
 
-function mergeEntries(
-  cloud: ClubWaitlistEntry[],
-  local: ClubWaitlistEntry[],
-): ClubWaitlistEntry[] {
-  const byId = new Map<string, ClubWaitlistEntry>();
-  for (const entry of [...cloud, ...local]) {
-    const prev = byId.get(entry.id);
-    if (!prev) {
-      byId.set(entry.id, entry);
-      continue;
-    }
-    const rank = (status: ClubWaitlistStatus) =>
-      status === 'approved' ? 2 : status === 'rejected' ? 1 : 0;
-    if (rank(entry.status) > rank(prev.status)) byId.set(entry.id, entry);
-  }
-  return [...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
 export async function submitClubWaitlist(input: ClubWaitlistSubmitInput) {
   return apiClient(async () => {
     const entry: ClubWaitlistEntry = {
@@ -168,11 +150,11 @@ export async function fetchClubWaitlist(limit = 200) {
     if (!response.ok || !json.ok) {
       throw new Error(json.error || `Waitlist HTTP ${response.status}`);
     }
-    const merged = mergeEntries(parseEntries(json.entries), readLocal())
+    const cloud = parseEntries(json.entries)
       .filter((e) => e.status !== 'rejected')
       .slice(0, limit);
-    writeLocal(merged);
-    return { entries: merged, durable: Boolean(json.durable) };
+    writeLocal(cloud);
+    return { entries: cloud, durable: Boolean(json.durable) };
   });
 }
 
@@ -182,27 +164,36 @@ export async function updateClubWaitlistStatus(input: {
   clubId?: string | null;
 }) {
   return apiClient(async () => {
-    const response = await fetch('/api/sync/account?kind=club-waitlist', {
-      method: 'POST',
-      headers: syncAuthHeaders(),
-      body: JSON.stringify({
-        action: input.action,
-        id: input.id,
-        clubId: input.clubId ?? null,
-      }),
-    });
-    const json = (await response.json()) as {
+    const response = await fetch(
+      `/api/sync/account?kind=club-waitlist&action=${encodeURIComponent(input.action)}`,
+      {
+        method: 'POST',
+        headers: syncAuthHeaders(),
+        body: JSON.stringify({
+          action: input.action,
+          id: input.id,
+          clubId: input.clubId ?? null,
+        }),
+      },
+    );
+    const json = (await response.json().catch(() => ({}))) as {
       ok?: boolean;
       error?: string;
       durable?: boolean;
       entry?: unknown;
     };
-    if (!response.ok || !json.ok) {
+    if (input.action === 'reject') {
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(json.error || 'Δεν έχετε δικαίωμα απόρριψης');
+      }
+      removeLocal(input.id);
+      if (response.ok || response.status === 404) {
+        return { entry: null, durable: Boolean(json.durable) };
+      }
       throw new Error(json.error || `Waitlist update HTTP ${response.status}`);
     }
-    if (input.action === 'reject') {
-      removeLocal(input.id);
-      return { entry: null, durable: Boolean(json.durable) };
+    if (!response.ok || !json.ok) {
+      throw new Error(json.error || `Waitlist update HTTP ${response.status}`);
     }
     const parsed = waitlistSchema.safeParse(json.entry);
     if (parsed.success) {
