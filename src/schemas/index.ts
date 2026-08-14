@@ -82,6 +82,16 @@ export const coachSchema = z.object({
   phone: z.string().min(10, 'Μη έγκυρο τηλέφωνο'),
   sport: z.string().min(1, 'Επιλέξτε άθλημα'),
   active: z.boolean(),
+  photoUrl: z.string().nullable().optional().default(null),
+  licenseLevel: z.enum(['', 'A', 'B', 'Γ']).optional().default(''),
+  licenseDocumentUrl: z.string().nullable().optional().default(null),
+  licenseDocumentName: z.string().nullable().optional().default(null),
+  licenseValidFrom: z.string().optional().default(''),
+  licenseValidUntil: z.string().optional().default(''),
+  firstAidDocumentUrl: z.string().nullable().optional().default(null),
+  firstAidDocumentName: z.string().nullable().optional().default(null),
+  firstAidValidFrom: z.string().optional().default(''),
+  firstAidValidUntil: z.string().optional().default(''),
 });
 
 export const classSchema = z.object({

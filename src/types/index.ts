@@ -122,6 +122,17 @@ export interface Coach {
   sport: string;
   hireDate: string;
   active: boolean;
+  photoUrl?: string | null;
+  /** Επίπεδο άδειας άσκησης επαγγέλματος: A, B ή Γ. */
+  licenseLevel?: '' | 'A' | 'B' | 'Γ';
+  licenseDocumentUrl?: string | null;
+  licenseDocumentName?: string | null;
+  licenseValidFrom?: string;
+  licenseValidUntil?: string;
+  firstAidDocumentUrl?: string | null;
+  firstAidDocumentName?: string | null;
+  firstAidValidFrom?: string;
+  firstAidValidUntil?: string;
 }
 
 export interface AcademyClass {
