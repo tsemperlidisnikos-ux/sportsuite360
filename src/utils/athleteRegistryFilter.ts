@@ -94,8 +94,11 @@ function triStateMatch(filterValue: TriState, isTruthy: boolean): boolean {
   return true;
 }
 
-function sportsAreEquivalent(a: string, b: string): boolean {
-  return normalizeSportKey(a) === normalizeSportKey(b);
+function sportsAreEquivalent(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  return normalizeSportKey(a) === normalizeSportKey(b) && Boolean(normalizeSportKey(a));
 }
 
 function hasRegistrationCard(student: Student): boolean {
