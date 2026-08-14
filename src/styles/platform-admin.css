@@ -237,6 +237,52 @@
   font-size: 0.9rem;
 }
 
+.login-activity-scroll {
+  margin-top: 0.75rem;
+  max-height: calc(2.4rem + 5 * 3.15rem);
+  overflow: auto;
+}
+
+.login-activity-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.login-activity-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  background: var(--table-head-bg, #f3f4f6);
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+
+.login-activity-scroll tbody td {
+  padding: 0.45rem 0.5rem;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.login-activity-when {
+  white-space: nowrap;
+}
+
+.login-activity-name {
+  font-weight: 700;
+}
+
+.login-activity-email {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .preview-banner {
   display: flex;
   justify-content: space-between;

@@ -668,6 +668,12 @@ html[data-appearance='navy-amber'] .platform-admin-page .entry-form textarea {
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+html[data-appearance='navy-amber'] .admin-entry input::placeholder,
+html[data-appearance='navy-amber'] .platform-admin-page .entry-form input::placeholder {
+  color: #c5d0e0;
+  opacity: 1;
+}
+
 html[data-appearance='navy-amber'] .admin-entry input:focus,
 html[data-appearance='navy-amber'] .admin-entry select:focus,
 html[data-appearance='navy-amber'] .admin-entry textarea:focus,
@@ -687,6 +693,27 @@ html[data-appearance='navy-amber'] .platform-admin-page .ta-table {
   background: #0e1a2e;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .login-activity-scroll {
+  background: #0e1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+html[data-appearance='navy-amber'] .login-activity-scroll thead th {
+  background: #152a48;
+  color: #f4f7fb;
+  border-bottom-color: rgba(244, 247, 251, 0.16);
+}
+
+html[data-appearance='navy-amber'] .login-activity-scroll tbody td {
+  color: #f4f7fb;
+  border-bottom-color: rgba(244, 247, 251, 0.1);
+}
+
+html[data-appearance='navy-amber'] .login-activity-email {
+  color: #c5d0e0;
 }
 
 html[data-appearance='navy-amber'] .platform-admin-page .ta-header {

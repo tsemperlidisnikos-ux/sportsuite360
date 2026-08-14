@@ -78,7 +78,7 @@ export function LoginActivityPanel({
   }, [events, clubFilter, query]);
 
   return (
-    <div className="entry-form admin-entry">
+    <div className="entry-form admin-entry login-activity-panel">
       <p className="admin-entry-note">
         Ποιος μπήκε, σε ποιον σύλλογο, ρόλος και ώρα. Αποθηκεύεται στο cloud (Blob/Redis) ώστε να
         φαίνεται από κάθε συσκευή.
@@ -119,50 +119,26 @@ export function LoginActivityPanel({
           {loading ? 'Φόρτωση…' : 'Δεν υπάρχουν καταγραφές ακόμα.'}
         </p>
       ) : (
-        <div
-          className="records-table login-activity-scroll"
-          style={{
-            marginTop: '0.75rem',
-            maxHeight: 'calc(2.4rem + 5 * 3.15rem)',
-            overflowY: 'auto',
-            overflowX: 'auto',
-          }}
-        >
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <div className="records-table login-activity-scroll">
+          <table>
             <thead>
               <tr>
                 {(['Ώρα', 'Χρήστης', 'Σύλλογος', 'Ρόλος', 'Τύπος'] as const).map((label) => (
-                  <th
-                    key={label}
-                    style={{
-                      textAlign: 'left',
-                      padding: '0.35rem 0.4rem',
-                      position: 'sticky',
-                      top: 0,
-                      background: '#fff',
-                      zIndex: 1,
-                    }}
-                  >
-                    {label}
-                  </th>
+                  <th key={label}>{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((e) => (
                 <tr key={e.id}>
-                  <td style={{ padding: '0.35rem 0.4rem', whiteSpace: 'nowrap' }}>
-                    {formatWhen(e.at)}
+                  <td className="login-activity-when">{formatWhen(e.at)}</td>
+                  <td>
+                    <div className="login-activity-name">{e.fullName}</div>
+                    <div className="login-activity-email">{e.email}</div>
                   </td>
-                  <td style={{ padding: '0.35rem 0.4rem' }}>
-                    <div>{e.fullName}</div>
-                    <div style={{ opacity: 0.7 }}>{e.email}</div>
-                  </td>
-                  <td style={{ padding: '0.35rem 0.4rem' }}>{e.clubName ?? '—'}</td>
-                  <td style={{ padding: '0.35rem 0.4rem' }}>{roleLabel(e.role)}</td>
-                  <td style={{ padding: '0.35rem 0.4rem' }}>
-                    {e.source === 'impersonate' ? 'Impersonate' : 'Σύνδεση'}
-                  </td>
+                  <td>{e.clubName ?? '—'}</td>
+                  <td>{roleLabel(e.role)}</td>
+                  <td>{e.source === 'impersonate' ? 'Impersonate' : 'Σύνδεση'}</td>
                 </tr>
               ))}
             </tbody>
