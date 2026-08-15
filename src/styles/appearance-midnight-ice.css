@@ -1,0 +1,2906 @@
+﻿/**
+ * Midnight Ice — dark shell + icy cyan accents.
+ * Applied when html[data-appearance="midnight-ice"].
+ */
+
+html[data-appearance='midnight-ice'] {
+  --chip-bg: rgba(94, 200, 232, 0.14);
+  --ice-ink: #061018;
+}
+
+/* ---- Typography & density ---- */
+html[data-appearance='midnight-ice'] .page-header h1,
+html[data-appearance='midnight-ice'] .topbar h1,
+html[data-appearance='midnight-ice'] h1 {
+  letter-spacing: -0.02em;
+}
+
+html[data-appearance='midnight-ice'] .page-header p,
+html[data-appearance='midnight-ice'] .lede {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] .eyebrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ---- Tables (all modules) ---- */
+html[data-appearance='midnight-ice'] .table-wrap,
+html[data-appearance='midnight-ice'] .panel .table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+html[data-appearance='midnight-ice'] table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+html[data-appearance='midnight-ice'] thead th {
+  background: var(--table-head-bg);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  padding: 0.7rem 0.85rem;
+}
+
+html[data-appearance='midnight-ice'] tbody td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.7rem 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-appearance='midnight-ice'] tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+html[data-appearance='midnight-ice'] tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ---- Forms / fields ---- */
+html[data-appearance='midnight-ice'] select,
+html[data-appearance='midnight-ice'] .field-input,
+html[data-appearance='midnight-ice'] .field select,
+html[data-appearance='midnight-ice'] input[type='text'],
+html[data-appearance='midnight-ice'] input[type='email'],
+html[data-appearance='midnight-ice'] input[type='number'],
+html[data-appearance='midnight-ice'] input[type='password'],
+html[data-appearance='midnight-ice'] input[type='date'],
+html[data-appearance='midnight-ice'] input[type='time'],
+html[data-appearance='midnight-ice'] input[type='search'],
+html[data-appearance='midnight-ice'] input[type='tel'],
+html[data-appearance='midnight-ice'] input[type='url'],
+html[data-appearance='midnight-ice'] textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--ink);
+}
+
+/* Native dropdown popup: force readable option colors (OS popup is often light). */
+html[data-appearance='midnight-ice'] select option,
+html[data-appearance='midnight-ice'] select optgroup {
+  background: #ffffff;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .field-input:focus,
+html[data-appearance='midnight-ice'] input:focus,
+html[data-appearance='midnight-ice'] select:focus,
+html[data-appearance='midnight-ice'] textarea:focus {
+  outline: 2px solid rgba(94, 200, 232, 0.35);
+  border-color: var(--accent);
+  background: var(--field-bg);
+  color: var(--ink);
+}
+
+/* Attendance custom select: no nested border from global select rules */
+html[data-appearance='midnight-ice'] .att-select select,
+html[data-appearance='midnight-ice'] .att-select select:focus {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #f4f7fb !important;
+  padding: 0.7rem 0 !important;
+}
+
+html[data-appearance='midnight-ice'] .att-select--date input[type='date'],
+html[data-appearance='midnight-ice'] .att-select--date input[type='date']:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+html[data-appearance='midnight-ice'] .att-select {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+html[data-appearance='midnight-ice'] .att-select:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(94, 200, 232, 0.22);
+}
+
+html[data-appearance='midnight-ice'] .field-label,
+html[data-appearance='midnight-ice'] label > span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* White / light cards: re-scope tokens so labels & fields stay readable */
+html[data-appearance='midnight-ice'] .login-card,
+html[data-appearance='midnight-ice'] .ssr-card,
+html[data-appearance='midnight-ice'] .training-modal,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal),
+html[data-appearance='midnight-ice'] .modal-panel,
+html[data-appearance='midnight-ice'] .modal-card,
+html[data-appearance='midnight-ice'] .ui-modal,
+html[data-appearance='midnight-ice'] .ann-modal,
+html[data-appearance='midnight-ice'] .photos-modal,
+html[data-appearance='midnight-ice'] .public-join-card,
+html[data-appearance='midnight-ice'] .join-form {
+  --ink: #061018;
+  --muted: #445064;
+  --line: rgba(11, 31, 58, 0.18);
+  --field-bg: #ffffff;
+  --surface: #ffffff;
+  --bg: #eef2f7;
+  --bg-deep: #e2e8f0;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal {
+  --ink: #f4f7fb;
+  --muted: #b6c3d6;
+  --line: rgba(255, 255, 255, 0.12);
+  --field-bg: #0c1520;
+  --surface: #0f1826;
+  background: #070d16;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .modal-header,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .modal-footer {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .modal-header h2,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal #modal-title {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .field-label,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal label > span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .field > span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .settings-hint,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .muted,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-charge-section h3 {
+  color: #e8eef7 !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .settings-hint,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .muted {
+  color: #b6c3d6 !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip {
+  background: #15243c !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip span {
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip:has(input:checked),
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip.is-active {
+  background: rgba(94, 200, 232, 0.22) !important;
+  border-color: var(--accent) !important;
+}
+
+html[data-appearance='midnight-ice'] .login-card label,
+html[data-appearance='midnight-ice'] .login-card label > span,
+html[data-appearance='midnight-ice'] .ssr-card label,
+html[data-appearance='midnight-ice'] .ssr-card label > span,
+html[data-appearance='midnight-ice'] .ssr-card .ssr-label,
+html[data-appearance='midnight-ice'] .ssr-card .ssr-check,
+html[data-appearance='midnight-ice'] .ssr-card .ssr-check span,
+html[data-appearance='midnight-ice'] .ssr-card .ssr-terms,
+html[data-appearance='midnight-ice'] .ssr-card .ssr-terms > span,
+html[data-appearance='midnight-ice'] .ssr-card legend,
+html[data-appearance='midnight-ice'] .ssr-card h2,
+html[data-appearance='midnight-ice'] .training-modal label,
+html[data-appearance='midnight-ice'] .training-modal label > span,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) label,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) label > span,
+html[data-appearance='midnight-ice'] .public-join-card label,
+html[data-appearance='midnight-ice'] .public-join-card label > span,
+html[data-appearance='midnight-ice'] .join-form label,
+html[data-appearance='midnight-ice'] .join-form label > span {
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .ssr-card .ssr-terms {
+  color: #445064;
+}
+
+html[data-appearance='midnight-ice'] .ssr-card .ssr-secure {
+  color: #8b95a7;
+}
+
+html[data-appearance='midnight-ice'] .ssr-card .ssr-link {
+  color: #3aafd0;
+}
+
+html[data-appearance='midnight-ice'] .login-card input,
+html[data-appearance='midnight-ice'] .login-card select,
+html[data-appearance='midnight-ice'] .login-card textarea,
+html[data-appearance='midnight-ice'] .ssr-card input,
+html[data-appearance='midnight-ice'] .ssr-card select,
+html[data-appearance='midnight-ice'] .ssr-card textarea,
+html[data-appearance='midnight-ice'] .training-modal input,
+html[data-appearance='midnight-ice'] .training-modal select,
+html[data-appearance='midnight-ice'] .training-modal textarea,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) input,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) select,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) textarea,
+html[data-appearance='midnight-ice'] .photos-modal input,
+html[data-appearance='midnight-ice'] .photos-modal select,
+html[data-appearance='midnight-ice'] .photos-modal textarea,
+html[data-appearance='midnight-ice'] .public-join-card input,
+html[data-appearance='midnight-ice'] .public-join-card select,
+html[data-appearance='midnight-ice'] .public-join-card textarea,
+html[data-appearance='midnight-ice'] .join-form input,
+html[data-appearance='midnight-ice'] .join-form select,
+html[data-appearance='midnight-ice'] .join-form textarea {
+  background: #ffffff;
+  color: #061018;
+  border-color: #d7dee8;
+}
+
+html[data-appearance='midnight-ice'] .login-card input:focus,
+html[data-appearance='midnight-ice'] .login-card select:focus,
+html[data-appearance='midnight-ice'] .login-card textarea:focus,
+html[data-appearance='midnight-ice'] .ssr-card input:focus,
+html[data-appearance='midnight-ice'] .ssr-card select:focus,
+html[data-appearance='midnight-ice'] .ssr-card textarea:focus,
+html[data-appearance='midnight-ice'] .training-modal input:focus,
+html[data-appearance='midnight-ice'] .training-modal select:focus,
+html[data-appearance='midnight-ice'] .training-modal textarea:focus,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) input:focus,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) select:focus,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) textarea:focus,
+html[data-appearance='midnight-ice'] .public-join-card input:focus,
+html[data-appearance='midnight-ice'] .public-join-card select:focus,
+html[data-appearance='midnight-ice'] .public-join-card textarea:focus,
+html[data-appearance='midnight-ice'] .join-form input:focus,
+html[data-appearance='midnight-ice'] .join-form select:focus,
+html[data-appearance='midnight-ice'] .join-form textarea:focus {
+  background: #ffffff;
+  color: #061018;
+  border-color: var(--accent);
+}
+
+/* ---- Buttons & links ---- */
+html[data-appearance='midnight-ice'] .btn-primary,
+html[data-appearance='midnight-ice'] .login-submit:not(.login-submit-secondary) {
+  background: var(--accent);
+  color: var(--ice-ink);
+  box-shadow: none;
+  font-weight: 800;
+}
+
+html[data-appearance='midnight-ice'] .btn-primary:hover {
+  filter: brightness(0.96);
+}
+
+html[data-appearance='midnight-ice'] .btn-secondary {
+  background: #061018;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+html[data-appearance='midnight-ice'] .btn-secondary:hover {
+  background: #0f1826;
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .panel,
+html[data-appearance='midnight-ice'] .stat-card,
+html[data-appearance='midnight-ice'] .entity-card {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .login-form-panel,
+html[data-appearance='midnight-ice'] .login-page--navy .login-form-panel {
+  background: #f7f8fa;
+}
+
+html[data-appearance='midnight-ice'] .login-card,
+html[data-appearance='midnight-ice'] .login-page--navy .login-card {
+  background: #fff;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .login-card-head h1,
+html[data-appearance='midnight-ice'] .login-field > span,
+html[data-appearance='midnight-ice'] .login-remember {
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .login-card-head p,
+html[data-appearance='midnight-ice'] .login-demo-hint {
+  color: #5b6b7c;
+}
+
+html[data-appearance='midnight-ice'] .tx-panel,
+html[data-appearance='midnight-ice'] .tx-table-wrap,
+html[data-appearance='midnight-ice'] .tx-form {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .tx-table th {
+  background: var(--table-head-bg);
+  color: var(--muted);
+}
+
+html[data-appearance='midnight-ice'] .badge {
+  border: 1px solid transparent;
+}
+
+html[data-appearance='midnight-ice'] .text-link,
+html[data-appearance='midnight-ice'] a.text-link {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+/* Light surfaces keep classic blue links */
+html[data-appearance='midnight-ice'] .login-card .text-link,
+html[data-appearance='midnight-ice'] .ssr-card .text-link,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) .text-link,
+html[data-appearance='midnight-ice'] .public-join-card .text-link,
+html[data-appearance='midnight-ice'] .join-form .text-link {
+  color: #1d4ed8;
+}
+
+html[data-appearance='midnight-ice'] .login-submit {
+  background: var(--accent);
+  color: var(--ice-ink);
+}
+
+/* ---- Badges / chips ---- */
+html[data-appearance='midnight-ice'] .badge {
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+html[data-appearance='midnight-ice'] .badge-active,
+html[data-appearance='midnight-ice'] .badge-paid {
+  background: rgba(6, 118, 71, 0.12);
+  color: var(--positive);
+}
+
+html[data-appearance='midnight-ice'] .badge-overdue,
+html[data-appearance='midnight-ice'] .badge-inactive {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--danger);
+}
+
+html[data-appearance='midnight-ice'] .badge-pending,
+html[data-appearance='midnight-ice'] .badge-trial {
+  background: rgba(94, 200, 232, 0.22);
+  color: #a8e6f5;
+}
+
+/* ---- Panels / cards / toolbar ---- */
+html[data-appearance='midnight-ice'] .panel-head h2,
+html[data-appearance='midnight-ice'] .dashboard-sport-title {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .toolbar,
+html[data-appearance='midnight-ice'] .filters {
+  gap: 0.65rem;
+}
+
+html[data-appearance='midnight-ice'] .stats-grid .stat-card {
+  border-left: 3px solid var(--brand);
+}
+
+html[data-appearance='midnight-ice'] .stats-grid .stat-card.tone-positive,
+html[data-appearance='midnight-ice'] .tone-positive.stat-card {
+  border-left-color: var(--positive);
+}
+
+html[data-appearance='midnight-ice'] .money-strip-item {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+html[data-appearance='midnight-ice'] .money-strip-item:first-child {
+  border-top: 3px solid var(--brand);
+}
+
+html[data-appearance='midnight-ice'] .money-strip-item.is-accent {
+  border-top: 3px solid var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .money-strip-item.is-warn {
+  border-top: 3px solid var(--danger);
+}
+
+html[data-appearance='midnight-ice'] .feed-list li {
+  border-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .quick-links a {
+  color: var(--amber-ink, #061018);
+  font-weight: 800;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  background: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .quick-links a:hover {
+  color: var(--amber-ink, #061018);
+  filter: brightness(1.06);
+}
+
+/* ---- Modal ---- */
+html[data-appearance='midnight-ice'] .modal,
+html[data-appearance='midnight-ice'] .modal-card,
+html[data-appearance='midnight-ice'] [class*='modal'] .panel {
+  border-radius: var(--radius);
+  border-color: var(--line);
+}
+
+/* ---- Finance module ---- */
+html[data-appearance='midnight-ice'] .finance-page,
+html[data-appearance='midnight-ice'] .finance-shell,
+html[data-appearance='midnight-ice'] .scf-page {
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .finance-tabs button,
+html[data-appearance='midnight-ice'] .tabs button,
+html[data-appearance='midnight-ice'] .segmented button {
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+html[data-appearance='midnight-ice'] .finance-tabs button.active,
+html[data-appearance='midnight-ice'] .tabs button.active,
+html[data-appearance='midnight-ice'] .segmented button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .fi-card,
+html[data-appearance='midnight-ice'] .finance-summary-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+/* ---- Athlete profile ---- */
+html[data-appearance='midnight-ice'] .athlete-profile-page {
+  --ap-header: #061018;
+  --ap-header-end: #122846;
+  --ap-field-border: #d7dee8;
+  --ap-soft: #eef2f7;
+}
+
+html[data-appearance='midnight-ice'] .athlete-profile-page .ap-header,
+html[data-appearance='midnight-ice'] .ap-header {
+  background: linear-gradient(90deg, var(--ap-header), var(--ap-header-end));
+}
+
+/* ---- Portals (parent / coach / athlete) ---- */
+html[data-appearance='midnight-ice'] .parent-portal .panel {
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .parent-portal-section h2 {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+html[data-appearance='midnight-ice'] .parent-portal-list li {
+  border-color: var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+/* ---- Platform admin & platform pages ---- */
+html[data-appearance='midnight-ice'] .platform-page,
+html[data-appearance='midnight-ice'] .platform-admin-page {
+  background: transparent;
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .platform-topbar,
+html[data-appearance='midnight-ice'] .platform-admin-header {
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .platform-topbar {
+  background: linear-gradient(90deg, var(--chrome-1), var(--chrome-2));
+  color: var(--chrome-fg);
+  border-radius: 0;
+  padding: 0.85rem 1.25rem;
+}
+
+html[data-appearance='midnight-ice'] .platform-brand strong,
+html[data-appearance='midnight-ice'] .platform-topbar strong {
+  color: var(--chrome-fg);
+}
+
+html[data-appearance='midnight-ice'] .platform-logout {
+  background: rgba(180, 35, 24, 0.9);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-banner,
+html[data-appearance='midnight-ice'] .platform-flash-ok {
+  background: rgba(94, 200, 232, 0.16);
+  color: #f4f7fb;
+  border: 1px solid rgba(94, 200, 232, 0.35);
+}
+
+html[data-appearance='midnight-ice'] .admin-section-label {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-header h1 {
+  font-family: var(--font-display);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-header .lede,
+html[data-appearance='midnight-ice'] .platform-admin-user {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .platform-packages-btn,
+html[data-appearance='midnight-ice'] .platform-admin-page .btn-primary {
+  background: var(--accent);
+  color: var(--ice-ink);
+  border: 0;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .btn-secondary {
+  background: #15243c;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+/* Admin board: full dark navy (no light title column) */
+html[data-appearance='midnight-ice'] .admin-board {
+  background: #0f1826;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-header {
+  background: #061018;
+  color: #e8eef7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .admin-board-header > div,
+html[data-appearance='midnight-ice'] .admin-board-title,
+html[data-appearance='midnight-ice'] .admin-board-entry,
+html[data-appearance='midnight-ice'] .admin-board-records {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .admin-board-row {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #0f1826;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-title {
+  background: #0c1520;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-title h3 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-title p {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-entry,
+html[data-appearance='midnight-ice'] .admin-board-records {
+  background: #0f1826;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-entry,
+html[data-appearance='midnight-ice'] .admin-entry .field,
+html[data-appearance='midnight-ice'] .admin-entry-note,
+html[data-appearance='midnight-ice'] .admin-check,
+html[data-appearance='midnight-ice'] .admin-check span,
+html[data-appearance='midnight-ice'] .admin-record-line {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-entry .field span,
+html[data-appearance='midnight-ice'] .admin-entry-note {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .admin-entry input,
+html[data-appearance='midnight-ice'] .admin-entry select,
+html[data-appearance='midnight-ice'] .admin-entry textarea,
+html[data-appearance='midnight-ice'] .admin-record-input,
+html[data-appearance='midnight-ice'] .platform-admin-page .entry-form input,
+html[data-appearance='midnight-ice'] .platform-admin-page .entry-form select,
+html[data-appearance='midnight-ice'] .platform-admin-page .entry-form textarea {
+  background: #0c1520;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .admin-entry input::placeholder,
+html[data-appearance='midnight-ice'] .platform-admin-page .entry-form input::placeholder {
+  color: #c5d0e0;
+  opacity: 1;
+}
+
+html[data-appearance='midnight-ice'] .admin-entry input:focus,
+html[data-appearance='midnight-ice'] .admin-entry select:focus,
+html[data-appearance='midnight-ice'] .admin-entry textarea:focus,
+html[data-appearance='midnight-ice'] .admin-record-input:focus {
+  background: #0c1520;
+  color: #f4f7fb;
+  border-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .admin-entry option,
+html[data-appearance='midnight-ice'] .platform-admin-page option {
+  background: #0f1826;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-table {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .login-activity-scroll {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .login-activity-scroll thead th {
+  background: #0f1826;
+  color: #f4f7fb;
+  border-bottom-color: rgba(244, 247, 251, 0.16);
+}
+
+html[data-appearance='midnight-ice'] .login-activity-scroll tbody td {
+  color: #f4f7fb;
+  border-bottom-color: rgba(244, 247, 251, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .login-activity-email {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .club-waitlist-created {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-header {
+  background: #061018;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-header .ta-title,
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-header .ta-analysis {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-title {
+  background: #15243c;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-analysis {
+  background: #0c1520;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .ta-row {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page a,
+html[data-appearance='midnight-ice'] .platform-admin-page .text-link,
+html[data-appearance='midnight-ice'] .platform-admin-page .btn-ghost {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-page .btn-danger,
+html[data-appearance='midnight-ice'] .platform-admin-page .btn-red {
+  color: #fca5a5;
+}
+
+html[data-appearance='midnight-ice'] .preview-banner {
+  background: #061018;
+  color: #f4f7fb;
+  border-bottom: 1px solid rgba(94, 200, 232, 0.35);
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option span {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(94, 200, 232, 0.45);
+  background: rgba(94, 200, 232, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .admin-role-tabs button {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .admin-role-tabs button.active,
+html[data-appearance='midnight-ice'] .admin-role-tabs button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #061018;
+  border-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .diag-card {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .diag-cat,
+html[data-appearance='midnight-ice'] .diag-detail,
+html[data-appearance='midnight-ice'] .diag-fix {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .diag-sev--critical {
+  background: rgba(240, 113, 103, 0.18);
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .diag-sev--warning {
+  background: rgba(94, 200, 232, 0.2);
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .diag-sev--info {
+  background: rgba(99, 120, 220, 0.2);
+  color: #b8c4ff;
+}
+
+html[data-appearance='midnight-ice'] .diag-sev--ok {
+  background: rgba(61, 207, 142, 0.16);
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .platform-diagnostic .diag-progress {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-appearance='midnight-ice'] .platform-diagnostic .diag-progress-bar {
+  background: var(--accent);
+}
+
+/* ---- Pricing / packages ---- */
+html[data-appearance='midnight-ice'] .pricing-plans-grid {
+  background: var(--bg-deep);
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-card {
+  border-radius: 10px;
+  box-shadow: none;
+  border-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-card.is-popular {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-badge {
+  background: var(--accent);
+  color: var(--ice-ink);
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-cta {
+  background: var(--accent);
+  color: var(--ice-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-cta:hover {
+  filter: brightness(0.96);
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-check {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .pricing-plan-name-input,
+html[data-appearance='midnight-ice'] .pricing-plan-price-display,
+html[data-appearance='midnight-ice'] .pricing-plan-currency {
+  color: var(--ink);
+}
+
+/* ---- Announcements / photos / warehouse / prints ---- */
+html[data-appearance='midnight-ice'] .announcement-card,
+html[data-appearance='midnight-ice'] .photo-card,
+html[data-appearance='midnight-ice'] .print-tile,
+html[data-appearance='midnight-ice'] .prints-grid > *,
+html[data-appearance='midnight-ice'] .entity-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .ann-field input,
+html[data-appearance='midnight-ice'] .ann-field textarea,
+html[data-appearance='midnight-ice'] .ann-field select,
+html[data-appearance='midnight-ice'] .ann-form--compose .ann-field input,
+html[data-appearance='midnight-ice'] .ann-form--compose .ann-field select,
+html[data-appearance='midnight-ice'] .ann-form--compose .ann-field textarea {
+  background: var(--field-bg);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .ann-editor,
+html[data-appearance='midnight-ice'] .ann-editor-toolbar {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .ann-label,
+html[data-appearance='midnight-ice'] .ann-field > span,
+html[data-appearance='midnight-ice'] .announcements-page h2,
+html[data-appearance='midnight-ice'] .announcements-page .page-header h1 {
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .ann-page-head h1,
+html[data-appearance='midnight-ice'] .ann-compose h2,
+html[data-appearance='midnight-ice'] .ann-list-head h2,
+html[data-appearance='midnight-ice'] .ann-audience-btn,
+html[data-appearance='midnight-ice'] .ann-priority-btn,
+html[data-appearance='midnight-ice'] .ann-draft-btn,
+html[data-appearance='midnight-ice'] .ann-table td,
+html[data-appearance='midnight-ice'] .ann-title-cell strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ann-page-head p,
+html[data-appearance='midnight-ice'] .ann-hint,
+html[data-appearance='midnight-ice'] .ann-title-cell span,
+html[data-appearance='midnight-ice'] .ann-table th,
+html[data-appearance='midnight-ice'] .ann-pager,
+html[data-appearance='midnight-ice'] .ann-empty {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .ann-compose,
+html[data-appearance='midnight-ice'] .ann-list {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .ann-field input,
+html[data-appearance='midnight-ice'] .ann-field textarea,
+html[data-appearance='midnight-ice'] .ann-field select,
+html[data-appearance='midnight-ice'] .ann-schedule-datetime,
+html[data-appearance='midnight-ice'] .ann-schedule-select,
+html[data-appearance='midnight-ice'] .ann-list-filters select,
+html[data-appearance='midnight-ice'] .ann-search,
+html[data-appearance='midnight-ice'] .ann-audience-btn,
+html[data-appearance='midnight-ice'] .ann-priority-btn,
+html[data-appearance='midnight-ice'] .ann-menu-btn,
+html[data-appearance='midnight-ice'] .ann-pager-btns button {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ann-field input::placeholder,
+html[data-appearance='midnight-ice'] .ann-message-textarea::placeholder,
+html[data-appearance='midnight-ice'] .ann-search input::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='midnight-ice'] .ann-editor,
+html[data-appearance='midnight-ice'] .ann-editor-toolbar {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ann-editor-toolbar {
+  background: #15243c;
+}
+
+html[data-appearance='midnight-ice'] .ann-editor-toolbar button {
+  color: #e8eef7;
+}
+
+html[data-appearance='midnight-ice'] .ann-audience-btn.is-active,
+html[data-appearance='midnight-ice'] .ann-priority-btn.is-active {
+  border-color: var(--accent);
+  background: rgba(94, 200, 232, 0.16);
+}
+
+html[data-appearance='midnight-ice'] .ann-table th {
+  background: #152233;
+}
+
+html[data-appearance='midnight-ice'] .ann-role-pill.is-parents {
+  background: #3b6fd9;
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .ann-role-pill.is-athletes {
+  background: #1f9d63;
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .ann-role-pill.is-coaches {
+  background: #7a4fd4;
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .ann-role-pill.is-classes {
+  background: var(--accent);
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .ann-audience-picker {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .ann-audience-search,
+html[data-appearance='midnight-ice'] .ann-pick-row {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ann-audience-search {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+html[data-appearance='midnight-ice'] .ann-pick-row em,
+html[data-appearance='midnight-ice'] .ann-audience-btn-label em {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .ann-audience-btn.is-active .ann-audience-btn-label em {
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .ann-menu {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .ann-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ann-pager-btns button.is-active {
+  background: #5ec8e8;
+  border-color: #5ec8e8;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-label.is-normal {
+  color: #f0d078;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-label.is-high {
+  color: #f0a86a;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-label.is-urgent {
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-label.is-low {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-btn.is-low {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-btn.is-normal {
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-btn.is-high {
+  color: #f0a86a;
+}
+
+html[data-appearance='midnight-ice'] .ann-priority-btn.is-urgent {
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .print-tile:hover,
+html[data-appearance='midnight-ice'] .entity-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+/* ---- Calendar / schedule ---- */
+html[data-appearance='midnight-ice'] .schedule-day,
+html[data-appearance='midnight-ice'] .cal-cell,
+html[data-appearance='midnight-ice'] .calendar-cell {
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .cal-event,
+html[data-appearance='midnight-ice'] .calendar-event,
+html[data-appearance='midnight-ice'] .schedule-slot {
+  background: rgba(94, 200, 232, 0.12);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .cal-main,
+html[data-appearance='midnight-ice'] .cal-sidebar,
+html[data-appearance='midnight-ice'] .cal-mini,
+html[data-appearance='midnight-ice'] .cal-side-block {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .cal-weekday,
+html[data-appearance='midnight-ice'] .cal-more,
+html[data-appearance='midnight-ice'] .cal-mini-weekdays span {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .cal-cell.is-out,
+html[data-appearance='midnight-ice'] .cal-mini-day.is-out {
+  color: #6b7c90;
+}
+
+html[data-appearance='midnight-ice'] .cal-view-toggle button.is-active,
+html[data-appearance='midnight-ice'] .cal-today-btn {
+  background: var(--accent);
+  color: #061018;
+  border-color: var(--accent);
+}
+
+/* ---- Register / public join ---- */
+html[data-appearance='midnight-ice'] .register-page,
+html[data-appearance='midnight-ice'] .public-join-page,
+html[data-appearance='midnight-ice'] .join-page {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .register-page .login-card,
+html[data-appearance='midnight-ice'] .public-join-page .login-card,
+html[data-appearance='midnight-ice'] .join-form,
+html[data-appearance='midnight-ice'] .public-join-card {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+html[data-appearance='midnight-ice'] .public-join-hero,
+html[data-appearance='midnight-ice'] .join-hero {
+  background: linear-gradient(165deg, var(--chrome-1), var(--chrome-3));
+  color: var(--chrome-fg);
+}
+
+/* ---- Settings ---- */
+html[data-appearance='midnight-ice'] .settings-tabs button.active,
+html[data-appearance='midnight-ice'] .settings-nav button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .settings-logo-preview {
+  border-color: var(--line);
+  background: var(--bg);
+}
+
+html[data-appearance='midnight-ice'] .set-page-head h1,
+html[data-appearance='midnight-ice'] .set-card h2,
+html[data-appearance='midnight-ice'] .set-field > span,
+html[data-appearance='midnight-ice'] .set-tabs > button.is-active,
+html[data-appearance='midnight-ice'] .set-embed-head h2 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .set-tabs > button,
+html[data-appearance='midnight-ice'] .set-tabs-more > button,
+html[data-appearance='midnight-ice'] .set-card-lede {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .set-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .set-tabs > button.is-active,
+html[data-appearance='midnight-ice'] .set-tabs-more > button.is-active {
+  color: #f4f7fb;
+  border-bottom-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .set-card {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .set-logo-drop {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .set-logo-drop span {
+  color: #9aa8bc;
+}
+
+html[data-appearance='midnight-ice'] .set-field input,
+html[data-appearance='midnight-ice'] .set-field select {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .set-eye {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .set-test-btn {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .set-test-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .set-save-bar .btn-primary {
+  background: var(--accent);
+  color: #061018;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Partners + Staff */
+html[data-appearance='midnight-ice'] .pb-head h1,
+html[data-appearance='midnight-ice'] .pb-card-meta strong,
+html[data-appearance='midnight-ice'] .pb-offer strong,
+html[data-appearance='midnight-ice'] .stf-head h1,
+html[data-appearance='midnight-ice'] .stf-table td,
+html[data-appearance='midnight-ice'] .stf-name-cell strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .pb-head p,
+html[data-appearance='midnight-ice'] .pb-tabs button,
+html[data-appearance='midnight-ice'] .pb-cat,
+html[data-appearance='midnight-ice'] .pb-addr,
+html[data-appearance='midnight-ice'] .pb-offer span,
+html[data-appearance='midnight-ice'] .pb-pager,
+html[data-appearance='midnight-ice'] .stf-head p,
+html[data-appearance='midnight-ice'] .stf-table th,
+html[data-appearance='midnight-ice'] .stf-muted,
+html[data-appearance='midnight-ice'] .stf-pager {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .pb-tabs button.is-active {
+  color: #f4f7fb;
+  border-bottom-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .pb-card,
+html[data-appearance='midnight-ice'] .stf-toolbar,
+html[data-appearance='midnight-ice'] .stf-table-card {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .pb-category,
+html[data-appearance='midnight-ice'] .pb-pager-btns button,
+html[data-appearance='midnight-ice'] .stf-search,
+html[data-appearance='midnight-ice'] .stf-toolbar select,
+html[data-appearance='midnight-ice'] .stf-export,
+html[data-appearance='midnight-ice'] .stf-page-size select,
+html[data-appearance='midnight-ice'] .stf-pager-btns button {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .pb-logo {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .pb-offer {
+  background: rgba(94, 200, 232, 0.16);
+}
+
+html[data-appearance='midnight-ice'] .pb-link {
+  color: #f0d078;
+}
+
+html[data-appearance='midnight-ice'] .stf-table th {
+  background: #152233;
+}
+
+html[data-appearance='midnight-ice'] .stf-head-icon {
+  background: rgba(94, 200, 232, 0.2);
+  color: #f0d078;
+}
+
+html[data-appearance='midnight-ice'] .stf-avatar {
+  background: rgba(94, 200, 232, 0.18);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .stf-role.is-coach {
+  border-color: var(--accent);
+  color: #f0d078;
+}
+
+html[data-appearance='midnight-ice'] .stf-role.is-admin {
+  border-color: #6b93f5;
+  color: #9bb6ff;
+}
+
+html[data-appearance='midnight-ice'] .stf-role.is-secretariat {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .stf-status.is-active {
+  background: rgba(61, 207, 142, 0.16);
+  color: #7dffc0;
+  border-color: rgba(61, 207, 142, 0.4);
+}
+
+html[data-appearance='midnight-ice'] .stf-status.is-inactive {
+  background: rgba(255, 255, 255, 0.08);
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .pb-pager-btns button.is-active,
+html[data-appearance='midnight-ice'] .stf-pager-btns button.is-active {
+  background: #5ec8e8;
+  border-color: #5ec8e8;
+  color: #061018;
+}
+
+/* ---- Misc chrome leftovers ---- */
+html[data-appearance='midnight-ice'] .brand-mark {
+  background: linear-gradient(135deg, var(--accent), #e4b84a);
+  color: var(--ice-ink);
+  border-radius: 10px;
+}
+
+html[data-appearance='midnight-ice'] .mobile-nav,
+html[data-appearance='midnight-ice'] .sidebar-backdrop {
+  background: rgba(7, 21, 38, 0.45);
+}
+
+html[data-appearance='midnight-ice'] .form-error {
+  color: var(--danger);
+}
+
+html[data-appearance='midnight-ice'] .settings-success,
+html[data-appearance='midnight-ice'] .platform-flash.platform-flash-ok {
+  background: rgba(6, 118, 71, 0.1);
+  color: var(--positive);
+  border-radius: 8px;
+}
+
+/* Dense page rhythm */
+html[data-appearance='midnight-ice'] .stack-lg {
+  gap: 1rem;
+}
+
+html[data-appearance='midnight-ice'] .grid-2,
+html[data-appearance='midnight-ice'] .stats-grid {
+  gap: 0.85rem;
+}
+
+html[data-appearance='midnight-ice'] .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-appearance='midnight-ice'] .page-header h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .page-header p {
+  margin: 0.3rem 0 0;
+}
+
+html[data-appearance='midnight-ice'] .page-header-actions .btn-primary {
+  background: var(--accent);
+  color: var(--ice-ink);
+}
+
+html[data-appearance='midnight-ice'] .login-page--navy .login-card-wide,
+html[data-appearance='midnight-ice'] .login-card-wide {
+  width: min(520px, 100%);
+}
+
+/* Platform users / packages pages that use .platform-page */
+html[data-appearance='midnight-ice'] .platform-header h1 {
+  font-family: var(--font-display);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .platform-packages-btn {
+  background: var(--accent) !important;
+  color: var(--ice-ink) !important;
+  border: 0 !important;
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .packages-save,
+html[data-appearance='midnight-ice'] .login-submit.packages-save {
+  background: var(--accent);
+  color: var(--ice-ink);
+  border-radius: 8px;
+}
+
+/* Transactions β€” amber primary actions */
+html[data-appearance='midnight-ice'] .tx-save-btn {
+  background: var(--accent);
+  color: var(--ice-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .tx-save-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+  background: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .tx-cancel-btn,
+html[data-appearance='midnight-ice'] .tx-panel {
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .tx-panel {
+  box-shadow: none;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .tx-page-header h1 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-page-header p {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] .tx-panel-header {
+  background: linear-gradient(135deg, #0a1628 0%, #12233d 55%, #1a3050 100%);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-panel-header h2 {
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .tx-filters {
+  background: color-mix(in srgb, var(--surface) 82%, #000 18%);
+  border-bottom-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .tx-filter-field > span {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .tx-filter-field select {
+  background: var(--field-bg, #0c1520);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-table-wrap {
+  background: var(--surface);
+}
+
+html[data-appearance='midnight-ice'] .tx-table {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-table th,
+html[data-appearance='midnight-ice'] .tx-table td {
+  border-bottom-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-table th,
+html[data-appearance='midnight-ice'] .tx-table-wrap--athletes thead th,
+html[data-appearance='midnight-ice'] .tx-table-wrap--movements thead th {
+  background: var(--table-head-bg, #18263d);
+  color: #dce5f2;
+}
+
+html[data-appearance='midnight-ice'] .tx-table tbody tr:hover {
+  background: rgba(94, 200, 232, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .tx-table tbody tr.is-selected {
+  background: rgba(94, 200, 232, 0.18);
+}
+
+html[data-appearance='midnight-ice'] .tx-balance-cell,
+html[data-appearance='midnight-ice'] .tx-balance-col {
+  background: rgba(94, 200, 232, 0.2) !important;
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .tx-total-row td {
+  background: color-mix(in srgb, var(--surface) 70%, #000 30%);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-panel-footer {
+  background: color-mix(in srgb, var(--surface) 78%, #000 22%);
+  border-top-color: var(--line);
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .tx-search {
+  background: var(--field-bg, #0c1520);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-search::placeholder {
+  color: #8fa0b8;
+}
+
+html[data-appearance='midnight-ice'] .tx-form {
+  background: var(--surface);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-field span,
+html[data-appearance='midnight-ice'] .tx-field-col span {
+  color: #dce5f2;
+}
+
+html[data-appearance='midnight-ice'] .tx-form input,
+html[data-appearance='midnight-ice'] .tx-form select,
+html[data-appearance='midnight-ice'] .tx-form textarea {
+  background: var(--field-bg, #0c1520);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .tx-form input:disabled {
+  background: #1a2740;
+  color: #9aabbf;
+}
+
+html[data-appearance='midnight-ice'] .tx-form input::placeholder,
+html[data-appearance='midnight-ice'] .tx-form textarea::placeholder {
+  color: #8fa0b8;
+}
+
+html[data-appearance='midnight-ice'] .tx-cancel-btn {
+  background: #1a2740;
+  border-color: var(--line);
+  color: #e8eef7;
+}
+
+html[data-appearance='midnight-ice'] .tx-cancel-btn:hover {
+  background: #243552;
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .tx-icon-btn {
+  border-color: var(--line);
+  background: #1a2740;
+  color: #e8eef7;
+}
+
+html[data-appearance='midnight-ice'] .tx-icon-btn:hover {
+  color: var(--accent);
+  border-color: rgba(94, 200, 232, 0.55);
+}
+
+html[data-appearance='midnight-ice'] .tx-icon-btn--danger:hover {
+  color: #ff8f8f;
+  border-color: rgba(240, 113, 103, 0.55);
+}
+
+html[data-appearance='midnight-ice'] .tx-empty-info,
+html[data-appearance='midnight-ice'] .tx-hint,
+html[data-appearance='midnight-ice'] .tx-empty-info p {
+  color: #c5d0e0;
+}
+
+/* Fees / Ξ£Ο…Ξ½Ξ΄ΟΞΏΞΌΞ­Ο‚ β€” list + toolbar contrast */
+html[data-appearance='midnight-ice'] .toolbar .tx-search {
+  background: var(--field-bg, #0c1520);
+  border-color: var(--line);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .toolbar .tx-search::placeholder {
+  color: #8fa0b8;
+}
+
+html[data-appearance='midnight-ice'] .panel.table-wrap,
+html[data-appearance='midnight-ice'] .panel.table-wrap table,
+html[data-appearance='midnight-ice'] .panel.table-wrap strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .panel.table-wrap .muted {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .panel.table-wrap thead th {
+  color: #dce5f2;
+  background: var(--table-head-bg, #18263d);
+}
+
+html[data-appearance='midnight-ice'] .panel.table-wrap tbody td {
+  color: #e8eef7;
+}
+
+html[data-appearance='midnight-ice'] .badge-paid {
+  background: rgba(6, 180, 110, 0.2);
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .badge-overdue {
+  background: rgba(240, 113, 103, 0.2);
+  color: #ff9b9b;
+}
+
+html[data-appearance='midnight-ice'] .fees-actions .btn-secondary,
+html[data-appearance='midnight-ice'] .toolbar .btn-secondary,
+html[data-appearance='midnight-ice'] .panel.table-wrap .btn-secondary {
+  background: #1a2740;
+  border-color: var(--line);
+  color: #e8eef7;
+}
+
+html[data-appearance='midnight-ice'] .fees-actions .btn-secondary:hover,
+html[data-appearance='midnight-ice'] .toolbar .btn-secondary:hover,
+html[data-appearance='midnight-ice'] .panel.table-wrap .btn-secondary:hover {
+  background: #243552;
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .stat-card .stat-label,
+html[data-appearance='midnight-ice'] .stat-card .stat-hint {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .stat-card .stat-value {
+  color: #f4f7fb;
+}
+
+/* Finance income/expense/budget/reports denser navy headers */
+html[data-appearance='midnight-ice'] .income-entry-heading h2,
+html[data-appearance='midnight-ice'] .report-meta h3 {
+  font-family: var(--font-display);
+}
+
+html[data-appearance='midnight-ice'] .income-entry-heading .eyebrow {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .stat-pill,
+html[data-appearance='midnight-ice'] .summary-card {
+  border-radius: 10px;
+}
+
+html[data-appearance='midnight-ice'] .budget-progress-bar.is-ok {
+  background: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .budget-status.is-good {
+  background: rgba(94, 200, 232, 0.22);
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .budget-status.is-bad {
+  background: rgba(240, 113, 103, 0.16);
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .report-table .amount.expense {
+  color: var(--danger);
+}
+
+html[data-appearance='midnight-ice'] .report-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .report-chip:hover {
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .prints-nav-item.active {
+  background: rgba(94, 200, 232, 0.18);
+  color: #f4f7fb;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .prints-page .page-panel,
+html[data-appearance='midnight-ice'] .prints-main,
+html[data-appearance='midnight-ice'] .prints-nav {
+  background: #0f1826;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: none;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prints-page {
+  --color-surface: #0f1826;
+  --color-bg-subtle: #0c1520;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-field-border: rgba(255, 255, 255, 0.14);
+  --color-text: #f4f7fb;
+  --color-text-muted: #b6c3d6;
+  --color-title: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prints-nav {
+  background: #0c1520;
+}
+
+html[data-appearance='midnight-ice'] .prints-nav-item {
+  color: #c5d0e0;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-appearance='midnight-ice'] .prints-nav-item:hover {
+  background: rgba(94, 200, 232, 0.1);
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .prints-registry-section h2,
+html[data-appearance='midnight-ice'] .prints-filter-label {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prints-registry-desc,
+html[data-appearance='midnight-ice'] .prints-placeholder-note {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .prints-results-modal-count {
+  color: #5b6b7c;
+}
+
+html[data-appearance='midnight-ice'] .modal.prints-results-modal {
+  background: #fff;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .modal.prints-results-modal .modal-header h2,
+html[data-appearance='midnight-ice'] .modal.prints-results-modal #modal-title {
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .modal.prints-results-modal .prints-results-table th {
+  background: #f1f5f9;
+  color: #061018;
+  border-color: #d7dee8;
+}
+
+html[data-appearance='midnight-ice'] .modal.prints-results-modal .prints-results-table td {
+  background: #fff;
+  color: #061018;
+  border-color: #d7dee8;
+}
+
+html[data-appearance='midnight-ice'] .modal.prints-results-modal .prints-results-table tfoot td {
+  background: #e8eef6;
+  color: #061018;
+  font-weight: 700;
+}
+
+html[data-appearance='midnight-ice'] .modal.prints-results-modal .prints-results-empty {
+  color: #5b6b7c;
+}
+
+html[data-appearance='midnight-ice'] .prints-placeholder-note {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .prints-filter-actions {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .prints-filter-input,
+html[data-appearance='midnight-ice'] .prints-main input,
+html[data-appearance='midnight-ice'] .prints-main select,
+html[data-appearance='midnight-ice'] .prints-main textarea {
+  background: #0c1520;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .prints-filter-input:focus,
+html[data-appearance='midnight-ice'] .prints-main input:focus,
+html[data-appearance='midnight-ice'] .prints-main select:focus {
+  background: #0c1520;
+  color: #f4f7fb;
+  border-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .prints-main option {
+  background: #0f1826;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prints-page .page-table th {
+  background: #15243c;
+  color: #c5d0e0;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .prints-page .page-table td {
+  background: #0c1520;
+  color: #f4f7fb;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Finance forms: never light text on white fields */
+html[data-appearance='midnight-ice'] .finance-page,
+html[data-appearance='midnight-ice'] .income-entry-panel,
+html[data-appearance='midnight-ice'] .entry-form,
+html[data-appearance='midnight-ice'] .ta-table,
+html[data-appearance='midnight-ice'] .report-sheet,
+html[data-appearance='midnight-ice'] .income-entry-list .data-table {
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .ta-analysis input,
+html[data-appearance='midnight-ice'] .ta-analysis select,
+html[data-appearance='midnight-ice'] .ta-analysis textarea,
+html[data-appearance='midnight-ice'] .entry-form input,
+html[data-appearance='midnight-ice'] .entry-form select,
+html[data-appearance='midnight-ice'] .entry-form textarea,
+html[data-appearance='midnight-ice'] .finance-page input,
+html[data-appearance='midnight-ice'] .finance-page select,
+html[data-appearance='midnight-ice'] .finance-page textarea {
+  background: var(--field-bg) !important;
+  color: var(--ink) !important;
+  border-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .ta-analysis option,
+html[data-appearance='midnight-ice'] .entry-form option,
+html[data-appearance='midnight-ice'] .finance-page option {
+  background: #0f1826;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ta-title {
+  background: var(--bg-deep);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .income-entry-list .data-table td,
+html[data-appearance='midnight-ice'] .income-entry-list .data-table th,
+html[data-appearance='midnight-ice'] .report-table td,
+html[data-appearance='midnight-ice'] .report-table th {
+  color: var(--ink);
+  background: transparent;
+}
+
+html[data-appearance='midnight-ice'] .tabs {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .tabs .tab,
+html[data-appearance='midnight-ice'] .finance-page .tab {
+  color: #e8eef7;
+  background: transparent;
+  border: 0;
+  opacity: 1;
+}
+
+html[data-appearance='midnight-ice'] .tabs .tab:hover,
+html[data-appearance='midnight-ice'] .finance-page .tab:hover {
+  color: #fff;
+  background: rgba(94, 200, 232, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .tabs .tab.active,
+html[data-appearance='midnight-ice'] .finance-page .tab.active {
+  background: var(--accent);
+  color: #061018;
+  border-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .report-templates {
+  background: #0c1520;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .report-templates-header h3 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .report-templates-header p,
+html[data-appearance='midnight-ice'] .report-templates-header .muted-text,
+html[data-appearance='midnight-ice'] .report-templates .muted,
+html[data-appearance='midnight-ice'] .report-templates .muted-text {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .income-entry-heading h2,
+html[data-appearance='midnight-ice'] .budget-results-title,
+html[data-appearance='midnight-ice'] .ta-hint {
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .ta-hint {
+  color: var(--muted);
+}
+
+html[data-appearance='midnight-ice'] .prints-page .btn-primary,
+html[data-appearance='midnight-ice'] .prints-main .btn-primary {
+  background: var(--accent);
+  color: var(--ice-ink);
+}
+
+/* Athlete profile (Ξ½Ξ­ΞΏΟ‚ Ξ±ΞΈΞ»Ξ·Ο„Ξ®Ο‚ / ΞµΟ€ΞµΞΎΞµΟΞ³Ξ±ΟƒΞ―Ξ±) */
+html[data-appearance='midnight-ice'] .athlete-profile-page {
+  --club-header: #061018;
+  --color-text-inverse: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .athlete-profile-page .page-panel {
+  box-shadow: none;
+  border-radius: 10px;
+  border-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .athlete-finance-header {
+  background: linear-gradient(135deg, #071526 0%, #061018 55%, #122846 100%);
+  border-radius: 10px 10px 0 0;
+}
+
+html[data-appearance='midnight-ice'] .ap-page-header h1 {
+  font-family: var(--font-display);
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+html[data-appearance='midnight-ice'] .ap-page-actions .btn-primary,
+html[data-appearance='midnight-ice'] .athlete-profile-page .btn-primary {
+  background: var(--accent);
+  color: var(--ice-ink);
+  box-shadow: none;
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .athlete-profile-page .profile-row-input,
+html[data-appearance='midnight-ice'] .athlete-profile-page input,
+html[data-appearance='midnight-ice'] .athlete-profile-page select,
+html[data-appearance='midnight-ice'] .athlete-profile-page textarea {
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .athlete-profile-page .profile-health-card-preview-btn {
+  background: var(--accent);
+  color: var(--ice-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .athlete-profile-page .text-link {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+html[data-appearance='midnight-ice'] .ap-hero,
+html[data-appearance='midnight-ice'] .ap-card,
+html[data-appearance='midnight-ice'] .ap-reg-footer {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .ap-finance-wrap,
+html[data-appearance='midnight-ice'] .ap-announcements-body {
+  background: #0c1520;
+  border-radius: 10px;
+}
+
+html[data-appearance='midnight-ice'] .ap-finance-table th,
+html[data-appearance='midnight-ice'] .ap-announcements-table th {
+  background: #15243c;
+  color: #c5d0e0;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .ap-finance-table td,
+html[data-appearance='midnight-ice'] .ap-announcements-table td {
+  background: #0c1520;
+  color: #f4f7fb;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-appearance='midnight-ice'] .ap-finance-table td:first-child,
+html[data-appearance='midnight-ice'] .ap-finance-table thead tr:first-child th:first-child {
+  background: #0c1520;
+}
+
+html[data-appearance='midnight-ice'] .ap-finance-table thead tr:first-child th:first-child {
+  background: #15243c;
+}
+
+html[data-appearance='midnight-ice'] .ap-balance-col {
+  background: rgba(94, 200, 232, 0.12) !important;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ap-total-row td {
+  background: #15243c;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ap-empty-msg {
+  color: #9aa8bc;
+}
+
+html[data-appearance='midnight-ice'] .ap-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .ap-tab {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .ap-tab:hover {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ap-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .ap-input,
+html[data-appearance='midnight-ice'] .athlete-profile-page .ap-input {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ap-actions-btn,
+html[data-appearance='midnight-ice'] .ap-pager-btn,
+html[data-appearance='midnight-ice'] .ap-actions-dropdown {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ap-footer-actions {
+  background: linear-gradient(to top, #071526 60%, transparent);
+}
+
+html[data-appearance='midnight-ice'] .ap-footer-actions .btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .ap-footer-actions .btn-primary {
+  background: var(--accent);
+  color: var(--ice-ink);
+}
+
+/* Staff / coaches / classes modals (ΞΞ­ΞΏ ΞΌΞ­Ξ»ΞΏΟ‚ Ο€ΟΞΏΟƒΟ‰Ο€ΞΉΞΊΞΏΟ ΞΊ.Ξ»Ο€.) */
+html[data-appearance='midnight-ice'] .training-modal {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgba(11, 31, 58, 0.18);
+}
+
+html[data-appearance='midnight-ice'] .training-modal h2 {
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-appearance='midnight-ice'] .training-modal-fields input:focus,
+html[data-appearance='midnight-ice'] .training-modal-fields select:focus,
+html[data-appearance='midnight-ice'] .training-modal-fields textarea:focus {
+  outline: 2px solid rgba(94, 200, 232, 0.35);
+  border-color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .training-btn-save,
+html[data-appearance='midnight-ice'] .trn-btn-primary {
+  background: var(--accent);
+  color: var(--ice-ink);
+  border-radius: 8px;
+}
+
+html[data-appearance='midnight-ice'] .training-btn-save:hover:not(:disabled),
+html[data-appearance='midnight-ice'] .trn-btn-primary:hover {
+  background: var(--accent);
+  filter: brightness(0.96);
+}
+
+html[data-appearance='midnight-ice'] .training-btn-cancel {
+  border-radius: 8px;
+  background: #061018;
+  color: #f4f7fb;
+  border: 1px solid #061018;
+}
+
+html[data-appearance='midnight-ice'] .training-btn-cancel:hover {
+  background: #0f1826;
+  border-color: #0f1826;
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .training-modal .class-modal-hint,
+html[data-appearance='midnight-ice'] .training-modal .muted,
+html[data-appearance='midnight-ice'] .training-modal .settings-hint {
+  color: #445064;
+}
+
+html[data-appearance='midnight-ice'] .training-modal-fields input,
+html[data-appearance='midnight-ice'] .training-modal-fields select,
+html[data-appearance='midnight-ice'] .training-modal-fields textarea {
+  border-color: rgba(11, 31, 58, 0.28);
+  background: #ffffff;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .training-modal-backdrop {
+  background: rgba(7, 21, 38, 0.55);
+}
+
+/* Parents page β€” dark surfaces, readable filters/status */
+html[data-appearance='midnight-ice'] .parents-hero,
+html[data-appearance='midnight-ice'] .parents-filters,
+html[data-appearance='midnight-ice'] .parents-table-card {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .parents-hero p,
+html[data-appearance='midnight-ice'] .parents-empty,
+html[data-appearance='midnight-ice'] .parents-pager,
+html[data-appearance='midnight-ice'] .parents-muted,
+html[data-appearance='midnight-ice'] .parents-table th {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .parents-hero-icon {
+  background: rgba(94, 200, 232, 0.2);
+  color: #f0d078;
+}
+
+html[data-appearance='midnight-ice'] .parents-search,
+html[data-appearance='midnight-ice'] .parents-filter-field select,
+html[data-appearance='midnight-ice'] .parents-reset,
+html[data-appearance='midnight-ice'] .parents-menu-btn,
+html[data-appearance='midnight-ice'] .parents-pager-btns button {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .parents-search input,
+html[data-appearance='midnight-ice'] .parents-filter-field > span {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .parents-search input::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='midnight-ice'] .parents-table th {
+  background: #152233;
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .parents-table td {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .parents-status--active {
+  background: rgba(61, 207, 142, 0.18);
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .parents-status--pending {
+  background: rgba(94, 200, 232, 0.2);
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .parents-status--not_invited {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d7dee8;
+}
+
+html[data-appearance='midnight-ice'] .parents-invite-btn {
+  background: var(--accent);
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .parents-menu {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .parents-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .parents-pager-btns button.is-active {
+  background: #5ec8e8;
+  border-color: #5ec8e8;
+  color: #061018;
+}
+
+/* Schedule / Ξ ΟΟΞ³ΟΞ±ΞΌΞΌΞ± β€” readable filters on dark theme */
+html[data-appearance='midnight-ice'] .prog-toolbar,
+html[data-appearance='midnight-ice'] .prog-board {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-appearance='midnight-ice'] .prog-field > span,
+html[data-appearance='midnight-ice'] .prog-week-nav strong,
+html[data-appearance='midnight-ice'] .prog-legend li {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prog-hint {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .prog-field select,
+html[data-appearance='midnight-ice'] .prog-week-nav,
+html[data-appearance='midnight-ice'] .prog-today-btn {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prog-week-nav button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .prog-day-head,
+html[data-appearance='midnight-ice'] .prog-time-gutter {
+  background: #061018;
+  color: #fff;
+}
+
+html[data-appearance='midnight-ice'] .prog-time-col {
+  background: #101b2e;
+}
+
+html[data-appearance='midnight-ice'] .prog-hour-label {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .prog-day-col {
+  background: #0f1826;
+}
+
+html[data-appearance='midnight-ice'] .prog-hour-line {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-appearance='midnight-ice'] .prog-block.is-training {
+  background: #5ec8e8;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .prog-block.is-match {
+  background: #f0d9a0;
+  border-color: #c9a85a;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .prog-block-time,
+html[data-appearance='midnight-ice'] .prog-block-loc,
+html[data-appearance='midnight-ice'] .prog-block-title,
+html[data-appearance='midnight-ice'] .prog-block-edit {
+  color: #061018;
+}
+
+/* Warehouse / Ξ‘Ο€ΞΏΞΈΞ®ΞΊΞ· */
+html[data-appearance='midnight-ice'] .wh-page-head h1,
+html[data-appearance='midnight-ice'] .wh-stat strong,
+html[data-appearance='midnight-ice'] .wh-table td,
+html[data-appearance='midnight-ice'] .wh-name-cell strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .wh-breadcrumb,
+html[data-appearance='midnight-ice'] .wh-stat span,
+html[data-appearance='midnight-ice'] .wh-stat em,
+html[data-appearance='midnight-ice'] .wh-table th,
+html[data-appearance='midnight-ice'] .wh-name-cell span,
+html[data-appearance='midnight-ice'] .wh-pager,
+html[data-appearance='midnight-ice'] .wh-empty {
+  color: #c5d0e0;
+}
+
+html[data-appearance='midnight-ice'] .wh-stat,
+html[data-appearance='midnight-ice'] .wh-toolbar,
+html[data-appearance='midnight-ice'] .wh-table-card {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .wh-search,
+html[data-appearance='midnight-ice'] .wh-toolbar select,
+html[data-appearance='midnight-ice'] .wh-io-btn,
+html[data-appearance='midnight-ice'] .wh-menu-btn,
+html[data-appearance='midnight-ice'] .wh-page-size select,
+html[data-appearance='midnight-ice'] .wh-pager-btns button {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .wh-search input::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='midnight-ice'] .wh-table th {
+  background: #152233;
+}
+
+html[data-appearance='midnight-ice'] .wh-thumb {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .wh-num.is-ok {
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .wh-num.is-low {
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .wh-edit-btn {
+  background: rgba(94, 200, 232, 0.22);
+  color: #f0d078;
+}
+
+html[data-appearance='midnight-ice'] .wh-menu {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-appearance='midnight-ice'] .wh-menu button {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .wh-pager-btns button.is-active {
+  background: #5ec8e8;
+  border-color: #5ec8e8;
+  color: #061018;
+}
+
+/* Fee charge modal β€” keep labels/months readable on dark body (must beat white-modal label rules) */
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .field-label,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal label > span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .field > span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .admin-check,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .admin-check span,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .check-row,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .check-row span {
+  color: #e8eef7 !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .settings-hint,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .muted,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-charge-note {
+  color: #b6c3d6 !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-charge-section h3 {
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip {
+  background: #15243c !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip:has(input:checked),
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-month-chip.is-active {
+  background: rgba(94, 200, 232, 0.24) !important;
+  border-color: var(--accent) !important;
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .field-input,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal select.field-input,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal input.field-input {
+  background: #0c1520 !important;
+  color: #f4f7fb !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-charge-hero .field-input,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-charge-hero select,
+html[data-appearance='midnight-ice'] .modal.fee-charge-modal .fee-charge-hero input:not([type='checkbox']) {
+  background: #ffffff !important;
+  color: #061018 !important;
+  border-color: #d7dee8 !important;
+}
+
+/* ========================================================================== */
+/* Contrast safety net (loaded last via main.tsx)                              */
+/* ========================================================================== */
+
+html[data-appearance='midnight-ice'] .muted,
+html[data-appearance='midnight-ice'] .stat-hint,
+html[data-appearance='midnight-ice'] .stat-label {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] .page-header p,
+html[data-appearance='midnight-ice'] .lede {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] thead th {
+  color: #e2e8f0;
+}
+
+html[data-appearance='midnight-ice'] .btn-secondary {
+  background: #061018;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+html[data-appearance='midnight-ice'] .btn-secondary:hover {
+  background: #0f1826;
+  color: #ffffff;
+}
+
+/* Secondary buttons inside light modals/cards */
+html[data-appearance='midnight-ice'] .login-card .btn-secondary,
+html[data-appearance='midnight-ice'] .ssr-card .btn-secondary,
+html[data-appearance='midnight-ice'] .training-modal .btn-secondary,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) .btn-secondary,
+html[data-appearance='midnight-ice'] .public-join-card .btn-secondary,
+html[data-appearance='midnight-ice'] .join-form .btn-secondary {
+  background: #061018;
+  color: #f4f7fb;
+  border-color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .stat-icon {
+  background: rgba(94, 200, 232, 0.16);
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .tone-positive .stat-icon {
+  background: rgba(61, 207, 142, 0.14);
+  color: var(--positive);
+}
+
+html[data-appearance='midnight-ice'] .tone-danger .stat-icon,
+html[data-appearance='midnight-ice'] .tone-negative .stat-icon {
+  background: rgba(240, 113, 103, 0.14);
+  color: var(--danger);
+}
+
+html[data-appearance='midnight-ice'] .chip {
+  background: var(--field-bg);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+html[data-appearance='midnight-ice'] .chip-on {
+  background: rgba(61, 207, 142, 0.16);
+  border-color: rgba(61, 207, 142, 0.35);
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .chip-off {
+  background: rgba(240, 113, 103, 0.14);
+  border-color: rgba(240, 113, 103, 0.3);
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .athlete-avatar {
+  background: rgba(94, 200, 232, 0.18);
+  border-color: rgba(94, 200, 232, 0.35);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] input::placeholder,
+html[data-appearance='midnight-ice'] textarea::placeholder {
+  color: #9aa8bc;
+  opacity: 1;
+}
+
+html[data-appearance='midnight-ice'] .att-select--date input[type='date'],
+html[data-appearance='midnight-ice'] .att-select--date input[type='date']:focus {
+  color: #f4f7fb !important;
+}
+
+html[data-appearance='midnight-ice'] .aport-pill,
+html[data-appearance='midnight-ice'] .cport-role-pill,
+html[data-appearance='midnight-ice'] .cport-toggle.is-on {
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .aport-pill {
+  background: rgba(94, 200, 232, 0.2);
+}
+
+html[data-appearance='midnight-ice'] .athlete-profile-page .page-panel,
+html[data-appearance='midnight-ice'] .athlete-profile-page .ap-panel {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+  --ink: #f4f7fb;
+  --muted: #b6c3d6;
+  --field-bg: #0c1520;
+  --line: rgba(255, 255, 255, 0.12);
+}
+
+html[data-appearance='midnight-ice'] .ap-status-badge {
+  background: rgba(94, 200, 232, 0.22);
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .login-card .muted,
+html[data-appearance='midnight-ice'] .ssr-card .muted,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) .muted,
+html[data-appearance='midnight-ice'] .public-join-card .muted,
+html[data-appearance='midnight-ice'] .join-form .muted,
+html[data-appearance='midnight-ice'] .training-modal .class-modal-hint {
+  color: #445064;
+}
+
+html[data-appearance='midnight-ice'] .login-card input::placeholder,
+html[data-appearance='midnight-ice'] .ssr-card input::placeholder,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) input::placeholder,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) textarea::placeholder {
+  color: #8b95a7;
+  opacity: 1;
+}
+
+/* ---- Size chart (ΞΞµΞ³ΞµΞΈΞΏΞ»ΟΞ³ΞΉΞΏ) ---- */
+html[data-appearance='midnight-ice'] .size-chart-panel {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-header h3,
+html[data-appearance='midnight-ice'] .size-chart-header h2 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-header p,
+html[data-appearance='midnight-ice'] .size-chart-empty {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-panel .settings-form-row-label {
+  color: #f0d078;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-link,
+html[data-appearance='midnight-ice'] .size-chart-add-inline {
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-link:hover,
+html[data-appearance='midnight-ice'] .size-chart-add-inline:hover {
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-inline-list li {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-inline-list li > span {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-delete {
+  background: rgba(240, 113, 103, 0.2);
+  color: #ff8f8f;
+}
+
+html[data-appearance='midnight-ice'] .size-chart-add-row {
+  background: #0c1520;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .club-users-panel-head h3,
+html[data-appearance='midnight-ice'] .club-users-panel h4 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .club-users-panel .lede {
+  color: #d0dae8;
+}
+
+/* Dark-on-dark leftovers: --brand/--brand-dark are navy in this theme */
+html[data-appearance='midnight-ice'] .btn-ghost {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] .btn-ghost:hover {
+  color: #ffffff;
+}
+
+html[data-appearance='midnight-ice'] .athlete-name-link,
+html[data-appearance='midnight-ice'] .athlete-name-link strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .athlete-name-link:hover strong {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .athlete-avatar,
+html[data-appearance='midnight-ice'] .tx-page-icon,
+html[data-appearance='midnight-ice'] .stat-icon {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .settings-success {
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .ann-chip.is-active,
+html[data-appearance='midnight-ice'] .ann-chip.is-on {
+  color: #a8e6f5;
+  background: rgba(94, 200, 232, 0.16);
+  border-color: rgba(94, 200, 232, 0.45);
+}
+
+html[data-appearance='midnight-ice'] .platform-admin-banner {
+  color: #f4f7fb;
+  background: rgba(94, 200, 232, 0.16);
+}
+
+html[data-appearance='midnight-ice'] .ta-total,
+html[data-appearance='midnight-ice'] .calendar-event-time {
+  color: var(--accent);
+}
+
+html[data-appearance='midnight-ice'] .empty-state p,
+html[data-appearance='midnight-ice'] .empty-state h3 {
+  color: #d0dae8;
+}
+
+html[data-appearance='midnight-ice'] .panel-head h2,
+html[data-appearance='midnight-ice'] .dashboard-sport-title {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .feed-list strong {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .feed-list span {
+  color: #d0dae8;
+}
+
+/* Public join card is white β€” instructional text must stay dark */
+html[data-appearance='midnight-ice'] .public-join-page {
+  color: #0f1826;
+}
+
+html[data-appearance='midnight-ice'] .public-join-card,
+html[data-appearance='midnight-ice'] .public-join-card h2,
+html[data-appearance='midnight-ice'] .public-join-kind,
+html[data-appearance='midnight-ice'] .public-join-kind legend,
+html[data-appearance='midnight-ice'] .public-join-terms,
+html[data-appearance='midnight-ice'] .public-join-terms summary,
+html[data-appearance='midnight-ice'] .public-join-terms span,
+html[data-appearance='midnight-ice'] .public-join-terms-body {
+  color: #0f1826;
+}
+
+html[data-appearance='midnight-ice'] .public-join-card .lede,
+html[data-appearance='midnight-ice'] .public-join-card .muted,
+html[data-appearance='midnight-ice'] .public-join-card .field-label {
+  color: #3a4f68;
+}
+
+/* ========================================================================== */
+/* Midnight Ice — extra contrast pass                                          */
+/* ========================================================================== */
+
+html[data-appearance='midnight-ice'] .fee-charge-hero {
+  background: linear-gradient(135deg, #060b14 0%, #0c1522 50%, #123048 100%);
+  color: #e8f4fc;
+  border-color: rgba(94, 200, 232, 0.35);
+}
+
+html[data-appearance='midnight-ice'] .fee-charge-hero .field-label,
+html[data-appearance='midnight-ice'] .fee-charge-hero label > span,
+html[data-appearance='midnight-ice'] .fee-charge-hero .field > span,
+html[data-appearance='midnight-ice'] .fee-charge-hero .check-row,
+html[data-appearance='midnight-ice'] .fee-charge-hero .check-row span,
+html[data-appearance='midnight-ice'] .fee-charge-hero .admin-check,
+html[data-appearance='midnight-ice'] .fee-charge-hero .admin-check span {
+  color: #dceaf4 !important;
+}
+
+html[data-appearance='midnight-ice'] .fee-charge-note {
+  color: rgba(232, 244, 252, 0.82) !important;
+}
+
+html[data-appearance='midnight-ice'] .fee-charge-hero .field-input,
+html[data-appearance='midnight-ice'] .fee-charge-hero select,
+html[data-appearance='midnight-ice'] .fee-charge-hero input:not([type='checkbox']) {
+  background: #ffffff !important;
+  color: #061018 !important;
+  border: 1px solid #c5d0dc !important;
+}
+
+html[data-appearance='midnight-ice'] .att-select select option,
+html[data-appearance='midnight-ice'] .att-select select optgroup,
+html[data-appearance='midnight-ice'] select option,
+html[data-appearance='midnight-ice'] select optgroup {
+  background: #0f1826;
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .login-card select option,
+html[data-appearance='midnight-ice'] .ssr-card select option,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) select option,
+html[data-appearance='midnight-ice'] .public-join-card select option {
+  background: #ffffff;
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .tx-table th,
+html[data-appearance='midnight-ice'] .tx-table-wrap--athletes thead th,
+html[data-appearance='midnight-ice'] .tx-table-wrap--movements thead th {
+  color: #dceaf4 !important;
+  background: #152233 !important;
+}
+
+html[data-appearance='midnight-ice'] .tx-table td,
+html[data-appearance='midnight-ice'] .tx-balance-cell,
+html[data-appearance='midnight-ice'] .tx-balance-col {
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .tx-filter-field > span,
+html[data-appearance='midnight-ice'] .tx-hint,
+html[data-appearance='midnight-ice'] .tx-empty-info,
+html[data-appearance='midnight-ice'] .tx-empty-info p {
+  color: #b7c9d8 !important;
+}
+
+html[data-appearance='midnight-ice'] .tx-filter-field select,
+html[data-appearance='midnight-ice'] .tx-search,
+html[data-appearance='midnight-ice'] .toolbar .tx-search {
+  background: #0c1520 !important;
+  color: #e8f4fc !important;
+  border-color: rgba(232, 244, 252, 0.16) !important;
+}
+
+html[data-appearance='midnight-ice'] .tx-search::placeholder,
+html[data-appearance='midnight-ice'] .toolbar .tx-search::placeholder {
+  color: #8fa8ba !important;
+}
+
+html[data-appearance='midnight-ice'] .field-label,
+html[data-appearance='midnight-ice'] label > span,
+html[data-appearance='midnight-ice'] .panel-head h2,
+html[data-appearance='midnight-ice'] .page-header h1,
+html[data-appearance='midnight-ice'] .money-strip-item strong,
+html[data-appearance='midnight-ice'] .stat-card .stat-value,
+html[data-appearance='midnight-ice'] .stat-card strong {
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .money-strip-item span,
+html[data-appearance='midnight-ice'] .stat-card span,
+html[data-appearance='midnight-ice'] .stat-card .stat-label,
+html[data-appearance='midnight-ice'] .stat-card .stat-hint,
+html[data-appearance='midnight-ice'] .muted,
+html[data-appearance='midnight-ice'] .settings-hint {
+  color: #b7c9d8;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-header,
+html[data-appearance='midnight-ice'] .preview-banner {
+  background: #0c1522;
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .admin-board {
+  background: #0f1826;
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .admin-board-row,
+html[data-appearance='midnight-ice'] .admin-board-title,
+html[data-appearance='midnight-ice'] .admin-board-entry,
+html[data-appearance='midnight-ice'] .admin-board-records {
+  color: #e8f4fc;
+  background: #0f1826;
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option {
+  background: #0f1826;
+  border-color: rgba(232, 244, 252, 0.14);
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option span {
+  color: #b7c9d8;
+}
+
+html[data-appearance='midnight-ice'] .appearance-theme-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(94, 200, 232, 0.35);
+}
+
+html[data-appearance='midnight-ice'] .ann-pager-btns button.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #061018;
+}
+
+html[data-appearance='midnight-ice'] .status-pill,
+html[data-appearance='midnight-ice'] .badge,
+html[data-appearance='midnight-ice'] .chip {
+  color: #dceaf4;
+}
+
+html[data-appearance='midnight-ice'] .badge-paid,
+html[data-appearance='midnight-ice'] .status-pill.is-paid {
+  background: rgba(61, 207, 142, 0.2);
+  color: #7dffc0;
+}
+
+html[data-appearance='midnight-ice'] .badge-overdue,
+html[data-appearance='midnight-ice'] .status-pill.is-overdue {
+  background: rgba(240, 113, 103, 0.2);
+  color: #ff9b9b;
+}
+
+html[data-appearance='midnight-ice'] .status-pill.is-due,
+html[data-appearance='midnight-ice'] .status-pill.is-pending {
+  background: rgba(94, 200, 232, 0.18);
+  color: #a8e6f5;
+}
+
+html[data-appearance='midnight-ice'] .empty-state,
+html[data-appearance='midnight-ice'] .empty-state p,
+html[data-appearance='midnight-ice'] .placeholder {
+  color: #b7c9d8;
+}
+
+/* Light islands keep dark text */
+html[data-appearance='midnight-ice'] .login-card .muted,
+html[data-appearance='midnight-ice'] .ssr-card .muted,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) .muted,
+html[data-appearance='midnight-ice'] .public-join-card .muted,
+html[data-appearance='midnight-ice'] .join-form .muted,
+html[data-appearance='midnight-ice'] .login-card .field-label,
+html[data-appearance='midnight-ice'] .ssr-card .field-label,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) .field-label {
+  color: #445064 !important;
+}
+
+html[data-appearance='midnight-ice'] .login-card h1,
+html[data-appearance='midnight-ice'] .login-card h2,
+html[data-appearance='midnight-ice'] .ssr-card h2,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) h2,
+html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) #modal-title {
+  color: #061018 !important;
+}
+
+
+

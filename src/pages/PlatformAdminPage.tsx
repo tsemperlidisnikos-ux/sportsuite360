@@ -513,12 +513,20 @@ export function PlatformAdminPage() {
 
           <AdminRow
             title="Εμφάνιση εφαρμογής"
-            description="Επιλέξτε πώς φαίνεται όλη η εφαρμογή για όλους τους συλλόγους: κλασική (όπως τώρα) ή Navy + Amber."
+            description="Επιλέξτε θέμα εμφάνισης για όλη την εφαρμογή (login, shell, modules)."
             entry={
               <div className="entry-form admin-entry appearance-theme-picker">
                 {APPEARANCE_THEMES.map((theme) => {
                   const selected =
-                    (config.appearanceTheme ?? 'classic') === theme.id;
+                    (config.appearanceTheme ?? 'ocean-slate') === theme.id;
+                  const swatches: Record<AppearanceTheme, [string, string, string]> = {
+                    'ocean-slate': ['#1c2b3a', '#f0f4f8', '#2a9bb5'],
+                    'midnight-ice': ['#060b14', '#0f1826', '#5ec8e8'],
+                    'indigo-steel': ['#2a3344', '#eef1f6', '#4f5fd4'],
+                    classic: ['#0d7377', '#eef3f1', '#e8a838'],
+                    'navy-amber': ['#0b1f3a', '#f4f6f8', '#d4a017'],
+                  };
+                  const [c1, c2, c3] = swatches[theme.id];
                   return (
                     <label
                       key={theme.id}
@@ -532,30 +540,16 @@ export function PlatformAdminPage() {
                         onChange={() => {
                           const next = setAppearanceTheme(theme.id as AppearanceTheme);
                           setConfig(next);
-                          flash(
-                            theme.id === 'navy-amber'
-                              ? 'Ενεργό θέμα: Navy + Amber.'
-                              : 'Ενεργό θέμα: Κλασική εμφάνιση.',
-                          );
+                          flash(`Ενεργό θέμα: ${theme.label}.`);
                         }}
                       />
                       <div>
                         <strong>{theme.label}</strong>
                         <span>{theme.description}</span>
                         <div className="appearance-theme-swatches" aria-hidden>
-                          {theme.id === 'classic' ? (
-                            <>
-                              <i style={{ background: '#0d7377' }} />
-                              <i style={{ background: '#eef3f1' }} />
-                              <i style={{ background: '#e8a838' }} />
-                            </>
-                          ) : (
-                            <>
-                              <i style={{ background: '#0b1f3a' }} />
-                              <i style={{ background: '#f4f6f8' }} />
-                              <i style={{ background: '#d4a017' }} />
-                            </>
-                          )}
+                          <i style={{ background: c1 }} />
+                          <i style={{ background: c2 }} />
+                          <i style={{ background: c3 }} />
                         </div>
                       </div>
                     </label>
@@ -566,9 +560,9 @@ export function PlatformAdminPage() {
             records={
               <RecordsTable>
                 <RecordsRow title="Ενεργό">
-                  {(config.appearanceTheme ?? 'classic') === 'navy-amber'
-                    ? 'Navy + Amber'
-                    : 'Κλασική'}
+                  {APPEARANCE_THEMES.find(
+                    (t) => t.id === (config.appearanceTheme ?? 'ocean-slate'),
+                  )?.label ?? 'Ocean Slate'}
                 </RecordsRow>
                 <RecordsRow title="Εμβέλεια">Όλη η εφαρμογή (login, shell, modules)</RecordsRow>
               </RecordsTable>

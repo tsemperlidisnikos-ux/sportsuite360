@@ -18,8 +18,12 @@ import './styles/partners.css'
 import './styles/staff.css'
 import './styles/athlete-portal.css'
 import './styles/coach-portal.css'
-/* Theme overrides last so navy-amber contrast wins over feature CSS */
+/* Theme overrides last so appearance contrast wins over feature CSS */
 import './styles/appearance-navy-amber.css'
+import './styles/appearance-ocean-slate.css'
+import './styles/appearance-midnight-ice.css'
+import './styles/appearance-indigo-steel.css'
+import './styles/appearance-login-split.css'
 import { migratePlaintextPasswords } from './auth/auth'
 import { startBackupScheduleRunner } from './data/backupScheduleRunner'
 import { startAppearanceTheme } from './platform/platformConfig'

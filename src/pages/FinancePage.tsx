@@ -49,6 +49,30 @@ function chartColors(theme: AppearanceTheme) {
       grid: 'rgba(11, 31, 58, 0.1)',
     };
   }
+  if (theme === 'ocean-slate') {
+    return {
+      pie: ['#1c2b3a', '#2a9bb5', '#c45c26', '#4a7c9b', '#64748b', '#067647'],
+      revenue: '#2a9bb5',
+      expense: '#c45c26',
+      grid: 'rgba(28, 43, 58, 0.1)',
+    };
+  }
+  if (theme === 'midnight-ice') {
+    return {
+      pie: ['#5ec8e8', '#3aafd0', '#c45c26', '#8ba8bc', '#38bdf8', '#3dcf8e'],
+      revenue: '#5ec8e8',
+      expense: '#c45c26',
+      grid: 'rgba(232, 244, 252, 0.12)',
+    };
+  }
+  if (theme === 'indigo-steel') {
+    return {
+      pie: ['#2a3344', '#4f5fd4', '#c45c26', '#6b78e0', '#64748b', '#067647'],
+      revenue: '#4f5fd4',
+      expense: '#c45c26',
+      grid: 'rgba(42, 51, 68, 0.1)',
+    };
+  }
   return {
     pie: ['#0d7377', '#14919b', '#c45c26', '#e8a838', '#2f4858', '#6b8f71'],
     revenue: '#0d7377',

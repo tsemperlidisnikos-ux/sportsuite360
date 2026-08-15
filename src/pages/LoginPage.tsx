@@ -1,14 +1,10 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  BarChart3,
   Eye,
   EyeOff,
-  FileText,
   Lock,
   Mail,
-  Shield,
-  Users,
 } from 'lucide-react';
 import {
   requestPasswordReset,
@@ -66,7 +62,28 @@ export function LoginPage() {
   const appLogoUrl = useMemo(() => getAppLogoUrl(), []);
   const demoHint = useMemo(() => getDemoLoginHint(), []);
   const demoRoles = useMemo(() => getDemoRoleHints(), []);
-  const isNavy = appearance === 'navy-amber';
+  const useSplitLogin =
+    appearance === 'navy-amber' ||
+    appearance === 'midnight-ice' ||
+    appearance === 'ocean-slate' ||
+    appearance === 'indigo-steel';
+
+  const heroTagline =
+    appearance === 'navy-amber'
+      ? 'Οργάνωση. Απόδοση. Εξέλιξη.'
+      : appearance === 'midnight-ice'
+        ? 'One Suite. Every Sport. Total Control.'
+        : appearance === 'indigo-steel'
+          ? 'One Platform. Every Sport. Total Control.'
+          : 'Η ολοκληρωμένη πλατφόρμα διαχείρισης για αθλητικούς οργανισμούς και ομάδες.';
+
+  const cardSubtitle = showReset
+    ? 'Ορίστε νέο κωδικό για τον λογαριασμό σας.'
+    : appearance === 'navy-amber'
+      ? 'Καλώς ήρθατε πίσω! Παρακαλώ συνδεθείτε στον λογαριασμό σας.'
+      : appearance === 'midnight-ice'
+        ? 'Καλωσορίσατε ξανά! Παρακαλώ συνδεθείτε στον λογαριασμό σας.'
+        : 'Εισαγάγετε τα διαπιστευτήριά σας για να συνεχίσετε.';
 
   useEffect(() => {
     try {
@@ -212,8 +229,12 @@ export function LoginPage() {
   }
 
   return (
-    <div className={`login-page${isNavy ? ' login-page--navy' : ''}`}>
+    <div
+      className={`login-page${useSplitLogin ? ' login-page--split' : ''}`}
+      data-login-theme={appearance}
+    >
       <aside className="login-hero-panel">
+        <div className="login-hero-glow" aria-hidden />
         <div className="login-hero-watermark" aria-hidden>
           360
         </div>
@@ -225,38 +246,17 @@ export function LoginPage() {
             <span className="login-hero-name">{brand.title}</span>
             <span className="login-hero-360">{brand.accent}</span>
           </div>
-          <p className="login-hero-tagline">Διαχείριση συλλόγου &amp; οικονομικών</p>
+          <div className="login-hero-accent" aria-hidden />
+          <p className="login-hero-tagline">{heroTagline}</p>
         </div>
-        <ul className="login-hero-features">
-          <li>
-            <Shield size={22} strokeWidth={2.2} aria-hidden />
-            <span>Ασφάλεια</span>
-          </li>
-          <li>
-            <BarChart3 size={22} strokeWidth={2.2} aria-hidden />
-            <span>Οικονομικός Έλεγχος</span>
-          </li>
-          <li>
-            <Users size={22} strokeWidth={2.2} aria-hidden />
-            <span>Διαχείριση Συλλόγου</span>
-          </li>
-          <li>
-            <FileText size={22} strokeWidth={2.2} aria-hidden />
-            <span>Αναφορές &amp; Στατιστικά</span>
-          </li>
-        </ul>
       </aside>
 
       <div className="login-form-panel">
         <form className="login-card" onSubmit={showReset ? handleReset : handleSubmit}>
-          {isNavy ? (
+          {useSplitLogin ? (
             <header className="login-card-head">
-              <h1>{showReset ? 'Νέος κωδικός' : 'Καλωσορίσατε ξανά'}</h1>
-              <p>
-                {showReset
-                  ? 'Ορίστε νέο κωδικό για τον λογαριασμό σας.'
-                  : 'Συνδεθείτε στον λογαριασμό σας για να συνεχίσετε'}
-              </p>
+              <h1>{showReset ? 'Νέος κωδικός' : 'Σύνδεση'}</h1>
+              <p>{cardSubtitle}</p>
             </header>
           ) : (
             <div className="login-brand">
@@ -386,7 +386,7 @@ export function LoginPage() {
               >
                 {demoLoading ? 'Φόρτωση DEMO…' : 'Είσοδος DEMO παρουσίασης'}
               </button>
-              {!isNavy ? (
+              {!useSplitLogin ? (
                 <div className="login-demo-block">
                   <p className="login-demo-hint">
                     Σύλλογος DEMO με πλήρη δείγματα · {demoHint.email} / {demoHint.password}

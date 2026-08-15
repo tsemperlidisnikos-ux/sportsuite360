@@ -207,7 +207,12 @@ export function defaultBackupSchedules(): PlatformBackupSchedules {
 }
 
 /** Εμφάνιση εφαρμογής — ορίζεται από Platform Admin. */
-export type AppearanceTheme = 'classic' | 'navy-amber';
+export type AppearanceTheme =
+  | 'classic'
+  | 'navy-amber'
+  | 'ocean-slate'
+  | 'midnight-ice'
+  | 'indigo-steel';
 
 export const APPEARANCE_THEMES: Array<{
   id: AppearanceTheme;
@@ -215,22 +220,40 @@ export const APPEARANCE_THEMES: Array<{
   description: string;
 }> = [
   {
+    id: 'ocean-slate',
+    label: 'Ocean Slate',
+    description: 'Γκρι-μπλε chrome + sky teal accents, φωτεινό content.',
+  },
+  {
+    id: 'midnight-ice',
+    label: 'Midnight Ice',
+    description: 'Σκούρο shell + παγωμένο μπλε/cyan accents.',
+  },
+  {
+    id: 'indigo-steel',
+    label: 'Indigo Steel',
+    description: 'Ατσάλι γκρι-μπλε chrome + indigo accents, φωτεινό content.',
+  },
+  {
     id: 'classic',
-    label: 'Κλασική (τρέχουσα)',
-    description: 'Teal / mint εμφάνιση όπως σήμερα.',
+    label: 'Κλασική',
+    description: 'Teal / mint εμφάνιση.',
   },
   {
     id: 'navy-amber',
     label: 'Navy + Amber',
-    description: 'Σκούρο navy + amber (όπως το mockup παρουσιών), σε όλη την εφαρμογή.',
+    description: 'Σκούρο navy + amber, σε όλη την εφαρμογή.',
   },
 ];
 
 export function sanitizeAppearanceTheme(value: unknown): AppearanceTheme {
   if (value === 'classic') return 'classic';
   if (value === 'navy-amber') return 'navy-amber';
-  /* Default for new / unset configs: Navy + Amber redesign */
-  return 'navy-amber';
+  if (value === 'ocean-slate') return 'ocean-slate';
+  if (value === 'midnight-ice') return 'midnight-ice';
+  if (value === 'indigo-steel') return 'indigo-steel';
+  /* Default for new / unset configs */
+  return 'ocean-slate';
 }
 
 export type PlatformConfig = {
@@ -245,7 +268,7 @@ export type PlatformConfig = {
   seasons: string[];
   appLogoUrl?: string | null;
   appName?: string;
-  /** classic = υπάρχον UI · navy-amber = νέο finance-dense look */
+  /** classic | navy-amber | ocean-slate | midnight-ice | indigo-steel */
   appearanceTheme?: AppearanceTheme;
   backupSchedules?: PlatformBackupSchedules;
 };
@@ -358,7 +381,7 @@ export function defaultPlatformConfig(): PlatformConfig {
     seasons: ['2025–2026', '2026–2027'],
     appLogoUrl: null,
     appName: 'SPORTSUITE 360',
-    appearanceTheme: 'navy-amber',
+    appearanceTheme: 'ocean-slate',
     backupSchedules: defaultBackupSchedules(),
   };
 }
@@ -632,16 +655,16 @@ export function setAppearanceTheme(theme: AppearanceTheme): PlatformConfig {
   return next;
 }
 
-const APPEARANCE_ROLLOUT_KEY = 'academyhub-navy-amber-rollout-v1';
+const APPEARANCE_ROLLOUT_KEY = 'academyhub-ocean-slate-rollout-v1';
 
 /** Εφαρμόζει το θέμα στην εκκίνηση και σε κάθε platform update. */
 export function startAppearanceTheme(): void {
   try {
-    /* One-time rollout: activate Navy + Amber across the app (can revert in Platform Admin). */
+    /* One-time rollout: activate Ocean Slate (can revert in Platform Admin). */
     if (!localStorage.getItem(APPEARANCE_ROLLOUT_KEY)) {
       const next: PlatformConfig = {
         ...loadPlatformConfig(),
-        appearanceTheme: 'navy-amber',
+        appearanceTheme: 'ocean-slate',
       };
       localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
       localStorage.setItem(APPEARANCE_ROLLOUT_KEY, '1');
