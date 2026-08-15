@@ -1,5 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
-import { FileText, Plus, Pencil, Trash2, Upload } from 'lucide-react';
+import { Eye, FileText, Plus, Pencil, Trash2, Upload } from 'lucide-react';
 import * as coachesService from '../api/services/coachesService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -13,6 +13,50 @@ import { formatDate } from '../utils/labels';
 
 const MAX_PHOTO_BYTES = 800_000;
 const MAX_DOC_BYTES = 2_500_000;
+
+function isImageDataUrl(url: string | null | undefined): boolean {
+  return Boolean(url && /^data:image\//i.test(url));
+}
+
+function isPdfDataUrl(url: string | null | undefined, fileName?: string | null): boolean {
+  if (url && /^data:application\/pdf/i.test(url)) return true;
+  return Boolean(fileName && fileName.toLowerCase().endsWith('.pdf'));
+}
+
+function CoachDocumentPreview({
+  url,
+  fileName,
+  onOpenFull,
+}: {
+  url: string;
+  fileName?: string | null;
+  onOpenFull: () => void;
+}) {
+  const image = isImageDataUrl(url);
+  const pdf = isPdfDataUrl(url, fileName);
+
+  return (
+    <div className="coach-doc-preview">
+      <div className="coach-doc-preview-frame">
+        {image ? (
+          <img src={url} alt={fileName || 'Προεπισκόπηση'} />
+        ) : pdf ? (
+          <iframe title={fileName || 'PDF'} src={url} />
+        ) : (
+          <p className="muted">Δεν υποστηρίζεται ενσωματωμένη προεπισκόπηση για αυτόν τον τύπο.</p>
+        )}
+      </div>
+      <div className="coach-doc-preview-actions">
+        <Button type="button" variant="secondary" onClick={onOpenFull}>
+          <Eye size={16} /> Προεπισκόπηση
+        </Button>
+        <a className="text-link" href={url} target="_blank" rel="noreferrer">
+          {fileName || 'Άνοιγμα σε νέα καρτέλα'}
+        </a>
+      </div>
+    </div>
+  );
+}
 
 const emptyForm: CoachInput = {
   firstName: '',
@@ -70,6 +114,11 @@ export function CoachesPage() {
   const [form, setForm] = useState<CoachInput>(emptyForm);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<{
+    url: string;
+    title: string;
+    fileName?: string | null;
+  } | null>(null);
 
   const activeCoaches = useMemo(
     () => data.coaches.filter((coach) => coach.active),
@@ -436,33 +485,36 @@ export function CoachesPage() {
                 />
               </label>
               {form.licenseDocumentUrl ? (
-                <>
-                  <a
-                    className="text-link"
-                    href={form.licenseDocumentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {form.licenseDocumentName || 'Προβολή αρχείου'}
-                  </a>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        licenseDocumentUrl: null,
-                        licenseDocumentName: null,
-                      }))
-                    }
-                  >
-                    Αφαίρεση
-                  </Button>
-                </>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      licenseDocumentUrl: null,
+                      licenseDocumentName: null,
+                    }))
+                  }
+                >
+                  Αφαίρεση
+                </Button>
               ) : (
                 <span className="muted">PDF ή εικόνα</span>
               )}
             </div>
+            {form.licenseDocumentUrl ? (
+              <CoachDocumentPreview
+                url={form.licenseDocumentUrl}
+                fileName={form.licenseDocumentName}
+                onOpenFull={() =>
+                  setPreviewDoc({
+                    url: form.licenseDocumentUrl!,
+                    title: 'Άδεια άσκησης επαγγέλματος',
+                    fileName: form.licenseDocumentName,
+                  })
+                }
+              />
+            ) : null}
           </section>
 
           <section className="coach-doc-block">
@@ -495,36 +547,67 @@ export function CoachesPage() {
                 />
               </label>
               {form.firstAidDocumentUrl ? (
-                <>
-                  <a
-                    className="text-link"
-                    href={form.firstAidDocumentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {form.firstAidDocumentName || 'Προβολή αρχείου'}
-                  </a>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        firstAidDocumentUrl: null,
-                        firstAidDocumentName: null,
-                      }))
-                    }
-                  >
-                    Αφαίρεση
-                  </Button>
-                </>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      firstAidDocumentUrl: null,
+                      firstAidDocumentName: null,
+                    }))
+                  }
+                >
+                  Αφαίρεση
+                </Button>
               ) : (
                 <span className="muted">PDF ή εικόνα</span>
               )}
             </div>
+            {form.firstAidDocumentUrl ? (
+              <CoachDocumentPreview
+                url={form.firstAidDocumentUrl}
+                fileName={form.firstAidDocumentName}
+                onOpenFull={() =>
+                  setPreviewDoc({
+                    url: form.firstAidDocumentUrl!,
+                    title: 'Πιστοποιητικό πρώτων βοηθειών',
+                    fileName: form.firstAidDocumentName,
+                  })
+                }
+              />
+            ) : null}
           </section>
         </div>
         {error ? <p className="form-error">{error}</p> : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(previewDoc)}
+        title={previewDoc?.title ?? 'Προεπισκόπηση'}
+        onClose={() => setPreviewDoc(null)}
+        wide
+        className="coach-doc-preview-modal"
+        footer={
+          <Button type="button" variant="secondary" onClick={() => setPreviewDoc(null)}>
+            Κλείσιμο
+          </Button>
+        }
+      >
+        {previewDoc ? (
+          <div className="coach-doc-preview-full">
+            {isImageDataUrl(previewDoc.url) ? (
+              <img src={previewDoc.url} alt={previewDoc.fileName || previewDoc.title} />
+            ) : isPdfDataUrl(previewDoc.url, previewDoc.fileName) ? (
+              <iframe title={previewDoc.fileName || previewDoc.title} src={previewDoc.url} />
+            ) : (
+              <p className="muted">Ανοίξτε το αρχείο σε νέα καρτέλα για προβολή.</p>
+            )}
+            <a className="text-link" href={previewDoc.url} target="_blank" rel="noreferrer">
+              {previewDoc.fileName || 'Άνοιγμα σε νέα καρτέλα'}
+            </a>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );
