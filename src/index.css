@@ -1755,6 +1755,13 @@ th {
   font-size: 1.05rem;
 }
 
+.parent-portal-subtitle {
+  margin: 1rem 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .parent-portal-list {
   list-style: none;
   margin: 0;

@@ -55,6 +55,7 @@ export function FeesPage() {
   const [saving, setSaving] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
   useEffect(() => {
     void import('../api/services/paymentMatchingService').then(({ ensureLegacyPaymentsMatched }) => {
@@ -178,8 +179,29 @@ export function FeesPage() {
   function openCreateCharges() {
     setError('');
     setMessage('');
-    setSelectedTemplateId(templates[0]?.id ?? '');
+    const firstId = templates[0]?.id ?? '';
+    setSelectedTemplateId(firstId);
+    setSelectedTemplateIds(firstId ? [firstId] : []);
     setPanel('createCharges');
+  }
+
+  function toggleTemplateSelection(id: string) {
+    setSelectedTemplateIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      setSelectedTemplateId(next[0] ?? '');
+      return next;
+    });
+  }
+
+  function toggleAllTemplates(checked: boolean) {
+    if (!checked) {
+      setSelectedTemplateIds([]);
+      setSelectedTemplateId('');
+      return;
+    }
+    const ids = templates.map((tpl) => tpl.id);
+    setSelectedTemplateIds(ids);
+    setSelectedTemplateId(ids[0] ?? '');
   }
 
   function openReminders() {
@@ -198,29 +220,52 @@ export function FeesPage() {
       setError(result.error ?? 'Σφάλμα αποθήκευσης');
       return;
     }
+    const newId = result.data?.id ?? '';
     setMessage('Το πρότυπο χρέωσης αποθηκεύτηκε.');
     setPanel('createCharges');
-    setSelectedTemplateId(result.data?.id ?? '');
+    setSelectedTemplateId(newId);
+    setSelectedTemplateIds(newId ? [newId] : []);
     refresh();
   }
 
   async function handleGenerateCharges() {
-    if (!selectedTemplateId) {
-      setError('Επιλέξτε πρότυπο χρέωσης.');
+    const ids =
+      selectedTemplateIds.length > 0
+        ? selectedTemplateIds
+        : selectedTemplateId
+          ? [selectedTemplateId]
+          : [];
+    if (ids.length === 0) {
+      setError('Επιλέξτε τουλάχιστον ένα πρότυπο χρέωσης.');
       return;
     }
-    if (!confirm('Δημιουργία χρεώσεων για τους ενεργούς αθλητές του προτύπου;')) return;
+    if (
+      !confirm(
+        ids.length === 1
+          ? 'Δημιουργία χρεώσεων για τους ενεργούς αθλητές του προτύπου;'
+          : `Δημιουργία χρεώσεων από ${ids.length} πρότυπα;`,
+      )
+    ) {
+      return;
+    }
     setSaving(true);
     setError('');
     setMessage('');
-    const result = await feeChargesService.generateChargesFromTemplate(selectedTemplateId);
-    setSaving(false);
-    if (!result.success) {
-      setError(result.error ?? 'Σφάλμα δημιουργίας χρεώσεων');
-      return;
+    let created = 0;
+    let athletes = 0;
+    for (const id of ids) {
+      const result = await feeChargesService.generateChargesFromTemplate(id);
+      if (!result.success) {
+        setSaving(false);
+        setError(result.error ?? 'Σφάλμα δημιουργίας χρεώσεων');
+        return;
+      }
+      created += result.data?.created ?? 0;
+      athletes += result.data?.athletes ?? 0;
     }
+    setSaving(false);
     setMessage(
-      `Δημιουργήθηκαν ${result.data?.created ?? 0} χρεώσεις για ${result.data?.athletes ?? 0} αθλητές.`,
+      `ΕΓΙΝΕ ΔΗΜΙΟΥΡΓΙΑ ΧΡΕΩΣΗΣ · ${created} χρεώσεις για ${athletes} αθλητές.`,
     );
     refresh();
   }
@@ -229,9 +274,9 @@ export function FeesPage() {
     if (!confirm('Διαγραφή προτύπου χρέωσης;')) return;
     await feeChargesService.deleteFeeChargeTemplate(id);
     if (selectedTemplateId === id) setSelectedTemplateId('');
+    setSelectedTemplateIds((prev) => prev.filter((item) => item !== id));
     refresh();
   }
-
   async function handleSendReminder(row: feeChargesService.DebtReminderRow) {
     if (!clubId) {
       setError('Δεν βρέθηκε σύλλογος.');
@@ -251,23 +296,24 @@ export function FeesPage() {
     }
 
     const club = getClubById(clubId);
+    const viva = getClubViva(clubId);
+    const emailBody = feeChargesService.buildDebtReminderEmail({
+      clubName: club?.name ?? 'SPORTSUITE 360',
+      athleteName: row.athleteName,
+      balance: row.balance,
+      daysOverdue: row.daysOverdue,
+      payUrl: feeChargesService.feePaymentLoginUrl(),
+      vivaEnabled: Boolean(viva?.enabled),
+    });
+
     setSaving(true);
     setError('');
     const send = await emailService.sendClubEmail({
       clubId,
       to: row.email,
-      subject: `Υπενθύμιση οφειλής — ${club?.name ?? 'Σύλλογος'}`,
-      text: [
-        `Αγαπητοί γονείς,`,
-        ``,
-        `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${row.athleteName}.`,
-        `Ποσό: ${formatCurrency(row.balance)}`,
-        `Ημέρες καθυστέρησης: ${row.daysOverdue}`,
-        ``,
-        `Παρακαλούμε τακτοποιήστε την οφειλή το συντομότερο.`,
-        ``,
-        club?.name ?? 'SPORTSUITE 360',
-      ].join('\n'),
+      subject: emailBody.subject,
+      text: emailBody.text,
+      html: emailBody.html,
     });
     setSaving(false);
     if (!send.success) {
@@ -278,7 +324,7 @@ export function FeesPage() {
     await feeChargesService.logDebtReminder({
       athleteId: row.athleteId,
       amount: row.balance,
-      note: `Email υπενθύμισης σε ${row.email} · ${formatCurrency(row.balance)}`,
+      note: `Email υπενθύμισης + σύνδεσμος πληρωμής σε ${row.email} · ${formatCurrency(row.balance)}`,
     });
     setMessage(`Στάλθηκε υπενθύμιση email στον/στην ${row.athleteName} (${row.email}).`);
     refresh();
@@ -301,33 +347,35 @@ export function FeesPage() {
     }
     if (!confirm(`Αποστολή υπενθύμισης σε ${rows.length} παραλήπτες;`)) return;
 
+    const club = getClubById(clubId);
+    const viva = getClubViva(clubId);
+    const payUrl = feeChargesService.feePaymentLoginUrl();
+
     setSaving(true);
     setError('');
     let ok = 0;
     for (const row of rows) {
-      const club = getClubById(clubId);
+      const emailBody = feeChargesService.buildDebtReminderEmail({
+        clubName: club?.name ?? 'SPORTSUITE 360',
+        athleteName: row.athleteName,
+        balance: row.balance,
+        daysOverdue: row.daysOverdue,
+        payUrl,
+        vivaEnabled: Boolean(viva?.enabled),
+      });
       const send = await emailService.sendClubEmail({
         clubId,
         to: row.email,
-        subject: `Υπενθύμιση οφειλής — ${club?.name ?? 'Σύλλογος'}`,
-        text: [
-          `Αγαπητοί γονείς,`,
-          ``,
-          `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${row.athleteName}.`,
-          `Ποσό: ${formatCurrency(row.balance)}`,
-          `Ημέρες καθυστέρησης: ${row.daysOverdue}`,
-          ``,
-          `Παρακαλούμε τακτοποιήστε την οφειλή το συντομότερο.`,
-          ``,
-          club?.name ?? 'SPORTSUITE 360',
-        ].join('\n'),
+        subject: emailBody.subject,
+        text: emailBody.text,
+        html: emailBody.html,
       });
       if (send.success) {
         ok += 1;
         await feeChargesService.logDebtReminder({
           athleteId: row.athleteId,
           amount: row.balance,
-          note: `Email υπενθύμισης σε ${row.email} · ${formatCurrency(row.balance)}`,
+          note: `Email υπενθύμισης + σύνδεσμος πληρωμής σε ${row.email} · ${formatCurrency(row.balance)}`,
         });
       }
     }
@@ -749,7 +797,11 @@ export function FeesPage() {
                 <select
                   className="field-input"
                   value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedTemplateId(id);
+                    setSelectedTemplateIds(id ? [id] : []);
+                  }}
                 >
                   {templates.map((tpl) => (
                     <option key={tpl.id} value={tpl.id}>
@@ -762,6 +814,17 @@ export function FeesPage() {
                 <table>
                   <thead>
                     <tr>
+                      <th style={{ width: '2.5rem' }}>
+                        <input
+                          type="checkbox"
+                          aria-label="Επιλογή όλων"
+                          checked={
+                            templates.length > 0 &&
+                            selectedTemplateIds.length === templates.length
+                          }
+                          onChange={(e) => toggleAllTemplates(e.target.checked)}
+                        />
+                      </th>
                       <th>Σεζόν</th>
                       <th>Άθλημα</th>
                       <th>Μηνιαίο</th>
@@ -772,30 +835,46 @@ export function FeesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {templates.map((tpl) => (
-                      <tr key={tpl.id}>
-                        <td>{tpl.season}</td>
-                        <td>{tpl.sport || 'Όλα'}</td>
-                        <td>{formatCurrency(tpl.monthlyAmount)}</td>
-                        <td>{formatCurrency(tpl.registrationFee)}</td>
-                        <td>{formatCurrency(tpl.seasonTicketAmount)}</td>
-                        <td>{tpl.autoGenerate ? 'Ναι' : 'Όχι'}</td>
-                        <td className="row-actions">
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => void handleDeleteTemplate(tpl.id)}
-                          >
-                            Διαγραφή
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {templates.map((tpl) => {
+                      const checked = selectedTemplateIds.includes(tpl.id);
+                      return (
+                        <tr key={tpl.id} className={checked ? 'is-selected' : undefined}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Επιλογή προτύπου ${tpl.season}`}
+                              checked={checked}
+                              onChange={() => toggleTemplateSelection(tpl.id)}
+                            />
+                          </td>
+                          <td>{tpl.season}</td>
+                          <td>{tpl.sport || 'Όλα'}</td>
+                          <td>{formatCurrency(tpl.monthlyAmount)}</td>
+                          <td>{formatCurrency(tpl.registrationFee)}</td>
+                          <td>{formatCurrency(tpl.seasonTicketAmount)}</td>
+                          <td>{tpl.autoGenerate ? 'Ναι' : 'Όχι'}</td>
+                          <td className="row-actions">
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() => void handleDeleteTemplate(tpl.id)}
+                            >
+                              Διαγραφή
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </>
           )}
+          {message && panel === 'createCharges' ? (
+            <p className="settings-success" role="status">
+              {message}
+            </p>
+          ) : null}
           {error && panel === 'createCharges' ? <p className="form-error">{error}</p> : null}
         </div>
       </Modal>
@@ -813,8 +892,10 @@ export function FeesPage() {
       >
         <div className="stack-md">
           <p className="muted">
-            Αθλητές με οφειλή μετά τις ημέρες υπενθύμισης. Η «Υπενθύμιση» στέλνει πραγματικό email
-            μέσω SMTP (μόνο αν είναι ενεργό στις Ρυθμίσεις και υπάρχει έγκυρο email).
+            Αθλητές με οφειλή μετά τις ημέρες υπενθύμισης. Η «Υπενθύμιση» στέλνει email μέσω SMTP
+            (Ρυθμίσεις → Email) με ποσό, ημέρες καθυστέρησης και σύνδεσμο σύνδεσης για πληρωμή στο
+            portal γονέα{getClubViva(clubId)?.enabled ? ' / Viva' : ''}. Στην είσοδο admin
+            τρέχει και αυτόματη αποστολή (το πολύ 1 email / αθλητή / ημέρα).
           </p>
           {reminders.length === 0 ? (
             <p className="muted">Δεν υπάρχουν οφειλές προς υπενθύμιση αυτή τη στιγμή.</p>

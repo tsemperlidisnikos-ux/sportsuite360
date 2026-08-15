@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bell, CalendarDays, CreditCard, Users } from 'lucide-react';
 import * as vivaService from '../api/services/vivaService';
+import * as feeChargesService from '../api/services/feeChargesService';
 import { getSession } from '../auth/auth';
 import { getClubViva } from '../auth/clubs';
 import { Button } from '../components/ui/Button';
@@ -76,6 +77,17 @@ export function ParentPortalPage() {
         athlete,
         balance: athleteBalance(athlete.id, data.transactions ?? []),
       })),
+    [linkedAthletes, data.transactions],
+  );
+
+  const openCharges = useMemo(
+    () =>
+      linkedAthletes.flatMap((athlete) =>
+        feeChargesService.listOpenCharges(athlete.id).map((row) => ({
+          ...row,
+          athleteName: `${athlete.lastName} ${athlete.firstName}`.trim(),
+        })),
+      ),
     [linkedAthletes, data.transactions],
   );
 
@@ -250,6 +262,43 @@ export function ParentPortalPage() {
                 </tbody>
               </table>
             </div>
+
+            {openCharges.length > 0 ? (
+              <>
+                <h3 className="parent-portal-subtitle">Ανοιχτές χρεώσεις ανά περίοδο</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Αθλητής</th>
+                        <th>Περίοδος</th>
+                        <th>Χρέωση</th>
+                        <th>Υπόλοιπο</th>
+                        <th>Σχόλιο</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {openCharges.map((row) => (
+                        <tr key={row.chargeId}>
+                          <td>{row.athleteName}</td>
+                          <td>{row.periodLabel}</td>
+                          <td>{formatCurrency(row.amount)}</td>
+                          <td>
+                            <strong className="badge badge-overdue">
+                              {formatCurrency(row.remaining)}
+                            </strong>
+                          </td>
+                          <td className="muted">{row.comments || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <p className="muted settings-hint">Δεν υπάρχουν ανοιχτές χρεώσεις ανά μήνα.</p>
+            )}
+
             {!viva?.enabled ? (
               <p className="muted settings-hint">
                 Η online πληρωμή θα εμφανιστεί όταν ο σύλλογος ενεργοποιήσει το Viva Wallet.

@@ -1,5 +1,6 @@
 import { apiClient } from '../apiClient';
 import { createId, getData, mutateData } from '../../data/repository';
+import { getClubById, getClubSmtp, getClubViva } from '../../auth/clubs';
 import { feeChargeTemplateSchema, type FeeChargeTemplateInput } from '../../schemas';
 import type {
   AthleteTransaction,
@@ -9,6 +10,7 @@ import type {
 } from '../../types';
 import { localDateIso, localDateTimeIso } from '../../utils/dates';
 import { normalizeSportKey } from '../../utils/sport';
+import { sendClubEmail } from './emailService';
 
 export const FEE_SEASON_MONTHS = [
   { month: 8, label: 'Αύγ' },
@@ -247,6 +249,87 @@ export function athleteBalance(
     .reduce((sum, t) => sum + (t.type === 'charge' ? t.amount : -t.amount), 0);
 }
 
+export type OpenChargeRow = {
+  chargeId: string;
+  athleteId: string;
+  month: number;
+  year: number;
+  amount: number;
+  remaining: number;
+  comments: string;
+  createdAt: string;
+  periodLabel: string;
+};
+
+const MONTH_LABELS_EL = [
+  '',
+  'Ιαν',
+  'Φεβ',
+  'Μάρ',
+  'Απρ',
+  'Μάι',
+  'Ιούν',
+  'Ιούλ',
+  'Αύγ',
+  'Σεπ',
+  'Οκτ',
+  'Νοέ',
+  'Δεκ',
+];
+
+export function periodLabel(month: number, year: number): string {
+  const label = MONTH_LABELS_EL[month] ?? String(month);
+  return `${label} ${year}`;
+}
+
+/** Ανοιχτές χρεώσεις αθλητή (μετά από αντιστοιχισμένες + FIFO πληρωμές). */
+export function listOpenCharges(athleteId: string): OpenChargeRow[] {
+  const txns = (getData().transactions ?? []).filter((t) => t.athleteId === athleteId);
+  const charges = txns
+    .filter((t) => t.type === 'charge')
+    .sort((a, b) => `${a.year}-${String(a.month).padStart(2, '0')}`.localeCompare(
+      `${b.year}-${String(b.month).padStart(2, '0')}`,
+    ));
+  const payments = txns.filter((t) => t.type === 'payment');
+
+  const allocated = new Map<string, number>();
+  let unallocated = 0;
+  for (const payment of payments) {
+    if (payment.allocatesChargeId) {
+      allocated.set(
+        payment.allocatesChargeId,
+        (allocated.get(payment.allocatesChargeId) ?? 0) + payment.amount,
+      );
+    } else {
+      unallocated += payment.amount;
+    }
+  }
+
+  const rows: OpenChargeRow[] = [];
+  for (const charge of charges) {
+    const paidDirect = allocated.get(charge.id) ?? 0;
+    let remaining = Math.max(0, charge.amount - paidDirect);
+    if (remaining > 0 && unallocated > 0) {
+      const take = Math.min(remaining, unallocated);
+      remaining -= take;
+      unallocated -= take;
+    }
+    if (remaining < 0.01) continue;
+    rows.push({
+      chargeId: charge.id,
+      athleteId,
+      month: charge.month,
+      year: charge.year,
+      amount: charge.amount,
+      remaining,
+      comments: charge.comments,
+      createdAt: charge.createdAt,
+      periodLabel: periodLabel(charge.month, charge.year),
+    });
+  }
+  return rows;
+}
+
 export type DebtReminderRow = {
   athleteId: string;
   athleteName: string;
@@ -302,6 +385,94 @@ export function listDebtReminders(): DebtReminderRow[] {
   return rows.sort((a, b) => b.balance - a.balance);
 }
 
+/** Origin for payment CTAs in reminder emails. */
+export function feePaymentAppOrigin(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return 'https://sportsuite360.vercel.app';
+}
+
+/** Login URL that lands parents on the portal after auth. */
+export function feePaymentLoginUrl(origin = feePaymentAppOrigin()): string {
+  const base = origin.replace(/\/$/, '');
+  return `${base}/login`;
+}
+
+export function buildDebtReminderEmail(input: {
+  clubName: string;
+  athleteName: string;
+  balance: number;
+  daysOverdue: number;
+  payUrl: string;
+  vivaEnabled: boolean;
+}): { subject: string; text: string; html: string } {
+  const amount = formatCurrencyLocal(input.balance);
+  const payHint = input.vivaEnabled
+    ? 'Μετά τη σύνδεση ως γονέας μπορείτε να πληρώσετε online με κάρτα (Viva).'
+    : 'Μετά τη σύνδεση ως γονέας μπορείτε να δείτε τις οφειλές στο portal γονέα.';
+
+  const text = [
+    `Αγαπητοί γονείς,`,
+    ``,
+    `Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την ${input.athleteName}.`,
+    `Ποσό: ${amount}`,
+    `Ημέρες καθυστέρησης: ${input.daysOverdue}`,
+    ``,
+    `Για να δείτε και να τακτοποιήσετε την οφειλή:`,
+    input.payUrl,
+    payHint,
+    ``,
+    `Παρακαλούμε τακτοποιήστε την οφειλή το συντομότερο.`,
+    ``,
+    input.clubName,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Manrope,Segoe UI,sans-serif;line-height:1.5;color:#152033;">
+      <p>Αγαπητοί γονείς,</p>
+      <p>Υπενθυμίζουμε ότι υπάρχει οφειλή συνδρομής για τον/την <strong>${escapeHtml(input.athleteName)}</strong>.</p>
+      <p>
+        <strong>Ποσό:</strong> ${escapeHtml(amount)}<br/>
+        <strong>Ημέρες καθυστέρησης:</strong> ${input.daysOverdue}
+      </p>
+      <p style="margin:1.25rem 0;">
+        <a href="${escapeHtml(input.payUrl)}"
+           style="display:inline-block;background:#2a9bb5;color:#ffffff;text-decoration:none;font-weight:700;padding:0.75rem 1.15rem;border-radius:10px;">
+          Σύνδεση &amp; πληρωμή οφειλής
+        </a>
+      </p>
+      <p style="color:#4a5d70;font-size:0.95rem;">${escapeHtml(payHint)}</p>
+      <p style="color:#4a5d70;font-size:0.9rem;">Αν το κουμπί δεν ανοίγει, αντιγράψτε τον σύνδεσμο:<br/>
+        <a href="${escapeHtml(input.payUrl)}">${escapeHtml(input.payUrl)}</a>
+      </p>
+      <p>Παρακαλούμε τακτοποιήστε την οφειλή το συντομότερο.</p>
+      <p><strong>${escapeHtml(input.clubName)}</strong></p>
+    </div>
+  `.trim();
+
+  return {
+    subject: `Υπενθύμιση οφειλής — ${input.clubName}`,
+    text,
+    html,
+  };
+}
+
+function formatCurrencyLocal(amount: number): string {
+  return new Intl.NumberFormat('el-GR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(amount);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export async function logDebtReminder(input: {
   athleteId: string;
   amount: number;
@@ -350,5 +521,79 @@ export async function runDueFeeGenerations() {
     }
 
     return { templatesRun, generated, monthKey };
+  });
+}
+
+/**
+ * Αυτόματη αποστολή υπενθυμίσεων οφειλών (1 φορά / αθλητή / ημέρα).
+ * Απαιτεί ενεργό SMTP συλλόγου.
+ */
+export async function runDueFeeReminders(clubId: string) {
+  return apiClient(async () => {
+    if (!clubId) {
+      return { sent: 0, skipped: 0, reason: 'no-club' as const };
+    }
+    const smtp = getClubSmtp(clubId);
+    if (!smtp.enabled) {
+      return { sent: 0, skipped: 0, reason: 'smtp-disabled' as const };
+    }
+
+    const today = localDateIso();
+    const logs = getData().feeReminderLogs ?? [];
+    const rows = listDebtReminders().filter((row) => row.email.includes('@'));
+    if (rows.length === 0) {
+      return { sent: 0, skipped: 0, reason: 'none-due' as const };
+    }
+
+    const club = getClubById(clubId);
+    const viva = getClubViva(clubId);
+    const payUrl = feePaymentLoginUrl();
+    const clubName = club?.name ?? 'SPORTSUITE 360';
+
+    let sent = 0;
+    let skipped = 0;
+
+    for (const row of rows) {
+      const alreadyToday = logs.some(
+        (log) =>
+          log.athleteId === row.athleteId &&
+          log.createdAt.slice(0, 10) === today,
+      );
+      if (alreadyToday) {
+        skipped += 1;
+        continue;
+      }
+
+      const emailBody = buildDebtReminderEmail({
+        clubName,
+        athleteName: row.athleteName,
+        balance: row.balance,
+        daysOverdue: row.daysOverdue,
+        payUrl,
+        vivaEnabled: Boolean(viva.enabled),
+      });
+
+      const send = await sendClubEmail({
+        clubId,
+        to: row.email,
+        subject: emailBody.subject,
+        text: emailBody.text,
+        html: emailBody.html,
+      });
+
+      if (!send.success) {
+        skipped += 1;
+        continue;
+      }
+
+      await logDebtReminder({
+        athleteId: row.athleteId,
+        amount: row.balance,
+        note: `Αυτόματη υπενθύμιση email σε ${row.email} · ${formatCurrencyLocal(row.balance)}`,
+      });
+      sent += 1;
+    }
+
+    return { sent, skipped, reason: 'ok' as const };
   });
 }

@@ -151,10 +151,15 @@ export function LoginPage() {
         /* best-effort role defaults */
       }
       try {
-        const { runDueFeeGenerations } = await import('../api/services/feeChargesService');
+        const { runDueFeeGenerations, runDueFeeReminders } = await import(
+          '../api/services/feeChargesService'
+        );
         await runDueFeeGenerations();
+        if (result.data?.clubId) {
+          await runDueFeeReminders(result.data.clubId);
+        }
       } catch {
-        /* best-effort auto fees */
+        /* best-effort auto fees / reminders */
       }
     }
 
