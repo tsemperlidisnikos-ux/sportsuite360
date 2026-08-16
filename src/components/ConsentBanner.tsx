@@ -14,7 +14,7 @@ import { getSession } from '../auth/auth';
 async function logConsentToServer(state: CookieConsentState) {
   try {
     const session = getSession();
-    await fetch('/api/gdpr/consent', {
+    await fetch('/api/gdpr?op=consent', {
       method: 'POST',
       headers: {
         ...syncAuthHeaders(),

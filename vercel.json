@@ -8,7 +8,7 @@
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/gdpr/retention",
+      "path": "/api/gdpr?op=retention",
       "schedule": "30 2 * * *"
     }
   ]

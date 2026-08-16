@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       baseUpdatedAt: body.baseUpdatedAt ?? null,
     });
 
-    if (!result.ok) {
+    if (result.ok === false) {
       return res.status(409).json({
         ok: false,
         conflict: true,
