@@ -6,6 +6,10 @@
     {
       "path": "/api/backup/scheduled",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/gdpr/retention",
+      "schedule": "30 2 * * *"
     }
   ]
 }

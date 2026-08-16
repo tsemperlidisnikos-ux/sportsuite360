@@ -43,16 +43,20 @@ export const AMKA_DELETION_PROCEDURE_HTML = `<h3>Διαδικασία Διαγρ
 
 export const AMKA_CHECKLIST_ITEMS = [
   'Συγκατάθεση χρήστη/γονέα',
-  'Privacy Policy ενημερωμένη',
-  'Κρυπτογράφηση AES-256',
+  'Privacy Policy & Cookie Policy δημοσιευμένες',
+  'Consent Manager (Essential / Analytics / Marketing)',
+  'Κρυπτογράφηση AES-256 (ΑΜΚΑ + ευαίσθητα στο cloud mirror)',
   'RBAC (admin + ιατρός μόνο) για ΑΜΚΑ & ιατρικά',
-  'Audit logs ΑΜΚΑ',
+  'Audit logs ΑΜΚΑ + GDPR DSAR logs',
+  'GDPR endpoints (export / erase / correct / consent)',
   'HTTPS παντού',
   'Διαγραφή ΑΜΚΑ μετά τη χρήση',
-  'DPIA ολοκληρωμένο',
+  'DPIA / RoPA / Data Breach Plan',
   'DPA / ρόλοι ελεγκτή–εκτελούντος',
-  'Πολιτική διατήρησης δεδομένων',
-  'Sanitizer email (χωρίς ΑΜΚΑ)',
+  'Πολιτική διατήρησης + cron retention',
+  'Photo consent gate στο upload',
+  'Email: χωρίς ΑΜΚΑ, List-Unsubscribe, communication consent',
+  'Viva webhook authentication',
 ] as const;
 
 export const DEFAULT_DPA_HTML = `<h3>Συμφωνία Επεξεργασίας Δεδομένων (DPA)</h3>

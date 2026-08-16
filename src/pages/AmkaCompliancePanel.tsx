@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import * as amkaAuditService from '../api/services/amkaAuditService';
+import * as gdprSubjectService from '../api/services/gdprSubjectService';
 import * as legalComplianceService from '../api/services/legalComplianceService';
 import { getSession, isPlatformAdmin } from '../auth/auth';
 import { acceptClubDpa, getClubById } from '../auth/clubs';
@@ -44,6 +46,8 @@ export function AmkaCompliancePanel() {
   const [acceptingDpa, setAcceptingDpa] = useState(false);
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
   const [clearingLogs, setClearingLogs] = useState(false);
+  const [dsarAthleteId, setDsarAthleteId] = useState('');
+  const [dsarBusy, setDsarBusy] = useState(false);
   const allowed = canAccessAmka(session?.role);
   const canDeleteLogs = isPlatformAdmin();
   const clubId = getPreviewClubId() || session?.clubId || null;
@@ -168,6 +172,120 @@ export function AmkaCompliancePanel() {
     setMessage(`Διαγράφηκαν ${result.data?.deleted ?? 0} καταγραφές.`);
   }
 
+  async function handleDsarExport() {
+    if (!dsarAthleteId) {
+      setError('Επιλέξτε αθλητή για εξαγωγή.');
+      return;
+    }
+    setDsarBusy(true);
+    setError('');
+    setMessage('');
+    const result = await gdprSubjectService.exportSubjectData({
+      athleteId: dsarAthleteId,
+      actorUserId: session?.id,
+      actorEmail: session?.email,
+    });
+    setDsarBusy(false);
+    if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία εξαγωγής');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(result.data, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gdpr-export-${dsarAthleteId}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    refresh();
+    setMessage('Η εξαγωγή δεδομένων (DSAR) ολοκληρώθηκε.');
+  }
+
+  async function handleDsarErase() {
+    if (!dsarAthleteId) {
+      setError('Επιλέξτε αθλητή για διαγραφή.');
+      return;
+    }
+    if (
+      !confirm(
+        'Οριστική ανωνυμοποίηση / διαγραφή προσωπικών δεδομένων του αθλητή (δικαίωμα διαγραφής);',
+      )
+    ) {
+      return;
+    }
+    setDsarBusy(true);
+    setError('');
+    setMessage('');
+    const result = await gdprSubjectService.eraseSubjectData({
+      athleteId: dsarAthleteId,
+      actorUserId: session?.id,
+      actorEmail: session?.email,
+    });
+    setDsarBusy(false);
+    if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία διαγραφής');
+      return;
+    }
+    refresh();
+    setMessage(`Διαγράφηκαν / ανωνυμοποιήθηκαν ${result.data.erased} εγγραφές.`);
+  }
+
+  async function handleDsarRevokeConsent() {
+    if (!dsarAthleteId) {
+      setError('Επιλέξτε αθλητή για ανάκληση συγκατάθεσης.');
+      return;
+    }
+    setDsarBusy(true);
+    setError('');
+    setMessage('');
+    const result = await gdprSubjectService.setSubjectConsent({
+      athleteId: dsarAthleteId,
+      items: {
+        personalData: false,
+        photoUse: false,
+        gallery: false,
+        communication: false,
+        medical: false,
+        amkaHealthCard: false,
+      },
+      revoke: true,
+      actorUserId: session?.id,
+      actorEmail: session?.email,
+    });
+    setDsarBusy(false);
+    if (!result.success) {
+      setError(result.error ?? 'Αποτυχία ανάκλησης');
+      return;
+    }
+    refresh();
+    setMessage('Η συγκατάθεση ανακλήθηκε.');
+  }
+
+  async function handleFullRetentionPass() {
+    if (
+      !confirm(
+        'Πλήρης GDPR retention: ευαίσθητα ανενεργών + φωτογραφίες >24 μήνες + logs >12 μήνες;',
+      )
+    ) {
+      return;
+    }
+    setRunningRetention(true);
+    setError('');
+    setMessage('');
+    const result = await gdprSubjectService.applyFullRetentionPass();
+    setRunningRetention(false);
+    if (!result.success || !result.data) {
+      setError(result.error ?? 'Αποτυχία retention');
+      return;
+    }
+    refresh();
+    setMessage(
+      `Retention: αθλητές ${result.data.cleanedAthletes}, φωτο ${result.data.removedPhotos}, logs ${result.data.prunedLogs}.`,
+    );
+  }
+
   if (!allowed) {
     return (
       <section className="panel settings-panel">
@@ -188,6 +306,60 @@ export function AmkaCompliancePanel() {
       </header>
 
       <p className="ap-field-hint">{MEDICAL_ACCESS_HINT}</p>
+
+      <p className="lede">
+        Δημόσια νομικά:{' '}
+        <Link to="/legal/privacy">Απόρρητο</Link>
+        {' · '}
+        <Link to="/legal/cookies">Cookies</Link>
+        {' · '}
+        <Link to="/legal/breach">Παραβίαση</Link>
+        {' · '}
+        <Link to="/legal/ropa">RoPA</Link>
+        {' · '}
+        <Link to="/legal/payment">Πληρωμές</Link>
+      </p>
+
+      <div className="settings-amka-dsar panel" style={{ padding: '1rem', marginBottom: '1rem' }}>
+        <h4 style={{ marginTop: 0 }}>Δικαιώματα υποκειμένου (DSAR)</h4>
+        <SettingsFormRow label="Αθλητής">
+          <select
+            className="ap-input"
+            value={dsarAthleteId}
+            onChange={(e) => setDsarAthleteId(e.target.value)}
+          >
+            <option value="">— Επιλογή —</option>
+            {data.students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.lastName} {s.firstName}
+              </option>
+            ))}
+          </select>
+        </SettingsFormRow>
+        <div className="settings-form-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Button type="button" disabled={dsarBusy} onClick={() => void handleDsarExport()}>
+            Εξαγωγή JSON
+          </Button>
+          <Button type="button" disabled={dsarBusy} onClick={() => void handleDsarRevokeConsent()}>
+            Ανάκληση συγκατάθεσης
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            disabled={dsarBusy}
+            onClick={() => void handleDsarErase()}
+          >
+            Διαγραφή δεδομένων
+          </Button>
+          <Button
+            type="button"
+            disabled={runningRetention}
+            onClick={() => void handleFullRetentionPass()}
+          >
+            Πλήρες retention pass
+          </Button>
+        </div>
+      </div>
 
       <div className="ap-amka-privacy" dangerouslySetInnerHTML={{ __html: dpaHtml }} />
       <div className="settings-form-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>

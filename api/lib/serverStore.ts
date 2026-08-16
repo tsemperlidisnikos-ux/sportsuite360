@@ -477,13 +477,17 @@ export async function deleteClubWaitlist(id: string): Promise<boolean> {
 }
 
 /** Sync API auth (kept here to avoid an extra Hobby serverless file under api/). */
-export function assertSyncAuthorized(
-  req: { headers: Record<string, unknown>; query?: Record<string, unknown> },
-  res: { status: (code: number) => { json: (body: unknown) => unknown } },
-): boolean {
-  const expected = (process.env.SS360_SYNC_SECRET ?? '').trim();
-  const isVercelProd = process.env.VERCEL_ENV === 'production';
 
+export type SyncAuthContext = {
+  viaSecret: boolean;
+  claims: SessionClaims | null;
+};
+
+export function getSyncAuthContext(req: {
+  headers: Record<string, unknown>;
+  query?: Record<string, unknown>;
+}): SyncAuthContext {
+  const expected = (process.env.SS360_SYNC_SECRET ?? '').trim();
   const rawHeader = String(
     req.headers['x-ss360-sync-key'] ?? req.headers['authorization'] ?? '',
   ).trim();
@@ -495,11 +499,32 @@ export function assertSyncAuthorized(
     provided = typeof q === 'string' ? q.trim() : '';
   }
 
-  // Prefer session token when present (payload.sig form).
   if (provided.includes('.')) {
     const claims = verifySessionToken(provided);
-    if (claims) return true;
+    if (claims) return { viaSecret: false, claims };
   }
+
+  if (expected && provided && provided === expected) {
+    return { viaSecret: true, claims: null };
+  }
+
+  const isVercelProd = process.env.VERCEL_ENV === 'production';
+  if (!expected && !isVercelProd) {
+    return { viaSecret: true, claims: null };
+  }
+
+  return { viaSecret: false, claims: null };
+}
+
+export function assertSyncAuthorized(
+  req: { headers: Record<string, unknown>; query?: Record<string, unknown> },
+  res: { status: (code: number) => { json: (body: unknown) => unknown } },
+): boolean {
+  const expected = (process.env.SS360_SYNC_SECRET ?? '').trim();
+  const isVercelProd = process.env.VERCEL_ENV === 'production';
+  const ctx = getSyncAuthContext(req);
+
+  if (ctx.claims || ctx.viaSecret) return true;
 
   if (!expected) {
     if (isVercelProd) {
@@ -512,11 +537,36 @@ export function assertSyncAuthorized(
     return true;
   }
 
-  if (!provided || provided !== expected) {
-    res.status(401).json({ ok: false, error: 'Unauthorized' });
-    return false;
+  res.status(401).json({ ok: false, error: 'Unauthorized' });
+  return false;
+}
+
+/** Enforce tenant isolation when authenticated via session (not platform sync secret). */
+export function assertClubTenantAccess(
+  req: { headers: Record<string, unknown>; query?: Record<string, unknown> },
+  res: { status: (code: number) => { json: (body: unknown) => unknown } },
+  clubId: string,
+): boolean {
+  if (!assertSyncAuthorized(req, res)) return false;
+  const ctx = getSyncAuthContext(req);
+  if (ctx.viaSecret) return true;
+  if (ctx.claims?.role === 'platform_admin') return true;
+  if (ctx.claims?.clubId && ctx.claims.clubId === clubId) return true;
+  res.status(403).json({ ok: false, error: 'Forbidden: club mismatch' });
+  return false;
+}
+
+const GDPR_CONSENT_LOG_KEY = 'ss360:gdpr-consent-logs';
+
+export async function appendGdprConsentLog(entry: Record<string, unknown>): Promise<void> {
+  const key = GDPR_CONSENT_LOG_KEY;
+  const prev = (await kvGet<Record<string, unknown>[]>(key)) ?? [];
+  const next = [entry, ...prev].slice(0, 2000);
+  if (isDurableKvEnabled()) {
+    await kvSet(key, next);
+  } else {
+    // memory fallback unused for consent logs
   }
-  return true;
 }
 
 /* -------------------------------------------------------------------------- */

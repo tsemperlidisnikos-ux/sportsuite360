@@ -13,6 +13,7 @@ type Body = {
   subject?: string;
   text?: string;
   html?: string;
+  listUnsubscribe?: string;
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -50,12 +51,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const fromName = (smtp.fromName || 'SPORTSUITE 360').replace(/[\r\n]/g, '');
+    const listUnsubscribe = body.listUnsubscribe
+      ? String(body.listUnsubscribe).replace(/[\r\n]/g, '')
+      : '';
     const info = await transporter.sendMail({
       from: `"${fromName}" <${smtp.username}>`,
       to,
       subject,
       text,
       html: html || undefined,
+      headers: listUnsubscribe
+        ? {
+            'List-Unsubscribe': listUnsubscribe,
+          }
+        : undefined,
     });
 
     return res.status(200).json({ ok: true, messageId: info.messageId ?? null });

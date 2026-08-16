@@ -463,6 +463,32 @@ export interface GalleryPhoto {
   fileName: string;
   createdAt: string;
   album?: string;
+  /** Αθλητές που εμφανίζονται — απαιτείται συγκατάθεση photoUse+gallery. */
+  athleteIds?: string[];
+  /** Ανήλικοι στη φωτογραφία (extra GDPR flag). */
+  includesMinors?: boolean;
+  consentVerifiedAt?: string;
+}
+
+export type GdprAuditAction =
+  | 'export'
+  | 'erase'
+  | 'correct'
+  | 'consent'
+  | 'consent_revoke'
+  | 'retention'
+  | 'cookie';
+
+export interface GdprAuditLog {
+  id: string;
+  at: string;
+  action: GdprAuditAction;
+  actorUserId?: string;
+  actorEmail?: string;
+  subjectAthleteId?: string;
+  subjectEmail?: string;
+  detail?: string;
+  ip?: string;
 }
 
 /** Σύνδεση λογαριασμού γονέα με αθλητή. */
@@ -529,6 +555,10 @@ export interface AppData {
   feeReminderLogs: FeeReminderLog[];
   /** Audit logs πρόσβασης ΑΜΚΑ (12 μήνες, χωρίς τιμή ΑΜΚΑ). */
   amkaAccessLogs?: AmkaAccessLog[];
+  /** Γενικά GDPR audit logs (DSAR, consent, retention). */
+  gdprAuditLogs?: GdprAuditLog[];
+  /** Emails που έχουν κάνει unsubscribe από επικοινωνίες συλλόγου. */
+  emailUnsubscribes?: string[];
   photos: GalleryPhoto[];
   parentLinks: ParentAthleteLink[];
   progressReports: ProgressReport[];

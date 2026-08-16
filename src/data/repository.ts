@@ -70,6 +70,8 @@ function ensureCollections(data: AppData): boolean {
     }
   }
   if (!data.amkaAccessLogs) data.amkaAccessLogs = structuredClone(seedData.amkaAccessLogs ?? []);
+  if (!data.gdprAuditLogs) data.gdprAuditLogs = [];
+  if (!data.emailUnsubscribes) data.emailUnsubscribes = [];
   {
     const pruned = pruneAmkaAccessLogs(data.amkaAccessLogs);
     if (pruned.length !== data.amkaAccessLogs.length) {

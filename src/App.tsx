@@ -6,6 +6,7 @@ import { RequireModule } from './auth/RequireModule';
 import { RequireAthletesOrOwnProfile } from './auth/RequireAthletesOrOwnProfile';
 import { RequirePlatformAdmin } from './auth/RequirePlatformAdmin';
 import { AppLayout } from './components/layout/AppLayout';
+import { ConsentBanner } from './components/ConsentBanner';
 import { getPreviewClubId } from './platform/platformConfig';
 
 const LoginPage = lazy(() =>
@@ -19,6 +20,9 @@ const PublicJoinPage = lazy(() =>
 );
 const PublicAthleteIdPage = lazy(() =>
   import('./pages/PublicAthleteIdPage').then((m) => ({ default: m.PublicAthleteIdPage })),
+);
+const PublicLegalPage = lazy(() =>
+  import('./pages/PublicLegalPage').then((m) => ({ default: m.PublicLegalPage })),
 );
 const PlatformAdminPage = lazy(() =>
   import('./pages/PlatformAdminPage').then((m) => ({ default: m.PlatformAdminPage })),
@@ -130,12 +134,15 @@ function HomeRoute() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ConsentBanner />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterClubPage />} />
           <Route path="/join/:slug" element={<PublicJoinPage />} />
           <Route path="/id/card" element={<PublicAthleteIdPage />} />
+          <Route path="/legal/:doc" element={<PublicLegalPage />} />
+          <Route path="/legal" element={<PublicLegalPage />} />
 
           <Route element={<RequireAuth />}>
             <Route path="platform" element={<RequirePlatformAdmin />}>

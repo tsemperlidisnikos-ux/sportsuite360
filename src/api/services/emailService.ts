@@ -4,6 +4,7 @@ import {
   getClubById,
   getClubSmtp,
 } from '../../auth/clubs';
+import { getData, mutateData } from '../../data/repository';
 import { localDateTimeIso } from '../../utils/dates';
 import { sanitizeOutboundEmail } from '../../utils/amkaAccess';
 
@@ -13,7 +14,37 @@ export type SendEmailInput = {
   subject: string;
   text: string;
   html?: string;
+  /** Skip communication-consent / unsubscribe checks (e.g. password reset). */
+  transactional?: boolean;
+  /** Optional athlete id to enforce gdprItems.communication */
+  athleteId?: string;
 };
+
+function isUnsubscribed(email: string): boolean {
+  const want = email.trim().toLowerCase();
+  return (getData().emailUnsubscribes ?? []).some((e) => e.trim().toLowerCase() === want);
+}
+
+function hasCommunicationConsent(athleteId?: string): boolean {
+  if (!athleteId) return true;
+  const student = getData().students.find((s) => s.id === athleteId);
+  if (!student) return true;
+  return Boolean(student.gdprItems?.communication);
+}
+
+export async function unsubscribeEmail(email: string) {
+  return apiClient(() => {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes('@')) throw new Error('Μη έγκυρο email.');
+    mutateData((data) => {
+      if (!data.emailUnsubscribes) data.emailUnsubscribes = [];
+      if (!data.emailUnsubscribes.some((e) => e.toLowerCase() === normalized)) {
+        data.emailUnsubscribes.push(normalized);
+      }
+    });
+    return { email: normalized };
+  });
+}
 
 export async function sendClubEmail(input: SendEmailInput) {
   return apiClient(async () => {
@@ -30,10 +61,27 @@ export async function sendClubEmail(input: SendEmailInput) {
       throw new Error('Μη έγκυρο email παραλήπτη.');
     }
 
+    if (!input.transactional) {
+      if (isUnsubscribed(to)) {
+        throw new Error('Ο παραλήπτης έχει κάνει unsubscribe από emails συλλόγου.');
+      }
+      if (!hasCommunicationConsent(input.athleteId)) {
+        throw new Error('Λείπει συγκατάθεση επικοινωνίας (GDPR) για τον αθλητή.');
+      }
+    }
+
+    const unsubUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/legal/privacy#unsubscribe`;
+    const unsubFooter = `\n\n---\nΓια διαγραφή από ενημερώσεις επικοινωνήστε με τον σύλλογο. ${unsubUrl}`;
     const sanitized = sanitizeOutboundEmail({
       subject: input.subject,
-      text: input.text,
-      html: input.html,
+      text: `${input.text}${input.transactional ? '' : unsubFooter}`,
+      html: input.html
+        ? `${input.html}${
+            input.transactional
+              ? ''
+              : `<p style="font-size:12px;color:#64748b">Για διαγραφή από ενημερώσεις επικοινωνήστε με τον σύλλογο. <a href="${unsubUrl}">Πολιτική απορρήτου</a></p>`
+          }`
+        : undefined,
     });
 
     const response = await fetch('/api/send-email', {
@@ -51,6 +99,9 @@ export async function sendClubEmail(input: SendEmailInput) {
         subject: sanitized.subject,
         text: sanitized.text,
         html: sanitized.html,
+        listUnsubscribe: input.transactional
+          ? undefined
+          : `<mailto:${smtp.username}?subject=unsubscribe>, <${unsubUrl}>`,
       }),
     });
 

@@ -366,6 +366,24 @@
   gap: 0.35rem;
 }
 
+.photos-athlete-consent-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.35rem 0.75rem;
+  max-height: 160px;
+  overflow: auto;
+  padding: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 10px;
+}
+
+.photos-athlete-consent-list label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
 .photos-field > span {
   font-size: 0.82rem;
   font-weight: 700;

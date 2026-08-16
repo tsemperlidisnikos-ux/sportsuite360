@@ -2,6 +2,10 @@ import { apiClient } from '../apiClient';
 import { syncAuthHeaders } from '../syncAuth';
 import { getClubData } from '../../data/repository';
 import type { AppData } from '../../types';
+import {
+  decryptSensitivePayloadFromCloud,
+  encryptSensitivePayloadForCloud,
+} from '../../utils/sensitiveCrypto';
 
 function isAppDataPayload(value: unknown): value is AppData {
   if (!value || typeof value !== 'object') return false;
@@ -14,7 +18,8 @@ export async function pushClubMirror(
   opts?: { baseUpdatedAt?: string | null },
 ) {
   return apiClient(async () => {
-    const payload = getClubData(clubId);
+    const local = getClubData(clubId);
+    const payload = await encryptSensitivePayloadForCloud(local, clubId);
     const response = await fetch('/api/sync/mirror', {
       method: 'POST',
       headers: syncAuthHeaders(),
@@ -40,7 +45,9 @@ export async function pushClubMirror(
       };
       err.conflict = true;
       err.remoteUpdatedAt = json.updatedAt;
-      err.remotePayload = isAppDataPayload(json.payload) ? json.payload : undefined;
+      if (isAppDataPayload(json.payload)) {
+        err.remotePayload = await decryptSensitivePayloadFromCloud(json.payload, clubId);
+      }
       throw err;
     }
 
@@ -81,10 +88,11 @@ export async function pullClubMirror(clubId: string) {
     if (!isAppDataPayload(json.payload)) {
       throw new Error('Το mirror δεν περιέχει έγκυρα δεδομένα συλλόγου.');
     }
+    const payload = await decryptSensitivePayloadFromCloud(json.payload, clubId);
     return {
       updatedAt: json.updatedAt ?? null,
       durable: Boolean(json.durable),
-      payload: json.payload,
+      payload,
     };
   });
 }

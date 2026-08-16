@@ -368,6 +368,7 @@ export const galleryPhotoSchema = z.object({
   caption: z.string().optional().default(''),
   fileName: z.string().optional().default(''),
   album: z.string().optional().default(''),
+  athleteIds: z.array(z.string()).optional().default([]),
 });
 
 export type GalleryPhotoInput = z.infer<typeof galleryPhotoSchema>;

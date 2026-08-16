@@ -55,11 +55,19 @@ export function PhotosPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [caption, setCaption] = useState('');
   const [album, setAlbum] = useState('');
+  const [selectedAthleteIds, setSelectedAthleteIds] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
   const photos = data.photos ?? [];
+  const consentAthletes = useMemo(
+    () =>
+      data.students.filter(
+        (s) => s.status === 'active' && s.gdprItems?.photoUse && s.gdprItems?.gallery,
+      ),
+    [data.students],
+  );
 
   const albums = useMemo(() => {
     const set = new Set<string>();
@@ -113,6 +121,7 @@ export function PhotosPage() {
     setImageUrl('');
     setCaption('');
     setAlbum('');
+    setSelectedAthleteIds([]);
     if (fileRef.current) fileRef.current.value = '';
   }
 
@@ -148,6 +157,10 @@ export function PhotosPage() {
       setError('Επιλέξτε αρχείο φωτογραφίας.');
       return;
     }
+    if (!selectedAthleteIds.length) {
+      setError('Επιλέξτε τουλάχιστον έναν αθλητή με συγκατάθεση gallery.');
+      return;
+    }
     setSaving(true);
     setError('');
     setMessage('');
@@ -156,6 +169,7 @@ export function PhotosPage() {
       caption,
       fileName,
       album,
+      athleteIds: selectedAthleteIds,
     });
     setSaving(false);
     if (!result.success) {
@@ -413,6 +427,36 @@ export function PhotosPage() {
                   ))}
                 </datalist>
               </label>
+              <fieldset className="photos-field">
+                <legend>Αθλητές με συγκατάθεση φωτογραφίας / gallery</legend>
+                {consentAthletes.length === 0 ? (
+                  <p className="form-error" style={{ margin: 0 }}>
+                    Δεν υπάρχουν ενεργοί αθλητές με photoUse + gallery. Ενεργοποιήστε τα στο προφίλ
+                    GDPR.
+                  </p>
+                ) : (
+                  <div className="photos-athlete-consent-list">
+                    {consentAthletes.map((s) => (
+                      <label key={s.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAthleteIds.includes(s.id)}
+                          onChange={(e) => {
+                            setSelectedAthleteIds((prev) =>
+                              e.target.checked
+                                ? [...prev, s.id]
+                                : prev.filter((id) => id !== s.id),
+                            );
+                          }}
+                        />
+                        <span>
+                          {s.lastName} {s.firstName}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
               {error ? <p className="form-error">{error}</p> : null}
               <div className="photos-modal-actions">
                 <button type="button" className="photos-btn-secondary" onClick={() => setUploadOpen(false)}>
