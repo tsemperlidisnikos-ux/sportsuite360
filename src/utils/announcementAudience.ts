@@ -20,6 +20,7 @@ type AudienceAnnouncement = Pick<
 export type AthleteAudienceContext = {
   athleteId: string;
   classId?: string | null;
+  classIds?: string[];
   sport?: string | null;
   clubName?: string | null;
   classSport?: string | null;
@@ -75,7 +76,11 @@ export function announcementVisibleToAthlete(
   if (athleteRecipients.length > 0) {
     if (!athleteRecipients.includes(ctx.athleteId)) return false;
   } else if (classIds.length > 0) {
-    if (!(ctx.classId && classIds.includes(ctx.classId))) return false;
+    const athleteClasses = [
+      ...(ctx.classIds ?? []),
+      ...(ctx.classId ? [ctx.classId] : []),
+    ];
+    if (!athleteClasses.some((id) => classIds.includes(id))) return false;
   } else if (!roleOk) {
     return false;
   }

@@ -39,9 +39,18 @@ export async function deleteClass(id: string) {
   return apiClient(() => {
     mutateData((data) => {
       data.classes = data.classes.filter((c) => c.id !== id);
-      data.students = data.students.map((s) =>
-        s.classId === id ? { ...s, classId: null } : s,
-      );
+      data.students = data.students.map((s) => {
+        const classIds = [
+          ...(s.classIds ?? []),
+          ...(s.classId ? [s.classId] : []),
+        ].filter((cid) => cid !== id);
+        const unique = [...new Set(classIds)];
+        return {
+          ...s,
+          classIds: unique,
+          classId: s.classId === id ? unique[0] ?? null : s.classId,
+        };
+      });
       data.schedule = data.schedule.filter((s) => s.classId !== id);
       data.attendance = data.attendance.filter((a) => a.classId !== id);
     });

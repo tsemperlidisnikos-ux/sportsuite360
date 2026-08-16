@@ -20,6 +20,7 @@ import {
 } from '../utils/coachScope';
 import { openAthleteHealthCardPreview } from '../utils/healthCardPreview';
 import { studentStatusLabels } from '../utils/labels';
+import { studentClassIds } from '../utils/studentClasses';
 
 const draftAthlete: StudentInput = {
   firstName: 'ΝΕΟΣ',
@@ -30,6 +31,7 @@ const draftAthlete: StudentInput = {
   guardianName: '',
   guardianPhone: '',
   classId: null,
+  classIds: [],
   status: 'active',
   monthlyFee: 0,
   amka: '',
@@ -45,6 +47,7 @@ const draftAthlete: StudentInput = {
   clubName: '',
   registrationNumber: '',
   sport: '',
+  sports: [],
   healthCard: false,
   healthCardExpires: '',
   consentExpires: '',
@@ -501,7 +504,10 @@ export function StudentsPage() {
           </thead>
           <tbody>
             {filtered.map((student) => {
-              const cls = data.classes.find((c) => c.id === student.classId);
+              const classNames = studentClassIds(student)
+                .map((id) => data.classes.find((c) => c.id === id)?.name)
+                .filter(Boolean)
+                .join(', ');
               return (
                 <tr
                   key={student.id}
@@ -542,7 +548,7 @@ export function StudentsPage() {
                   <td>
                     {isDoctor
                       ? formatAmkaForViewer(student.amka, true)
-                      : (cls?.name ?? '—')}
+                      : (classNames || '—')}
                   </td>
                   <td>
                     {isDoctor ? (

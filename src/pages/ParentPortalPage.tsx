@@ -13,6 +13,7 @@ import { settleVivaReturn } from '../utils/vivaSettle';
 import { formatCurrency, formatDate } from '../utils/labels';
 import { localDateIso } from '../utils/dates';
 import { announcementVisibleToParent } from '../utils/announcementAudience';
+import { studentClassIds } from '../utils/studentClasses';
 
 function athleteBalance(
   athleteId: string,
@@ -93,9 +94,7 @@ export function ParentPortalPage() {
 
   const today = localDateIso();
   const upcomingTrainings = useMemo(() => {
-    const classIds = new Set(
-      linkedAthletes.map((a) => a.classId).filter(Boolean) as string[],
-    );
+    const classIds = new Set(linkedAthletes.flatMap((a) => studentClassIds(a)));
     return (data.trainings ?? [])
       .filter((t) => {
         if (t.date < today) return false;
@@ -116,16 +115,15 @@ export function ParentPortalPage() {
   const announcements = useMemo(() => {
     if (!session) return [];
     const linkedIds = linkedAthletes.map((a) => a.id);
-    const linkedClasses = linkedAthletes
-      .map((a) => a.classId)
-      .filter(Boolean) as string[];
+    const linkedClasses = linkedAthletes.flatMap((a) => studentClassIds(a));
     const linkedMeta = linkedAthletes.map((a) => ({
       id: a.id,
       sport: a.sport,
       clubName: a.clubName,
-      classSport: a.classId
-        ? data.classes.find((c) => c.id === a.classId)?.sport
-        : null,
+      classSport:
+        studentClassIds(a)
+          .map((id) => data.classes.find((c) => c.id === id)?.sport)
+          .find(Boolean) || null,
     }));
     return (data.announcements ?? [])
       .filter((a) =>
@@ -206,9 +204,10 @@ export function ParentPortalPage() {
                     {athlete.lastName} {athlete.firstName}
                   </strong>
                   <span className="muted">
-                    {athlete.classId
-                      ? classNameById.get(athlete.classId) || 'Τμήμα'
-                      : 'Χωρίς τμήμα'}
+                    {studentClassIds(athlete)
+                      .map((id) => classNameById.get(id))
+                      .filter(Boolean)
+                      .join(', ') || 'Χωρίς τμήμα'}
                   </span>
                 </li>
               ))}

@@ -18,6 +18,8 @@ import { PAYMENT_METHODS, normalizePaymentMethod } from '../shared/paymentMethod
 import { formatCurrency, formatDate } from '../utils/labels';
 import { canAccessAmka, formatAmkaForViewer } from '../utils/amkaAccess';
 import { sportsMatch } from '../utils/coachScope';
+import { studentClassIds } from '../utils/studentClasses';
+import { studentHasSport } from '../utils/studentSports';
 
 const MONTHS = [
   { value: 1, label: 'Ιανουάριος' },
@@ -153,11 +155,13 @@ export function TransactionsPage() {
     return data.students.filter((s) => {
       if (s.status === 'inactive') return false;
       if (sport) {
-        if (sportsMatch(s.sport, sport)) {
+        if (studentHasSport(s, sport)) {
           /* ok */
         } else {
-          const classSport = data.classes.find((c) => c.id === s.classId)?.sport;
-          if (!sportsMatch(classSport, sport)) return false;
+          const ok = studentClassIds(s).some((id) =>
+            sportsMatch(data.classes.find((c) => c.id === id)?.sport, sport),
+          );
+          if (!ok) return false;
         }
       }
       if (!q) return true;

@@ -10,6 +10,8 @@ import type {
 } from '../../types';
 import { localDateIso, localDateTimeIso } from '../../utils/dates';
 import { normalizeSportKey } from '../../utils/sport';
+import { studentInClass } from '../../utils/studentClasses';
+import { studentHasSport } from '../../utils/studentSports';
 import { sendClubEmail } from './emailService';
 
 export const FEE_SEASON_MONTHS = [
@@ -37,15 +39,6 @@ function seasonStartYear(season: string): number {
 export function yearForSeasonMonth(season: string, month: number): number {
   const start = seasonStartYear(season);
   return month >= 7 ? start : start + 1;
-}
-
-function studentSport(
-  student: Student,
-  classSportById: Map<string, string>,
-): string {
-  if (student.sport?.trim()) return student.sport.trim();
-  if (student.classId) return classSportById.get(student.classId)?.trim() || '';
-  return '';
 }
 
 export const FEE_APPLIES_TO_OPTIONS = [
@@ -79,7 +72,7 @@ function athleteMatchesAppliesTo(
     case 'seasonTicket':
       return Boolean(student.seasonTicket);
     case 'class':
-      return Boolean(classId) && student.classId === classId;
+      return Boolean(classId) && studentInClass(student, classId);
     case 'all':
     default:
       return true;
@@ -92,7 +85,15 @@ function athleteMatchesSport(
   classSportById: Map<string, string>,
 ): boolean {
   if (!sport.trim()) return true;
-  return normalizeSportKey(studentSport(student, classSportById)) === normalizeSportKey(sport);
+  if (studentHasSport(student, sport)) return true;
+  const ids = [
+    ...(student.classIds ?? []),
+    ...(student.classId ? [student.classId] : []),
+  ];
+  return ids.some(
+    (id) =>
+      normalizeSportKey(classSportById.get(id)) === normalizeSportKey(sport),
+  );
 }
 
 function hasCharge(

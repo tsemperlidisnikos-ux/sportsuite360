@@ -18,6 +18,7 @@ import { getPreviewClubId } from '../platform/platformConfig';
 import { localDateIso } from '../utils/dates';
 import { formatCurrency, formatDate, dayNames } from '../utils/labels';
 import { announcementVisibleToAthlete } from '../utils/announcementAudience';
+import { studentClassIds } from '../utils/studentClasses';
 
 function athleteBalance(
   athleteId: string,
@@ -77,9 +78,11 @@ export function AthletePortalPage() {
   const today = localDateIso();
 
   const upcoming = useMemo(() => {
-    if (!athlete?.classId) return [];
+    if (!athlete) return [];
+    const ids = new Set(studentClassIds(athlete));
+    if (ids.size === 0) return [];
     return (data.trainings ?? [])
-      .filter((t) => t.date >= today && t.classId === athlete.classId)
+      .filter((t) => t.date >= today && t.classId && ids.has(t.classId))
       .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))
       .slice(0, 5);
   }, [data.trainings, athlete, today]);
@@ -103,14 +106,17 @@ export function AthletePortalPage() {
 
   const announcements = useMemo(() => {
     if (!athlete) return [];
-    const classSport = athlete.classId
-      ? data.classes.find((c) => c.id === athlete.classId)?.sport
-      : null;
+    const ids = studentClassIds(athlete);
+    const classSport =
+      ids
+        .map((id) => data.classes.find((c) => c.id === id)?.sport)
+        .find(Boolean) || null;
     return (data.announcements ?? [])
       .filter((a) =>
         announcementVisibleToAthlete(a, {
           athleteId: athlete.id,
           classId: athlete.classId,
+          classIds: ids,
           sport: athlete.sport,
           clubName: athlete.clubName,
           classSport,
@@ -120,9 +126,10 @@ export function AthletePortalPage() {
       .slice(0, 5);
   }, [data.announcements, data.classes, athlete]);
 
-  const className = athlete?.classId
-    ? data.classes.find((c) => c.id === athlete.classId)?.name
-    : null;
+  const className = studentClassIds(athlete ?? { classId: null, classIds: [] })
+    .map((id) => data.classes.find((c) => c.id === id)?.name)
+    .filter(Boolean)
+    .join(', ');
 
   async function handlePay() {
     if (!clubId || !athlete || balance <= 0) return;

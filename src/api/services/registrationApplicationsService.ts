@@ -146,6 +146,7 @@ export async function approveRegistrationApplication(
         guardianName: app.guardianName,
         guardianPhone: app.guardianPhone,
         classId: app.classId,
+        classIds: app.classId ? [app.classId] : [],
         status: app.kind === 'trial' ? 'trial' : 'active',
         monthlyFee: cls?.monthlyFee ?? 0,
         enrolledAt: localDateIso(),

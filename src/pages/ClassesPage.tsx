@@ -13,6 +13,7 @@ import {
 } from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
 import { normalizeSportKey } from '../utils/sport';
+import { studentInClass } from '../utils/studentClasses';
 
 const emptyForm: ClassInput = {
   name: '',
@@ -160,7 +161,7 @@ export function ClassesPage() {
             </thead>
             <tbody>
               {visibleClasses.map((cls) => {
-                const count = data.students.filter((s) => s.classId === cls.id).length;
+                const count = data.students.filter((s) => studentInClass(s, cls.id)).length;
                 return (
                   <tr key={cls.id}>
                     <td>

@@ -2,6 +2,7 @@ import { apiClient } from '../apiClient';
 import { getClubById, getClubPublicRegistration } from '../../auth/clubs';
 import { createId, mutateClubData } from '../../data/repository';
 import { localDateIso } from '../../utils/dates';
+import { studentInClass } from '../../utils/studentClasses';
 import type {
   RegistrationApplication,
   RegistrationApplicationKind,
@@ -63,8 +64,9 @@ export async function submitPublicJoin(input: PublicJoinInput) {
         ? data.classes.find((c) => c.id === input.classId) ?? null
         : null;
       const activeInClass = input.classId
-        ? data.students.filter((s) => s.classId === input.classId && s.status !== 'inactive')
-            .length
+        ? data.students.filter(
+            (s) => studentInClass(s, input.classId) && s.status !== 'inactive',
+          ).length
         : 0;
       const full = classIsFull(input.classId, cls?.maxStudents ?? 0, activeInClass);
 
@@ -88,6 +90,7 @@ export async function submitPublicJoin(input: PublicJoinInput) {
           guardianName: input.guardianName.trim(),
           guardianPhone: input.guardianPhone.trim(),
           classId: input.classId,
+          classIds: input.classId ? [input.classId] : [],
           status: resultKind === 'trial' ? 'trial' : 'active',
           monthlyFee: cls?.monthlyFee ?? 0,
           enrolledAt: localDateIso(),

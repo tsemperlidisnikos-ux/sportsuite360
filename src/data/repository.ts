@@ -88,6 +88,58 @@ function ensureCollections(data: AppData): boolean {
     t.year = Number(t.year);
     t.amount = Number(t.amount) || 0;
   }
+  for (const student of data.students ?? []) {
+    const fromList = Array.isArray(student.classIds) ? student.classIds : [];
+    const ids = [
+      ...fromList,
+      ...(student.classId ? [student.classId] : []),
+    ]
+      .map((id) => String(id).trim())
+      .filter(Boolean);
+    const unique = [...new Set(ids)];
+    const nextPrimary =
+      student.classId && unique.includes(student.classId)
+        ? student.classId
+        : unique[0] ?? null;
+    const sameList =
+      unique.length === fromList.length &&
+      unique.every((id, i) => id === fromList[i]);
+    if (!sameList || student.classId !== nextPrimary) {
+      student.classIds = unique;
+      student.classId = nextPrimary;
+      changed = true;
+    }
+    const fromSports = Array.isArray(student.sports) ? student.sports : [];
+    const sportValues = [
+      ...fromSports,
+      ...(student.sport?.trim() ? [student.sport.trim()] : []),
+    ]
+      .map((s) => String(s).trim())
+      .filter(Boolean);
+    const uniqueSports: string[] = [];
+    const seenSports = new Set<string>();
+    for (const value of sportValues) {
+      const key = value.toLowerCase();
+      if (seenSports.has(key)) continue;
+      seenSports.add(key);
+      uniqueSports.push(value);
+    }
+    const nextSport =
+      student.sport?.trim() &&
+      uniqueSports.some((s) => s.toLowerCase() === student.sport!.trim().toLowerCase())
+        ? uniqueSports.find(
+            (s) => s.toLowerCase() === student.sport!.trim().toLowerCase(),
+          )!
+        : uniqueSports[0] ?? '';
+    const sameSports =
+      uniqueSports.length === fromSports.length &&
+      uniqueSports.every((s, i) => s === fromSports[i]);
+    if (!sameSports || (student.sport ?? '') !== nextSport) {
+      student.sports = uniqueSports;
+      student.sport = nextSport;
+      changed = true;
+    }
+  }
   return changed;
 }
 

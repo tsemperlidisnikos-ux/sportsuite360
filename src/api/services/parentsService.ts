@@ -9,6 +9,7 @@ import {
 import { createId, getData, mutateData } from '../../data/repository';
 import type { ParentAthleteLink, Student } from '../../types';
 import { localDateTimeIso } from '../../utils/dates';
+import { studentClassIds } from '../../utils/studentClasses';
 
 export type ParentLinkRow = {
   linkId: string;
@@ -66,7 +67,10 @@ function canManageParents(clubId: string): boolean {
 
 function athleteLabel(student: Student, classNameById: Map<string, string>): string {
   const name = `${student.firstName} ${student.lastName}`.trim();
-  const className = student.classId ? classNameById.get(student.classId) : '';
+  const className = studentClassIds(student)
+    .map((id) => classNameById.get(id))
+    .filter(Boolean)
+    .join(', ');
   return className ? `${name} (${className})` : name;
 }
 
@@ -90,15 +94,17 @@ function upsertGuardian(
       status: 'not_invited',
       parentUserId: null,
       linkIds: [],
-      classIds: opts.athlete.classId ? [opts.athlete.classId] : [],
+      classIds: studentClassIds(opts.athlete),
     });
     return;
   }
   if (!existing.athletes.some((a) => a.id === opts.athlete.id)) {
     existing.athletes.push(opts.athlete);
   }
-  if (opts.athlete.classId && !existing.classIds.includes(opts.athlete.classId)) {
-    existing.classIds.push(opts.athlete.classId);
+  for (const classId of studentClassIds(opts.athlete)) {
+    if (!existing.classIds.includes(classId)) {
+      existing.classIds.push(classId);
+    }
   }
   if (!existing.fullName || existing.fullName === 'Γονέας') {
     existing.fullName = opts.fullName.trim() || existing.fullName;

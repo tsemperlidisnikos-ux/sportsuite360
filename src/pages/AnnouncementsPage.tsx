@@ -44,6 +44,8 @@ import {
   visibleStudentsForSession,
 } from '../utils/coachScope';
 import { normalizeSportKey } from '../utils/sport';
+import { studentClassIds, studentInClass } from '../utils/studentClasses';
+import { studentHasSport, studentSports } from '../utils/studentSports';
 
 const PAGE_SIZE = 5;
 
@@ -149,9 +151,10 @@ export function AnnouncementsPage() {
       .filter((s) => {
         if (clubKey && normalizeSportKey(s.clubName) !== clubKey) return false;
         if (!sport) return true;
-        if (sportsMatch(s.sport, sport)) return true;
-        const cls = data.classes.find((c) => c.id === s.classId);
-        return sportsMatch(cls?.sport, sport);
+        if (studentHasSport(s, sport)) return true;
+        return studentClassIds(s).some((id) =>
+          sportsMatch(data.classes.find((c) => c.id === id)?.sport, sport),
+        );
       });
   }, [
     data.students,
@@ -165,10 +168,22 @@ export function AnnouncementsPage() {
   const athleteOptions = useMemo(() => {
     const classFilter = form.classIds ?? [];
     return scopedStudents
-      .filter((s) => (classFilter.length === 0 ? true : s.classId && classFilter.includes(s.classId)))
+      .filter((s) =>
+        classFilter.length === 0
+          ? true
+          : studentClassIds(s).some((id) => classFilter.includes(id)),
+      )
       .map((s) => {
-        const className = data.classes.find((c) => c.id === s.classId)?.name ?? '';
-        const sport = s.sport || data.classes.find((c) => c.id === s.classId)?.sport || '';
+        const className = studentClassIds(s)
+          .map((id) => data.classes.find((c) => c.id === id)?.name)
+          .filter(Boolean)
+          .join(', ');
+        const sport =
+          studentSports(s)[0] ||
+          studentClassIds(s)
+            .map((id) => data.classes.find((c) => c.id === id)?.sport)
+            .find(Boolean) ||
+          '';
         return {
           id: s.id,
           label: `${s.lastName} ${s.firstName}`.trim(),
@@ -214,7 +229,7 @@ export function AnnouncementsPage() {
         if (!clubKey) return true;
         return (data.students ?? []).some(
           (s) =>
-            s.classId === c.id &&
+            studentInClass(s, c.id) &&
             s.status !== 'inactive' &&
             normalizeSportKey(s.clubName) === clubKey,
         );
@@ -376,7 +391,7 @@ export function AnnouncementsPage() {
       if (clubKey) {
         const hasClubAthlete = (data.students ?? []).some(
           (s) =>
-            s.classId === id &&
+            studentInClass(s, id) &&
             s.status !== 'inactive' &&
             normalizeSportKey(s.clubName) === clubKey,
         );
@@ -391,9 +406,10 @@ export function AnnouncementsPage() {
         .filter((s) => {
           if (clubKey && normalizeSportKey(s.clubName) !== clubKey) return false;
           if (!sportKey) return true;
-          if (sportsMatch(s.sport, sportKey)) return true;
-          const cls = data.classes.find((c) => c.id === s.classId);
-          return sportsMatch(cls?.sport, sportKey);
+          if (studentHasSport(s, sportKey)) return true;
+          return studentClassIds(s).some((cid) =>
+            sportsMatch(data.classes.find((c) => c.id === cid)?.sport, sportKey),
+          );
         })
         .map((s) => s.id),
     );

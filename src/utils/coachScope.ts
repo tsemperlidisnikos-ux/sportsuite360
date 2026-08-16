@@ -40,7 +40,13 @@ export function visibleStudentsForSession(
 ): Student[] {
   const list = students ?? [];
   if (session?.role !== 'coach') return list;
-  return list.filter((s) => Boolean(s.classId && allowedClassIds.has(s.classId)));
+  return list.filter((s) => {
+    const ids = [
+      ...(s.classIds ?? []),
+      ...(s.classId ? [s.classId] : []),
+    ];
+    return ids.some((id) => allowedClassIds.has(id));
+  });
 }
 
 export function isClassInCoachScope(

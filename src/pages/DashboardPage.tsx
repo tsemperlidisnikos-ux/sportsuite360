@@ -13,6 +13,8 @@ import { formatAmkaForViewer } from '../utils/amkaAccess';
 import { localDateIso } from '../utils/dates';
 import { openAthleteHealthCardPreview } from '../utils/healthCardPreview';
 import { formatCurrency, studentStatusLabels } from '../utils/labels';
+import { studentClassIds, studentInClass } from '../utils/studentClasses';
+import { studentSports } from '../utils/studentSports';
 import { normalizeSportKey } from '../utils/sport';
 
 type SportBucket = { key: string; label: string };
@@ -29,10 +31,15 @@ function resolveStudentSport(
   student: Student,
   classSportById: Map<string, string>,
 ): string {
-  const own = student.sport?.trim();
+  const own = studentSports(student)[0];
   if (own) return own;
-  if (student.classId) {
-    return classSportById.get(student.classId)?.trim() || '';
+  const ids = [
+    ...(student.classIds ?? []),
+    ...(student.classId ? [student.classId] : []),
+  ];
+  for (const id of ids) {
+    const sport = classSportById.get(id)?.trim();
+    if (sport) return sport;
   }
   return '';
 }
@@ -378,7 +385,7 @@ export function DashboardPage() {
                       ) : (
                         classes.map((cls) => {
                           const count = data.students.filter(
-                            (s) => s.classId === cls.id && s.status !== 'inactive',
+                            (s) => studentInClass(s, cls.id) && s.status !== 'inactive',
                           ).length;
                           return (
                             <tr key={cls.id}>
@@ -411,14 +418,17 @@ export function DashboardPage() {
                 ) : (
                   <ul className="feed-list">
                     {athletes.map((student) => {
-                      const cls = data.classes.find((c) => c.id === student.classId);
+                      const names = studentClassIds(student)
+                        .map((id) => data.classes.find((c) => c.id === id)?.name)
+                        .filter(Boolean);
+                      const clsLabel = names.join(', ') || 'Χωρίς τμήμα';
                       return (
                         <li key={student.id}>
                           <div>
                             <strong>
                               {student.firstName} {student.lastName}
                             </strong>
-                            <span>{cls?.name ?? 'Χωρίς τμήμα'}</span>
+                            <span>{clsLabel}</span>
                           </div>
                           <span className={`badge badge-${student.status}`}>
                             {studentStatusLabels[student.status]}

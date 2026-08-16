@@ -1705,6 +1705,95 @@
   padding-bottom: 0.45rem;
 }
 
+.ap-class-multi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-subtle);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.ap-class-multi .ap-check {
+  padding-bottom: 0.25rem;
+}
+
+.ap-multi-dd {
+  position: relative;
+  width: 100%;
+}
+
+.ap-multi-dd-trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ap-multi-dd-trigger:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.ap-multi-dd-placeholder {
+  color: var(--color-text-muted);
+  font-weight: 550;
+}
+
+.ap-multi-dd-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 28px rgba(15, 27, 45, 0.12);
+  padding: 0.4rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ap-multi-dd-option {
+  padding: 0.25rem 0.15rem;
+}
+
+.ap-primary-class {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.ap-primary-class > span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.ap-muted {
+  margin: 0.35rem 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
 .ap-season-header {
   display: flex;
   align-items: center;

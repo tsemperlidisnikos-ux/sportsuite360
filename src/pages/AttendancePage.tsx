@@ -12,6 +12,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { useAppData } from '../hooks/useAppData';
 import { visibleClassesForSession } from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
+import { studentInClass } from '../utils/studentClasses';
 
 function shiftDate(iso: string, days: number): string {
   const d = new Date(`${iso}T12:00:00`);
@@ -60,7 +61,7 @@ export function AttendancePage() {
   const students = useMemo(
     () =>
       data.students
-        .filter((s) => s.classId === activeClassId && s.status !== 'inactive')
+        .filter((s) => studentInClass(s, activeClassId) && s.status !== 'inactive')
         .sort((a, b) =>
           `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'el'),
         ),

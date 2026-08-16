@@ -8,6 +8,8 @@ import type {
 import type { AnnouncementInput } from '../../schemas';
 import { sportsMatch } from '../../utils/coachScope';
 import { normalizeSportKey } from '../../utils/sport';
+import { studentClassIds, studentInClass } from '../../utils/studentClasses';
+import { studentHasSport } from '../../utils/studentSports';
 import { sendClubEmail } from './emailService';
 
 function uniqueEmails(emails: Array<string | undefined | null>): string[] {
@@ -36,9 +38,10 @@ function studentMatchesScope(
   const club = (input.teamsLabel ?? '').trim();
   if (club && normalizeSportKey(student.clubName) !== normalizeSportKey(club)) return false;
   if (!sport) return true;
-  if (sportsMatch(student.sport, sport)) return true;
-  const cls = data.classes.find((c) => c.id === student.classId);
-  return sportsMatch(cls?.sport, sport);
+  if (studentHasSport(student, sport)) return true;
+  return studentClassIds(student).some((id) =>
+    sportsMatch(data.classes.find((c) => c.id === id)?.sport, sport),
+  );
 }
 
 function athleteIdsForAnnouncement(
@@ -57,11 +60,15 @@ function athleteIdsForAnnouncement(
     const classIds = input.classIds ?? [];
     if (classIds.length > 0) {
       ids = data.students
-        .filter((s) => s.classId && classIds.includes(s.classId) && s.status !== 'inactive')
+        .filter(
+          (s) =>
+            s.status !== 'inactive' &&
+            studentClassIds(s).some((id) => classIds.includes(id)),
+        )
         .map((s) => s.id);
     } else if (input.targetType === 'team' && input.targetId) {
       ids = data.students
-        .filter((s) => s.classId === input.targetId && s.status !== 'inactive')
+        .filter((s) => studentInClass(s, input.targetId) && s.status !== 'inactive')
         .map((s) => s.id);
     } else {
       ids = data.students.filter((s) => s.status !== 'inactive').map((s) => s.id);

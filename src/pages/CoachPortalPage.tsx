@@ -19,6 +19,7 @@ import {
 } from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 import { dayNames, formatDate } from '../utils/labels';
+import { studentInAnyClass, studentInClass } from '../utils/studentClasses';
 
 function initials(name: string): string {
   return name
@@ -70,7 +71,7 @@ export function CoachPortalPage() {
   const roster = useMemo(
     () =>
       (data.students ?? []).filter(
-        (s) => s.classId === activeClassId && s.status !== 'inactive',
+        (s) => studentInClass(s, activeClassId) && s.status !== 'inactive',
       ),
     [data.students, activeClassId],
   );
@@ -78,7 +79,7 @@ export function CoachPortalPage() {
   const athleteCount = useMemo(
     () =>
       (data.students ?? []).filter(
-        (s) => s.classId && classIds.has(s.classId) && s.status !== 'inactive',
+        (s) => studentInAnyClass(s, classIds) && s.status !== 'inactive',
       ).length,
     [data.students, classIds],
   );

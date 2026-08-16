@@ -42,10 +42,10 @@ import { canAccessAmka, canAccessMedical, formatAmkaForViewer } from '../utils/a
 import { announcementVisibleToAthlete } from '../utils/announcementAudience';
 import {
   classIdsOf,
-  isClassInCoachScope,
   visibleClassesForSession,
 } from '../utils/coachScope';
-
+import { studentClassIds, studentInAnyClass } from '../utils/studentClasses';
+import { studentSports } from '../utils/studentSports';
 type ProfileTab =
   | 'personal'
   | 'guardians'
@@ -165,6 +165,7 @@ function toForm(student: Student): StudentInput {
     guardianName: student.guardianName,
     guardianPhone: student.guardianPhone,
     classId: student.classId,
+    classIds: studentClassIds(student),
     status: student.status,
     monthlyFee: student.monthlyFee,
     amka: student.amka ?? '',
@@ -180,6 +181,7 @@ function toForm(student: Student): StudentInput {
     clubName: student.clubName ?? '',
     registrationNumber: student.registrationNumber ?? '',
     sport: student.sport ?? '',
+    sports: studentSports(student),
     healthCardStatus: student.healthCardStatus ?? '',
     healthCard: student.healthCard ?? student.healthCardStatus === 'Έγκυρη',
     healthCardExpires: student.healthCardExpires ?? '',
@@ -267,6 +269,73 @@ function ApCard({
       </div>
       {children}
     </section>
+  );
+}
+
+function ApMultiCheckDropdown({
+  summary,
+  options,
+  disabled = false,
+  emptyText = 'Δεν υπάρχουν επιλογές.',
+  placeholder = 'Επιλογή…',
+}: {
+  summary: string;
+  options: Array<{
+    value: string;
+    label: string;
+    checked: boolean;
+    onToggle: (checked: boolean) => void;
+  }>;
+  disabled?: boolean;
+  emptyText?: string;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  return (
+    <div className={`ap-multi-dd ${open ? 'is-open' : ''}`} ref={rootRef}>
+      <button
+        type="button"
+        className="ap-multi-dd-trigger"
+        disabled={disabled}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className={summary ? undefined : 'ap-multi-dd-placeholder'}>
+          {summary || placeholder}
+        </span>
+        <ChevronDown size={14} aria-hidden />
+      </button>
+      {open ? (
+        <div className="ap-multi-dd-panel" role="listbox" aria-multiselectable>
+          {options.length === 0 ? (
+            <p className="ap-muted">{emptyText}</p>
+          ) : (
+            options.map((option) => (
+              <label key={option.value} className="ap-check ap-multi-dd-option">
+                <input
+                  type="checkbox"
+                  checked={option.checked}
+                  disabled={disabled}
+                  onChange={(e) => option.onToggle(e.target.checked)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -414,7 +483,7 @@ export function AthleteProfilePage() {
   }, [data.associations, form?.clubName]);
 
   const sportOptions = useMemo(() => {
-    const options: Array<{ value: string; label: string }> = [{ value: '', label: '—' }];
+    const options: Array<{ value: string; label: string }> = [];
     const seen = new Set<string>();
     for (const sport of data.sports ?? []) {
       if (sport.active === false) continue;
@@ -423,12 +492,14 @@ export function AthleteProfilePage() {
       seen.add(name.toLowerCase());
       options.push({ value: name, label: name });
     }
-    const current = (form?.sport ?? '').trim();
-    if (current && !seen.has(current.toLowerCase())) {
-      options.push({ value: current, label: current });
+    for (const current of studentSports(form ?? { sport: '', sports: [] })) {
+      if (!seen.has(current.toLowerCase())) {
+        seen.add(current.toLowerCase());
+        options.push({ value: current, label: current });
+      }
     }
     return options;
-  }, [data.sports, form?.sport]);
+  }, [data.sports, form?.sport, form?.sports]);
 
   const coachOptions = useMemo(
     () => [
@@ -532,14 +603,17 @@ export function AthleteProfilePage() {
 
   const athleteAnnouncements = useMemo(() => {
     if (!student) return [];
-    const classSport = student.classId
-      ? data.classes.find((c) => c.id === student.classId)?.sport
-      : null;
+    const ids = studentClassIds(student);
+    const classSport =
+      ids
+        .map((id) => data.classes.find((c) => c.id === id)?.sport)
+        .find(Boolean) || null;
     return (data.announcements ?? [])
       .filter((a) =>
         announcementVisibleToAthlete(a, {
           athleteId: student.id,
           classId: student.classId,
+          classIds: ids,
           sport: student.sport,
           clubName: student.clubName,
           classSport,
@@ -562,7 +636,7 @@ export function AthleteProfilePage() {
   if (
     isCoach &&
     student &&
-    !isClassInCoachScope(student.classId, allowedClassIds, true)
+    !studentInAnyClass(student, allowedClassIds)
   ) {
     return <Navigate to="/athletes" replace />;
   }
@@ -1010,8 +1084,14 @@ export function AthleteProfilePage() {
     </select>
   );
 
+  const selectedClassIds = studentClassIds(form);
+  const selectedSports = studentSports(form);
+  const sportLabel = selectedSports.join(', ') || '—';
   const classLabel =
-    data.classes.find((c) => c.id === form.classId)?.name || '—';
+    selectedClassIds
+      .map((id) => data.classes.find((c) => c.id === id)?.name)
+      .filter(Boolean)
+      .join(', ') || '—';
   const classCoachId = data.classes.find((c) => c.id === form.classId)?.coachId;
   const linkedCoach = data.coaches.find((c) => c.id === classCoachId);
   const coachDisplay =
@@ -1095,6 +1175,10 @@ export function AthleteProfilePage() {
               <div className="ap-hero-stat">
                 <Shield size={16} aria-hidden />
                 <span>ΑΜΚΑ {formatAmkaForViewer(form.amka, amkaAllowed)}</span>
+              </div>
+              <div className="ap-hero-stat">
+                <TrendingUp size={16} aria-hidden />
+                <span>{sportLabel}</span>
               </div>
               <div className="ap-hero-stat">
                 <Users size={16} aria-hidden />
@@ -1253,7 +1337,7 @@ export function AthleteProfilePage() {
                   <ApField label="Τηλέφωνο αθλητή">
                     {textInput(form.phone, (v) => setField('phone', v), { type: 'tel' })}
                   </ApField>
-                  <ApField label="Διεύθυνση" className="ap-span-2">
+                  <ApField label="Διεύθυνση">
                     {textInput(form.address, (v) => setField('address', v), { upper: true })}
                   </ApField>
                   <ApField label="Τ.Κ.">
@@ -1262,7 +1346,7 @@ export function AthleteProfilePage() {
                   <ApField label="Πόλη">
                     {textInput(form.city, (v) => setField('city', v), { upper: true })}
                   </ApField>
-                  <ApField label="Νομός" className="ap-span-2">
+                  <ApField label="Νομός">
                     {textInput(form.county, (v) => setField('county', v), { upper: true })}
                   </ApField>
                 </div>
@@ -1314,20 +1398,110 @@ export function AthleteProfilePage() {
             <div className="ap-col">
               <ApCard title="Αθλητική Πληροφορία">
                 <div className="ap-grid-2">
-                  <ApField label="Τμήμα" className="ap-span-2">
-                    <select
-                      className={inputClass}
-                      value={form.classId ?? ''}
+                  <ApField label="Άθλημα">
+                    <ApMultiCheckDropdown
+                      summary={studentSports(form).join(', ')}
+                      placeholder="Επιλογή αθλήματος…"
+                      emptyText="Δεν υπάρχουν αθλήματα. Πρόσθεσέ τα από Ρυθμίσεις."
                       disabled={disabled}
-                      onChange={(e) => setField('classId', e.target.value || null)}
-                    >
-                      <option value="">Δεν έχει οριστεί σε τμήμα</option>
-                      {visibleClasses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={sportOptions.map((o) => ({
+                        value: o.value,
+                        label: o.label,
+                        checked: studentSports(form).some(
+                          (s) => s.toLowerCase() === o.value.toLowerCase(),
+                        ),
+                        onToggle: (checked) => {
+                          const current = studentSports(form);
+                          const next = checked
+                            ? [...current, o.value]
+                            : current.filter(
+                                (s) => s.toLowerCase() !== o.value.toLowerCase(),
+                              );
+                          const unique = [
+                            ...new Set(next.map((s) => s.trim()).filter(Boolean)),
+                          ];
+                          setField('sports', unique);
+                          setField(
+                            'sport',
+                            form.sport &&
+                              unique.some(
+                                (s) =>
+                                  s.toLowerCase() === form.sport!.trim().toLowerCase(),
+                              )
+                              ? form.sport
+                              : unique[0] ?? '',
+                          );
+                        },
+                      }))}
+                    />
+                    {studentSports(form).length > 1 ? (
+                      <div className="ap-primary-class">
+                        <span>Κύριο άθλημα</span>
+                        <select
+                          className={inputClass}
+                          value={form.sport ?? ''}
+                          disabled={disabled}
+                          onChange={(e) => setField('sport', e.target.value)}
+                        >
+                          {studentSports(form).map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
+                  </ApField>
+                  <ApField label="Τμήμα">
+                    <ApMultiCheckDropdown
+                      summary={
+                        selectedClassIds
+                          .map((id) => data.classes.find((c) => c.id === id)?.name)
+                          .filter(Boolean)
+                          .join(', ') || ''
+                      }
+                      placeholder="Επιλογή τμήματος…"
+                      emptyText="Δεν υπάρχουν διαθέσιμα τμήματα."
+                      disabled={disabled}
+                      options={visibleClasses.map((c) => ({
+                        value: c.id,
+                        label: c.ageGroup ? `${c.name} · ${c.ageGroup}` : c.name,
+                        checked: selectedClassIds.includes(c.id),
+                        onToggle: (checked) => {
+                          const next = checked
+                            ? [...selectedClassIds, c.id]
+                            : selectedClassIds.filter((id) => id !== c.id);
+                          const unique = [...new Set(next)];
+                          setField('classIds', unique);
+                          setField(
+                            'classId',
+                            form.classId && unique.includes(form.classId)
+                              ? form.classId
+                              : unique[0] ?? null,
+                          );
+                        },
+                      }))}
+                    />
+                    {selectedClassIds.length > 1 ? (
+                      <div className="ap-primary-class">
+                        <span>Κύριο τμήμα</span>
+                        <select
+                          className={inputClass}
+                          value={form.classId ?? ''}
+                          disabled={disabled}
+                          onChange={(e) => setField('classId', e.target.value || null)}
+                        >
+                          {selectedClassIds.map((id) => {
+                            const cls = data.classes.find((c) => c.id === id);
+                            return (
+                              <option key={id} value={id}>
+                                {cls?.name || id}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    ) : null}
                   </ApField>
                   <ApField label="Ημ/νία έναρξης">
                     {textInput(form.athleticStartDate, (v) => setField('athleticStartDate', v), {
@@ -1558,18 +1732,41 @@ export function AthleteProfilePage() {
                 ) : null}
               </ApField>
               <ApField label="Άθλημα">
-                <select
-                  className={inputClass}
-                  value={form.sport ?? ''}
+                <ApMultiCheckDropdown
+                  summary={studentSports(form).join(', ')}
+                  placeholder="Επιλογή αθλήματος…"
+                  emptyText="Δεν υπάρχουν αθλήματα."
                   disabled={disabled}
-                  onChange={(e) => setField('sport', e.target.value)}
-                >
-                  {sportOptions.map((o) => (
-                    <option key={o.value || 'empty'} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  options={sportOptions.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                    checked: studentSports(form).some(
+                      (s) => s.toLowerCase() === o.value.toLowerCase(),
+                    ),
+                    onToggle: (checked) => {
+                      const current = studentSports(form);
+                      const next = checked
+                        ? [...current, o.value]
+                        : current.filter(
+                            (s) => s.toLowerCase() !== o.value.toLowerCase(),
+                          );
+                      const unique = [
+                        ...new Set(next.map((s) => s.trim()).filter(Boolean)),
+                      ];
+                      setField('sports', unique);
+                      setField(
+                        'sport',
+                        form.sport &&
+                          unique.some(
+                            (s) =>
+                              s.toLowerCase() === form.sport!.trim().toLowerCase(),
+                          )
+                          ? form.sport
+                          : unique[0] ?? '',
+                      );
+                    },
+                  }))}
+                />
               </ApField>
               <ApField label="Φύλο">
                 <select

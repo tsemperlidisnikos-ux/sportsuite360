@@ -20,6 +20,7 @@ import {
 import type { AppData, FeeChargeTemplate } from '../../types';
 import { appDataWeight } from '../../data/mediaStrip';
 import { localDateTimeIso } from '../../utils/dates';
+import { studentClassIds } from '../../utils/studentClasses';
 import { pushAccountBundle } from './accountSyncService';
 import { ensureLegacyPaymentsMatchedAllClubs } from './paymentMatchingService';
 
@@ -534,8 +535,8 @@ function checkAppData(clubId: string, clubName: string, data: AppData): Diagnost
   const coachIds = new Set(data.coaches.map((c) => c.id));
   const accountIds = new Set((data.cashAccounts ?? []).map((a) => a.id));
 
-  const orphanStudents = data.students.filter(
-    (s) => s.classId && !classIds.has(s.classId),
+  const orphanStudents = data.students.filter((s) =>
+    studentClassIds(s).some((id) => !classIds.has(id)),
   ).length;
   if (orphanStudents > 0) {
     out.push(

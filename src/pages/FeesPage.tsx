@@ -16,6 +16,7 @@ import type { FeeChargeTemplate } from '../types';
 import { formatCurrency, formatDate } from '../utils/labels';
 import { normalizeSportKey } from '../utils/sport';
 import { canAccessAmka, formatAmkaForViewer } from '../utils/amkaAccess';
+import { studentClassIds } from '../utils/studentClasses';
 
 type Panel = 'list' | 'createCharges' | 'reminders' | 'newCharge';
 
@@ -149,7 +150,10 @@ export function FeesPage() {
           athlete,
           balance,
           lastPayment,
-          cls: data.classes.find((c) => c.id === athlete.classId),
+          clsNames: studentClassIds(athlete)
+            .map((id) => data.classes.find((c) => c.id === id)?.name)
+            .filter(Boolean)
+            .join(', '),
         };
       })
       .sort((a, b) => b.balance - a.balance);
@@ -477,7 +481,7 @@ export function FeesPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ athlete, balance, lastPayment, cls }) => (
+            {rows.map(({ athlete, balance, lastPayment, clsNames }) => (
               <tr key={athlete.id}>
                 <td>
                   <strong>
@@ -487,7 +491,7 @@ export function FeesPage() {
                     {formatAmkaForViewer(athlete.amka, canAccessAmka(session?.role))}
                   </div>
                 </td>
-                <td>{cls?.name ?? '—'}</td>
+                <td>{clsNames || '—'}</td>
                 <td>{formatCurrency(athlete.monthlyFee)}</td>
                 <td>
                   <span className={balance > 0 ? 'badge badge-overdue' : 'badge badge-paid'}>

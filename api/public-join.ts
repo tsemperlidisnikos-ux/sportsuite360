@@ -95,9 +95,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cls = (payload.classes as Array<{ id: string; maxStudents?: number }>).find(
       (c) => c.id === classId,
     );
-    const activeCount = (payload.students as Array<{ classId?: string | null; status?: string }>).filter(
-      (s) => s.classId === classId && s.status !== 'inactive',
-    ).length;
+    const activeCount = (
+      payload.students as Array<{
+        classId?: string | null;
+        classIds?: string[];
+        status?: string;
+      }>
+    ).filter((s) => {
+      if (s.status === 'inactive') return false;
+      const ids = [...(s.classIds ?? []), ...(s.classId ? [s.classId] : [])];
+      return ids.includes(classId);
+    }).length;
     const max = cls?.maxStudents ?? 0;
     if (max > 0 && activeCount >= max && club.allowWaitlist) {
       kind = 'waitlist';
@@ -128,6 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       guardianName,
       guardianPhone,
       classId,
+      classIds: classId ? [classId] : [],
       status: kind === 'trial' ? 'trial' : 'active',
       monthlyFee: cls?.monthlyFee ?? 0,
       enrolledAt: createdAt,

@@ -19,6 +19,8 @@ import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 import { localDateIso } from '../utils/dates';
 import { canAccessAmka } from '../utils/amkaAccess';
 import { sportsMatch } from '../utils/coachScope';
+import { studentClassIds, studentInClass } from '../utils/studentClasses';
+import { studentHasSport } from '../utils/studentSports';
 
 const COMPARE_OPS = ['=', '<', '>', '<=', '>='] as const;
 
@@ -87,14 +89,27 @@ function monthsAgoIso(months: number): string {
 }
 
 function studentMatchesSportFilter(
-  student: Pick<Student, 'sport' | 'classId'>,
+  student: Pick<Student, 'sport' | 'sports' | 'classId' | 'classIds'>,
   sport: string,
   classes: AcademyClass[],
 ): boolean {
   if (!sport.trim()) return true;
-  if (sportsMatch(student.sport, sport)) return true;
-  const cls = classes.find((c) => c.id === student.classId);
-  return sportsMatch(cls?.sport, sport);
+  if (studentHasSport(student, sport)) return true;
+  return studentClassIds(student).some((id) =>
+    sportsMatch(classes.find((c) => c.id === id)?.sport, sport),
+  );
+}
+
+function studentClassNames(
+  student: Pick<Student, 'classId' | 'classIds'>,
+  classes: AcademyClass[],
+): string {
+  return (
+    studentClassIds(student)
+      .map((id) => classes.find((c) => c.id === id)?.name)
+      .filter(Boolean)
+      .join(', ') || ''
+  );
 }
 
 function FilterRow({
@@ -520,7 +535,7 @@ function AthleteRegistrySection() {
     mapAthleteRegistryRow(
       athlete,
       index,
-      data.classes.find((c) => c.id === athlete.classId)?.name ?? '',
+      studentClassNames(athlete, data.classes),
       { revealAmka: canAccessAmka(getSession()?.role) },
     ),
   );
@@ -718,7 +733,7 @@ function AthleteBalancesSection() {
     const next = data.students
       .filter((s) => {
         if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
-        if (teamId && s.classId !== teamId) return false;
+        if (teamId && !studentInClass(s, teamId)) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
         if (active === 'no' && s.status === 'active') return false;
@@ -761,7 +776,7 @@ function AthleteBalancesSection() {
           index: String(index + 1),
           last_name: s.lastName,
           first_name: s.firstName,
-          team: data.classes.find((c) => c.id === s.classId)?.name ?? '',
+          team: studentClassNames(s, data.classes),
           balance: `${(charge - payment).toFixed(2)} €`,
         };
       });
@@ -863,7 +878,7 @@ function AttendanceLogSection() {
     const next = data.students
       .filter((s) => {
         if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
-        if (teamId && s.classId !== teamId) return false;
+        if (teamId && !studentInClass(s, teamId)) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
         if (active === 'no' && s.status === 'active') return false;
@@ -1045,7 +1060,7 @@ function TrainingAttendanceSheetSection() {
   function runSearch() {
     if (!teamId) return;
     const athletes = data.students.filter(
-      (s) => s.classId === teamId && studentMatchesSportFilter(s, sport, data.classes),
+      (s) => studentInClass(s, teamId) && studentMatchesSportFilter(s, sport, data.classes),
     );
     setRows(
       athletes.map((s, index) => ({
@@ -1343,7 +1358,7 @@ function MedicalExpirySection() {
     const next = data.students
       .filter((s) => {
         if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
-        if (teamId && s.classId !== teamId) return false;
+        if (teamId && !studentInClass(s, teamId)) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
         if (active === 'no' && s.status === 'active') return false;
@@ -1358,7 +1373,7 @@ function MedicalExpirySection() {
         last_name: s.lastName,
         first_name: s.firstName,
         status: s.healthCardStatus || (s.healthCard ? 'Έγκυρη' : 'Χωρίς'),
-        team: data.classes.find((c) => c.id === s.classId)?.name ?? '',
+        team: studentClassNames(s, data.classes),
       }));
     void refDate;
     setRows(next);
@@ -1471,7 +1486,7 @@ function PaymentsCollectionsSection() {
         if (max != null && !Number.isNaN(max) && t.amount > max) return false;
 
         const student = data.students.find((s) => s.id === t.athleteId);
-        if (teamId && (!student || student.classId !== teamId)) return false;
+        if (teamId && (!student || !studentInClass(student, teamId))) return false;
         if (sport && student && !studentMatchesSportFilter(student, sport, data.classes)) {
           return false;
         }
@@ -1659,7 +1674,7 @@ function DebtorsSection() {
       .filter(({ student: s, balance }) => {
         if (balance <= 0) return false;
         if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
-        if (teamId && s.classId !== teamId) return false;
+        if (teamId && !studentInClass(s, teamId)) return false;
         if (gender && s.gender !== gender) return false;
         if (active === 'yes' && s.status !== 'active') return false;
         if (active === 'no' && s.status === 'active') return false;
@@ -2025,7 +2040,7 @@ function SimpleReportSection({
         data.students
           .filter((s) => {
             if (!studentMatchesSportFilter(s, sport, data.classes)) return false;
-            if (teamId && s.classId !== teamId) return false;
+            if (teamId && !studentInClass(s, teamId)) return false;
             return true;
           })
           .map((s, i) => ({
@@ -2034,7 +2049,7 @@ function SimpleReportSection({
             last_name: s.lastName,
             first_name: s.firstName,
             health: s.healthCard ? 'Ναι' : 'Όχι',
-            team: data.classes.find((c) => c.id === s.classId)?.name ?? '',
+            team: studentClassNames(s, data.classes),
           })),
       );
     } else if (title === 'Οικονομική αναφορά') {

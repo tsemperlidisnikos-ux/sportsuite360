@@ -3,6 +3,8 @@ import { createId, getData, mutateData } from '../../data/repository';
 import { studentSchema, type StudentInput } from '../../schemas';
 import type { Student } from '../../types';
 import { localDateIso } from '../../utils/dates';
+import { normalizeStudentClasses } from '../../utils/studentClasses';
+import { normalizeStudentSports } from '../../utils/studentSports';
 
 export async function getStudents() {
   return apiClient(() => getData().students);
@@ -11,8 +13,12 @@ export async function getStudents() {
 export async function createStudent(input: StudentInput) {
   return apiClient(() => {
     const parsed = studentSchema.parse(input);
+    const classes = normalizeStudentClasses(parsed.classIds, parsed.classId);
+    const sports = normalizeStudentSports(parsed.sports, parsed.sport);
     const student: Student = {
       ...parsed,
+      ...classes,
+      ...sports,
       id: createId('stu'),
       enrolledAt: localDateIso(),
     };
@@ -26,11 +32,13 @@ export async function createStudent(input: StudentInput) {
 export async function updateStudent(id: string, input: StudentInput) {
   return apiClient(() => {
     const parsed = studentSchema.parse(input);
+    const classes = normalizeStudentClasses(parsed.classIds, parsed.classId);
+    const sports = normalizeStudentSports(parsed.sports, parsed.sport);
     let updated: Student | undefined;
     mutateData((data) => {
       const index = data.students.findIndex((s) => s.id === id);
       if (index === -1) throw new Error('Ο αθλητής δεν βρέθηκε');
-      updated = { ...data.students[index], ...parsed };
+      updated = { ...data.students[index], ...parsed, ...classes, ...sports };
       data.students[index] = updated;
     });
     return updated!;

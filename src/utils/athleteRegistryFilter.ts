@@ -1,6 +1,8 @@
 import type { AcademyClass, AttendanceRecord, Student } from '../types';
 import { maskAmka } from './amkaAccess';
 import { normalizeSportKey } from './sport';
+import { studentClassIds, studentInClass } from './studentClasses';
+import { studentHasSport } from './studentSports';
 
 export type TriState = '' | 'yes' | 'no';
 
@@ -123,7 +125,7 @@ export function filterAthleteRegistry(
     if (createdKey != null && fromKey != null && createdKey < fromKey) return false;
     if (createdKey != null && refKey != null && createdKey > refKey) return false;
 
-    if (filters.teamId && athlete.classId !== filters.teamId) return false;
+    if (filters.teamId && !studentInClass(athlete, filters.teamId)) return false;
 
     if (filters.birthYear) {
       const year = parseDate(athlete.birthDate)?.getFullYear();
@@ -155,10 +157,12 @@ export function filterAthleteRegistry(
     }
 
     if (filters.sport) {
-      const classSport = classes.find((c) => c.id === athlete.classId)?.sport;
+      const classSports = studentClassIds(athlete).map(
+        (id) => classes.find((c) => c.id === id)?.sport,
+      );
       if (
-        !sportsAreEquivalent(athlete.sport, filters.sport) &&
-        !sportsAreEquivalent(classSport, filters.sport)
+        !studentHasSport(athlete, filters.sport) &&
+        !classSports.some((classSport) => sportsAreEquivalent(classSport, filters.sport))
       ) {
         return false;
       }

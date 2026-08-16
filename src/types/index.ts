@@ -41,7 +41,10 @@ export interface Student {
   birthDate: string;
   guardianName: string;
   guardianPhone: string;
+  /** Κύριο τμήμα (εμφάνιση / προεπιλογή). */
   classId: string | null;
+  /** Όλα τα τμήματα στα οποία ανήκει ο αθλητής. */
+  classIds?: string[];
   status: StudentStatus;
   monthlyFee: number;
   enrolledAt: string;
@@ -58,7 +61,10 @@ export interface Student {
   city?: string;
   clubName?: string;
   registrationNumber?: string;
+  /** Κύριο άθλημα (εμφάνιση / προεπιλογή). */
   sport?: string;
+  /** Όλα τα αθλήματα του αθλητή. */
+  sports?: string[];
   healthCardStatus?: string;
   healthCard?: boolean;
   /** Λήξη ιατρικής κάρτας / πιστοποιητικού (YYYY-MM-DD). */
