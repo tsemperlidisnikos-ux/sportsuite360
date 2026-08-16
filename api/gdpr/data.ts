@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       durable: isDurableStoreEnabled(),
       exportedAt: new Date().toISOString(),
       students: matched,
-      transactions: (payload.transactions ?? []).filter((t) => ids.has(String(t.studentId))),
+      transactions: (payload.transactions ?? []).filter((t) => ids.has(String(t.athleteId))),
       attendance: (payload.attendance ?? []).filter((a) => ids.has(String(a.studentId))),
       parentLinks: (payload.parentLinks ?? []).filter((l) => ids.has(String(l.athleteId))),
       progressReports: (payload.progressReports ?? []).filter((r) =>

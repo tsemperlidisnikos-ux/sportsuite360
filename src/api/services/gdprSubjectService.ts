@@ -58,7 +58,7 @@ export async function exportSubjectData(input: {
         ...s,
         // never export encrypted blobs as "secret" — still include fields user owns
       })),
-      transactions: data.transactions.filter((t) => athleteIds.has(t.studentId)),
+      transactions: data.transactions.filter((t) => athleteIds.has(t.athleteId)),
       attendance: data.attendance.filter((a) => athleteIds.has(a.studentId)),
       parentLinks: (data.parentLinks ?? []).filter((l) => athleteIds.has(l.athleteId)),
       progressReports: (data.progressReports ?? []).filter((r) => athleteIds.has(r.athleteId)),
