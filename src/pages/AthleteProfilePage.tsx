@@ -29,7 +29,8 @@ import { buildHealthCardPdf } from '../utils/healthCardPdf';
 import { sizeChartOptGroups } from '../utils/sizeChartOptions';
 import { formatDate } from '../utils/labels';
 import { localDateIso } from '../utils/dates';
-import { getPreviewClubId } from '../platform/platformConfig';
+import { getPreviewClubId, getAppLogoUrl, loadPlatformConfig } from '../platform/platformConfig';
+import { buildAthleteIdCardUrl } from '../utils/athleteIdCard';
 import {
   AMKA_CONSENT_CHECKBOX,
   AMKA_CONSENT_LABEL,
@@ -251,14 +252,19 @@ function ApCard({
   title,
   children,
   className = '',
+  actions,
 }: {
   title: string;
   children: ReactNode;
   className?: string;
+  actions?: ReactNode;
 }) {
   return (
     <section className={`ap-card ${className}`.trim()}>
-      <h3 className="ap-card-title">{title}</h3>
+      <div className="ap-card-head">
+        <h3 className="ap-card-title">{title}</h3>
+        {actions ? <div className="ap-card-actions">{actions}</div> : null}
+      </div>
       {children}
     </section>
   );
@@ -436,6 +442,42 @@ export function AthleteProfilePage() {
     ],
     [data.coaches],
   );
+
+  const profileClubId = getPreviewClubId() ?? session?.clubId ?? null;
+  const profileClub = useMemo(
+    () => (profileClubId ? getClubById(profileClubId) : ensureSessionClub(session)),
+    [profileClubId, session],
+  );
+
+  const qrSeasonLabel = useMemo(() => {
+    const seasons = loadPlatformConfig().seasons ?? [];
+    if (seasons.length > 0) return seasons[seasons.length - 1]!;
+    return `${seasonStart}–${String(seasonStart + 1).slice(-2)}`;
+  }, [seasonStart]);
+
+  const clubLogoUrl = useMemo(
+    () => profileClub?.logoUrl?.trim() || getAppLogoUrl() || null,
+    [profileClub?.logoUrl],
+  );
+
+  const athleteQrPayload = useMemo(() => {
+    if (!student || !form) return '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return buildAthleteIdCardUrl(origin, {
+      v: 1,
+      clubName: profileClub?.name || form.clubName || 'Σύλλογος',
+      season: qrSeasonLabel,
+      lastName: form.lastName,
+      firstName: form.firstName,
+      birthDate: form.birthDate,
+      logoUrl: clubLogoUrl,
+    });
+  }, [student, form, profileClub?.name, qrSeasonLabel, clubLogoUrl]);
+
+  const athleteQrImageUrl = useMemo(() => {
+    if (!athleteQrPayload) return '';
+    return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(athleteQrPayload)}`;
+  }, [athleteQrPayload]);
 
   const financeRows = useMemo(() => {
     if (!student) return [];
@@ -628,6 +670,226 @@ export function AthleteProfilePage() {
       setEditing(true);
     };
     reader.readAsDataURL(file);
+  }
+
+  function openAthleteQrCardPreview() {
+    if (!form) return;
+
+    const clubName = profileClub?.name || form.clubName || 'Σύλλογος';
+    const lastName = form.lastName || '—';
+    const firstName = form.firstName || '—';
+    const birthLabel = form.birthDate ? formatDate(form.birthDate) : '—';
+    const season = qrSeasonLabel;
+    const logo = clubLogoUrl || '';
+    const qrSrc = athleteQrImageUrl || '';
+    const initials = clubName.trim().slice(0, 2).toUpperCase() || 'SS';
+
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const popupWidth = Math.round(screen.availWidth * 0.6);
+    const popupHeight = Math.round(screen.availHeight * 0.75);
+    const popupLeft = Math.max(0, Math.round((screen.availWidth - popupWidth) / 2));
+    const popupTop = Math.max(0, Math.round((screen.availHeight - popupHeight) / 2));
+    const features = [
+      'popup=yes',
+      'noopener=no',
+      'noreferrer=no',
+      `width=${popupWidth}`,
+      `height=${popupHeight}`,
+      `left=${popupLeft}`,
+      `top=${popupTop}`,
+    ].join(',');
+
+    const previewWindow = window.open('', 'athleteQrCardPreview', features);
+    if (!previewWindow) {
+      setError('Επίτρεψε τα pop-up για την προεπισκόπηση QR κάρτας');
+      return;
+    }
+
+    try {
+      previewWindow.resizeTo(popupWidth, popupHeight);
+      previewWindow.moveTo(popupLeft, popupTop);
+    } catch {
+      // ignore — some browsers block resize/move
+    }
+
+    previewWindow.opener = null;
+    const logoHtml = logo
+      ? `<img class="logo" src="${escapeHtml(logo)}" alt="${escapeHtml(clubName)}" />`
+      : `<div class="logo-fallback" aria-hidden="true">${escapeHtml(initials)}</div>`;
+    const qrHtml = qrSrc
+      ? `<img class="qr" src="${escapeHtml(qrSrc)}" alt="QR κάρτα" />`
+      : `<div class="qr" aria-hidden="true"></div>`;
+
+    previewWindow.document.write(`<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Προεπισκόπηση QR κάρτας</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(180deg, #f0f4f8 0%, #e4ebf2 100%);
+      color: #0f1b2d;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #fff;
+      border-bottom: 1px solid #d7dee8;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    header strong { font-size: 0.95rem; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button {
+      font: inherit;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      cursor: pointer;
+      border: 1px solid #c9d4e0;
+      background: #f5f7fa;
+      color: #0f1b2d;
+    }
+    button.primary {
+      background: #1e4a6e;
+      border-color: #1e4a6e;
+      color: #fff;
+    }
+    main {
+      display: grid;
+      place-items: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .card {
+      width: min(400px, 100%);
+      background: #fff;
+      border: 1px solid #d7dee8;
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem 1.25rem;
+      box-shadow: 0 8px 24px rgba(15, 27, 45, 0.08);
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      margin-bottom: 0.95rem;
+    }
+    .logo, .logo-fallback {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #f5f7fa;
+      flex-shrink: 0;
+      object-fit: contain;
+    }
+    .logo-fallback {
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #5b6b7c;
+    }
+    .heading strong {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #0f1b2d;
+    }
+    .heading span {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.85rem;
+      color: #5b6b7c;
+    }
+    .body {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 1rem;
+      align-items: center;
+    }
+    .qr {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+      background: #f5f7fa;
+      object-fit: contain;
+    }
+    .meta { display: grid; gap: 0.7rem; }
+    .meta span {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #7a8796;
+    }
+    .meta strong {
+      display: block;
+      margin-top: 0.15rem;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #0f1b2d;
+    }
+    @media print {
+      header { display: none !important; }
+      html, body { background: #fff; }
+      main { padding: 0; }
+      .card { box-shadow: none; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Προεπισκόπηση QR κάρτας</strong>
+    <div class="actions">
+      <button type="button" class="primary" onclick="window.print()">Εκτύπωση</button>
+      <button type="button" onclick="window.print()">Λήψη</button>
+      <button type="button" onclick="window.close()">Κλείσιμο</button>
+    </div>
+  </header>
+  <main>
+    <article class="card">
+      <div class="top">
+        ${logoHtml}
+        <div class="heading">
+          <strong>ΤΑΥΤΟΤΗΤΑ ΑΘΛΗΤΗ</strong>
+          <span>${escapeHtml(clubName)} · Σεζόν ${escapeHtml(season)}</span>
+        </div>
+      </div>
+      <div class="body">
+        ${qrHtml}
+        <div class="meta">
+          <div><span>Επώνυμο</span><strong>${escapeHtml(lastName)}</strong></div>
+          <div><span>Όνομα</span><strong>${escapeHtml(firstName)}</strong></div>
+          <div><span>Ημ. γέννησης</span><strong>${escapeHtml(birthLabel)}</strong></div>
+        </div>
+      </div>
+    </article>
+  </main>
+</body>
+</html>`);
+    previewWindow.document.close();
+    try {
+      previewWindow.focus();
+    } catch {
+      // ignore
+    }
   }
 
   async function openHealthCardPreview() {
@@ -873,6 +1135,15 @@ export function AthleteProfilePage() {
                 <button
                   type="button"
                   onClick={() => {
+                    setActionsOpen(false);
+                    openAthleteQrCardPreview();
+                  }}
+                >
+                  Προεπισκόπηση QR κάρτας
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     setProfileTab('health');
                     setActionsOpen(false);
                     void openHealthCardPreview();
@@ -939,6 +1210,7 @@ export function AthleteProfilePage() {
 
       <div className="ap-tab-panels">
         {profileTab === 'personal' ? (
+          <>
           <div className="ap-two-col">
             <div className="ap-col">
               <ApCard title="Βασικά Στοιχεία">
@@ -1084,31 +1356,6 @@ export function AthleteProfilePage() {
                 </div>
               </ApCard>
 
-              <ApCard title="Στοιχεία Επικοινωνίας Έκτακτης Ανάγκης">
-                <div className="ap-grid-2">
-                  <ApField label="Ονοματεπώνυμο">
-                    {textInput(form.emergencyName, (v) => setField('emergencyName', v), {
-                      upper: true,
-                    })}
-                  </ApField>
-                  <ApField label="Τηλέφωνο">
-                    {textInput(form.emergencyPhone, (v) => setField('emergencyPhone', v), {
-                      type: 'tel',
-                    })}
-                  </ApField>
-                  <ApField label="Σχέση">
-                    {textInput(form.emergencyRelation, (v) => setField('emergencyRelation', v), {
-                      upper: true,
-                    })}
-                  </ApField>
-                  <ApField label="Εναλλακτικό τηλέφωνο">
-                    {textInput(form.emergencyAltPhone, (v) => setField('emergencyAltPhone', v), {
-                      type: 'tel',
-                    })}
-                  </ApField>
-                </div>
-              </ApCard>
-
               <ApCard title="Ιατρικές Παρατηρήσεις">
                 {medicalAllowed ? (
                   <div className="ap-grid-2">
@@ -1168,6 +1415,7 @@ export function AthleteProfilePage() {
               </ApCard>
             </div>
           </div>
+          </>
         ) : null}
 
         {profileTab === 'guardians' ? (
