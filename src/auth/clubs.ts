@@ -55,6 +55,8 @@ export interface Club {
   createdAt: string;
   athleteLicenseLimit: number;
   athleteLicenseUsed: number;
+  /** Πακέτο συνδρομής πλατφόρμας (ESSENTIAL / GROWTH / …). */
+  licensePackageId?: string | null;
   logoUrl?: string | null;
   vatNumber?: string;
   taxOffice?: string;
@@ -98,6 +100,7 @@ export function getClubs(): Club[] {
       ...c,
       athleteLicenseLimit: c.athleteLicenseLimit ?? 10,
       athleteLicenseUsed: c.athleteLicenseUsed ?? 0,
+      licensePackageId: c.licensePackageId ?? null,
     }));
   } catch {
     return [];
@@ -250,19 +253,36 @@ export async function registerClub(
 
 export function updateClubLicenses(
   clubId: string,
-  input: { athleteLicenseLimit: number; athleteLicenseUsed: number },
+  input: {
+    athleteLicenseLimit: number;
+    athleteLicenseUsed: number;
+    licensePackageId?: string | null;
+  },
 ): ApiResult<Club> {
   const clubs = getClubs();
   const index = clubs.findIndex((c) => c.id === clubId);
   if (index < 0) return fail('Ο σύλλογος δεν βρέθηκε');
-  const limit = Math.max(0, Math.floor(input.athleteLicenseLimit));
-  const used = Math.max(0, Math.min(limit, Math.floor(input.athleteLicenseUsed)));
+  const rawLimit = Number(input.athleteLicenseLimit);
+  const rawUsed = Number(input.athleteLicenseUsed);
+  if (!Number.isFinite(rawLimit) || rawLimit < 0) {
+    return fail('Μη έγκυρο όριο αδειών');
+  }
+  if (!Number.isFinite(rawUsed) || rawUsed < 0) {
+    return fail('Μη έγκυρος αριθμός χρησιμοποιημένων αδειών');
+  }
+  const limit = Math.max(0, Math.floor(rawLimit));
+  const used = Math.max(0, Math.min(limit, Math.floor(rawUsed)));
   clubs[index] = {
     ...clubs[index],
     athleteLicenseLimit: limit,
     athleteLicenseUsed: used,
+    licensePackageId:
+      input.licensePackageId === undefined
+        ? clubs[index].licensePackageId ?? null
+        : input.licensePackageId,
   };
   saveClubs(clubs);
+  window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
   return ok(clubs[index]);
 }
 

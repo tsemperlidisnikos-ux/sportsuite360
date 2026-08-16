@@ -179,3 +179,19 @@ export function periodLabel(months: number): string {
   if (n === 1) return '1 μήνα';
   return `${n} μήνες`;
 }
+
+/** Εύρεση πακέτου συνδρομής συλλόγου από id ή από όριο αδειών. */
+export function resolveClubLicensePackage(club: {
+  licensePackageId?: string | null;
+  athleteLicenseLimit?: number;
+}): LicensePackage | null {
+  const packages = getLicensePackages().filter((p) => p.active);
+  if (club.licensePackageId) {
+    const byId = packages.find((p) => p.id === club.licensePackageId);
+    if (byId) return byId;
+  }
+  const limit = Number(club.athleteLicenseLimit);
+  if (!Number.isFinite(limit) || limit <= 0) return null;
+  return packages.find((p) => p.athleteLicenses === limit) ?? null;
+}
+

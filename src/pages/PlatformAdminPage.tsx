@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { pushAccountBundle } from '../api/services/accountSyncService';
 import { getSession, getUsers, logout, saveUsers } from '../auth/auth';
@@ -164,7 +164,8 @@ function EditableRecordLine({
 export function PlatformAdminPage() {
   const navigate = useNavigate();
   const session = getSession();
-  const clubs = useMemo(() => getClubs(), []);
+  const [clubsTick, setClubsTick] = useState(0);
+  const clubs = useMemo(() => getClubs(), [clubsTick]);
   const [config, setConfig] = useState<PlatformConfig>(() => {
     const loaded = loadPlatformConfig();
     saveFinanceCatalogAsDefaults(loaded);
@@ -173,7 +174,7 @@ export function PlatformAdminPage() {
   const roleDefaultsBaselineRef = useRef(
     structuredClone(loadPlatformConfig().clubRolePermissions),
   );
-  const [catalogClubId, setCatalogClubId] = useState(clubs[0]?.id ?? '');
+  const [catalogClubId, setCatalogClubId] = useState(() => getClubs()[0]?.id ?? '');
   const [clubRole, setClubRole] = useState<ClubRole>('admin');
   const [message, setMessage] = useState('');
   const [newIncomeCategory, setNewIncomeCategory] = useState('');
@@ -186,6 +187,12 @@ export function PlatformAdminPage() {
   const [newSport, setNewSport] = useState('');
   const [newSeason, setNewSeason] = useState('');
   const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const onClubsUpdated = () => setClubsTick((n) => n + 1);
+    window.addEventListener('academyhub-clubs-updated', onClubsUpdated);
+    return () => window.removeEventListener('academyhub-clubs-updated', onClubsUpdated);
+  }, []);
 
   const selectedClub: Club | undefined = clubs.find((c) => c.id === catalogClubId);
   const previewClubId = getPreviewClubId();

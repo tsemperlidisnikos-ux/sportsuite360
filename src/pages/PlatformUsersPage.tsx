@@ -17,6 +17,11 @@ import {
   updateClubLicenses,
   type Club,
 } from '../auth/clubs';
+import {
+  getLicensePackages,
+  periodLabel,
+  resolveClubLicensePackage,
+} from '../auth/licensePackages';
 import { pushAccountBundle } from '../api/services/accountSyncService';
 import { loadStore, removeClubStore } from '../data/store';
 
@@ -60,7 +65,10 @@ const ROLE_CARDS: Array<{
 
 function licenseText(club: Club | null): string | null {
   if (!club) return null;
-  return `ΑΔΕΙΕΣ ΑΘΛΗΤΩΝ ${club.athleteLicenseUsed} / ${club.athleteLicenseLimit}`;
+  const pkg = resolveClubLicensePackage(club);
+  const usage = `${club.athleteLicenseUsed} / ${club.athleteLicenseLimit}`;
+  if (pkg) return `${pkg.name} · ${usage}`;
+  return `ΑΔΕΙΕΣ ΑΘΛΗΤΩΝ ${usage}`;
 }
 
 function buildRows(): PlatformUserRow[] {
@@ -151,6 +159,11 @@ export function PlatformUsersPage() {
   const [licenseEdit, setLicenseEdit] = useState<PlatformUserRow | null>(null);
   const [licenseLimit, setLicenseLimit] = useState(10);
   const [licenseUsed, setLicenseUsed] = useState(0);
+  const [licensePackageId, setLicensePackageId] = useState('');
+  const activePackages = useMemo(
+    () => getLicensePackages().filter((p) => p.active),
+    [],
+  );
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -224,24 +237,54 @@ export function PlatformUsersPage() {
       return;
     }
     setLicenseEdit(row);
-    setLicenseLimit(club.athleteLicenseLimit);
-    setLicenseUsed(club.athleteLicenseUsed);
+    setLicenseLimit(Number(club.athleteLicenseLimit) || 0);
+    setLicenseUsed(Number(club.athleteLicenseUsed) || 0);
+    const pkg = resolveClubLicensePackage(club);
+    setLicensePackageId(pkg?.id ?? club.licensePackageId ?? '');
     setError('');
+    setMessage('');
   }
 
-  function saveLicenses() {
+  function applyLicensePackage(packageId: string) {
+    setLicensePackageId(packageId);
+    if (!packageId) return;
+    const pkg = activePackages.find((p) => p.id === packageId);
+    if (pkg) setLicenseLimit(pkg.athleteLicenses);
+  }
+
+  async function saveLicenses() {
     if (!licenseEdit?.clubId) return;
+    const limit = Number(licenseLimit);
+    const used = Number(licenseUsed);
+    if (!Number.isFinite(limit) || limit < 0) {
+      setError('Συμπλήρωσε έγκυρο όριο αδειών.');
+      return;
+    }
+    if (!Number.isFinite(used) || used < 0) {
+      setError('Συμπλήρωσε έγκυρο αριθμό χρησιμοποιημένων αδειών.');
+      return;
+    }
     const result = updateClubLicenses(licenseEdit.clubId, {
-      athleteLicenseLimit: licenseLimit,
-      athleteLicenseUsed: licenseUsed,
+      athleteLicenseLimit: limit,
+      athleteLicenseUsed: used,
+      licensePackageId: licensePackageId || null,
     });
-    if (!result.success) {
+    if (!result.success || !result.data) {
       setError(result.error ?? 'Αποτυχία ενημέρωσης αδειών');
       return;
     }
+    const pushed = await pushAccountBundle();
     setLicenseEdit(null);
-    setMessage('Οι άδειες ενημερώθηκαν.');
     refresh();
+    if (!pushed.success) {
+      setError(
+        `Αποθηκεύτηκε τοπικά (${result.data.athleteLicenseUsed}/${result.data.athleteLicenseLimit}), αλλά το cloud push απέτυχε: ${pushed.error ?? 'άγνωστο σφάλμα'}. Κάντε Push από Backup.`,
+      );
+      return;
+    }
+    setMessage(
+      `Οι άδειες ενημερώθηκαν: ${result.data.athleteLicenseUsed} / ${result.data.athleteLicenseLimit}`,
+    );
   }
 
   async function handleDelete(row: PlatformUserRow) {
@@ -436,11 +479,25 @@ export function PlatformUsersPage() {
               {licenseEdit.clubName || 'Σύλλογος'} — {licenseEdit.fullName}
             </p>
             <label>
+              <span>Πακέτο συνδρομής</span>
+              <select
+                value={licensePackageId}
+                onChange={(e) => applyLicensePackage(e.target.value)}
+              >
+                <option value="">Χωρίς πακέτο (χειροκίνητο όριο)</option>
+                {activePackages.map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.name} — {pkg.athleteLicenses} άδειες · {periodLabel(pkg.periodMonths)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               <span>Όριο αδειών</span>
               <input
                 type="number"
                 min={0}
-                value={licenseLimit}
+                value={Number.isFinite(licenseLimit) ? licenseLimit : 0}
                 onChange={(e) => setLicenseLimit(Number(e.target.value))}
               />
             </label>
@@ -449,7 +506,7 @@ export function PlatformUsersPage() {
               <input
                 type="number"
                 min={0}
-                value={licenseUsed}
+                value={Number.isFinite(licenseUsed) ? licenseUsed : 0}
                 onChange={(e) => setLicenseUsed(Number(e.target.value))}
               />
             </label>
@@ -461,7 +518,11 @@ export function PlatformUsersPage() {
               >
                 Ακύρωση
               </button>
-              <button type="button" className="pu-btn pu-btn-enter" onClick={saveLicenses}>
+              <button
+                type="button"
+                className="pu-btn pu-btn-enter"
+                onClick={() => void saveLicenses()}
+              >
                 Αποθήκευση
               </button>
             </div>

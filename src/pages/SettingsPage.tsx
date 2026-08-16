@@ -25,6 +25,10 @@ import {
   type ClubSmtpSettings,
   type ClubVivaSettings,
 } from '../auth/clubs';
+import {
+  periodLabel,
+  resolveClubLicensePackage,
+} from '../auth/licensePackages';
 import * as emailService from '../api/services/emailService';
 import { BackupPanel } from '../components/BackupPanel';
 import { ChangePasswordPanel } from '../components/ChangePasswordPanel';
@@ -34,6 +38,7 @@ import { ClubUsersPanel } from '../components/ClubUsersPanel';
 import { ClubVivaPanel } from '../components/ClubVivaPanel';
 import { Button } from '../components/ui/Button';
 import { SizeChartPanel } from '../components/SizeChartPanel';
+import { useAppData } from '../hooks/useAppData';
 import { getPreviewClubId } from '../platform/platformConfig';
 import { AssociationsPage } from './AssociationsPage';
 import { AmkaCompliancePanel } from './AmkaCompliancePanel';
@@ -88,6 +93,7 @@ const MORE_TABS: Array<{ id: SettingsTab; label: string; icon: typeof KeyRound }
 export function SettingsPage() {
   const session = getSession();
   const clubId = getPreviewClubId() ?? session?.clubId ?? null;
+  const { data } = useAppData();
   const [club, setClub] = useState(() => ensureSessionClub(session) ?? getClubById(clubId));
   const [tab, setTab] = useState<SettingsTab>('club');
   const [error, setError] = useState('');
@@ -100,6 +106,13 @@ export function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const canManageUsers = session?.role === 'admin' || session?.role === 'platform_admin';
 
+  const activeAthleteLicenses = data.students.filter((s) => s.status === 'active').length;
+  const licenseLimit = club?.athleteLicenseLimit ?? 0;
+  const licensePackage = club ? resolveClubLicensePackage(club) : null;
+  const licensePct =
+    licenseLimit > 0
+      ? Math.min(100, Math.round((activeAthleteLicenses / licenseLimit) * 100))
+      : 0;
   const [clubForm, setClubForm] = useState<ClubForm>({
     name: '',
     vatNumber: '',
@@ -134,6 +147,12 @@ export function SettingsPage() {
 
   useEffect(() => {
     refreshClub();
+  }, [clubId]);
+
+  useEffect(() => {
+    const onClubsUpdated = () => refreshClub();
+    window.addEventListener('academyhub-clubs-updated', onClubsUpdated);
+    return () => window.removeEventListener('academyhub-clubs-updated', onClubsUpdated);
   }, [clubId]);
 
   function readLogoFile(file: File) {
@@ -311,6 +330,49 @@ export function SettingsPage() {
           <p className="form-error">Δεν βρέθηκε σύλλογος για τον λογαριασμό.</p>
         ) : (
           <div className="set-club-layout">
+            <section className="set-card panel set-license-card">
+              <h2>Συνδρομή &amp; άδειες αθλητών</h2>
+              <p className="set-card-lede">
+                Όριο αδειών σύμφωνα με το πακέτο συνδρομής του συλλόγου.
+              </p>
+              <div className="set-license-grid">
+                <div className="set-license-stat">
+                  <span>Πακέτο</span>
+                  <strong>{licensePackage?.name ?? 'Χωρίς πακέτο'}</strong>
+                  {licensePackage ? (
+                    <em>
+                      {periodLabel(licensePackage.periodMonths)} ·{' '}
+                      {licensePackage.athleteLicenses} άδειες στο πακέτο
+                    </em>
+                  ) : (
+                    <em>Το όριο ορίζεται από τον διαχειριστή πλατφόρμας.</em>
+                  )}
+                </div>
+                <div className="set-license-stat">
+                  <span>Χρήση αδειών</span>
+                  <strong>
+                    {activeAthleteLicenses} / {licenseLimit || '—'}
+                  </strong>
+                  <em>
+                    {licenseLimit > 0
+                      ? `${licensePct}% πληρότητα · ενεργοί αθλητές`
+                      : 'Δεν έχει οριστεί όριο αδειών'}
+                  </em>
+                </div>
+              </div>
+              {licenseLimit > 0 ? (
+                <div
+                  className="set-license-bar"
+                  role="progressbar"
+                  aria-valuenow={activeAthleteLicenses}
+                  aria-valuemin={0}
+                  aria-valuemax={licenseLimit}
+                >
+                  <i style={{ width: `${licensePct}%` }} />
+                </div>
+              ) : null}
+            </section>
+
             <section className="set-card panel">
               <h2>Λογότυπο Συλλόγου</h2>
               <p className="set-card-lede">
