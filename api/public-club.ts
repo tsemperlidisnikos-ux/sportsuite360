@@ -6,7 +6,7 @@ import {
   savePublicClubConfig,
   type ClubNotifyConfig,
   type PublicClubConfig,
-} from '../lib/serverStore.js';
+} from './lib/serverStore.js';
 
 /**
  * GET  /api/public-club?slug=...  — public join form bootstrap (no secrets)
