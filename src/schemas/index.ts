@@ -63,6 +63,7 @@ export const studentSchema = z.object({
   athleticLevel: z.string().optional(),
   athleticStartDate: z.string().optional(),
   coachName: z.string().optional(),
+  coachNames: z.array(z.string()).optional().default([]),
   emergencyName: z.string().optional(),
   emergencyPhone: z.string().optional(),
   emergencyRelation: z.string().optional(),

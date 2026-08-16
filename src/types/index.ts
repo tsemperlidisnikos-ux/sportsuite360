@@ -104,7 +104,10 @@ export interface Student {
   position?: string;
   athleticLevel?: string;
   athleticStartDate?: string;
+  /** Κύριος προπονητής (εμφάνιση / προεπιλογή). */
   coachName?: string;
+  /** Όλοι οι προπονητές του αθλητή. */
+  coachNames?: string[];
   emergencyName?: string;
   emergencyPhone?: string;
   emergencyRelation?: string;

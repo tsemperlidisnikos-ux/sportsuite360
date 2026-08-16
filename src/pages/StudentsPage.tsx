@@ -48,6 +48,8 @@ const draftAthlete: StudentInput = {
   registrationNumber: '',
   sport: '',
   sports: [],
+  coachName: '',
+  coachNames: [],
   healthCard: false,
   healthCardExpires: '',
   consentExpires: '',

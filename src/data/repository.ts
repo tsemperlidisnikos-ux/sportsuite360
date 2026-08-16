@@ -139,6 +139,26 @@ function ensureCollections(data: AppData): boolean {
       student.sport = nextSport;
       changed = true;
     }
+    const fromCoaches = Array.isArray(student.coachNames) ? student.coachNames : [];
+    const coachValues = [
+      ...fromCoaches,
+      ...(student.coachName?.trim() ? [student.coachName.trim()] : []),
+    ]
+      .map((s) => String(s).trim())
+      .filter(Boolean);
+    const uniqueCoaches = [...new Set(coachValues)];
+    const nextCoach =
+      student.coachName?.trim() && uniqueCoaches.includes(student.coachName.trim())
+        ? student.coachName.trim()
+        : uniqueCoaches[0] ?? '';
+    const sameCoaches =
+      uniqueCoaches.length === fromCoaches.length &&
+      uniqueCoaches.every((s, i) => s === fromCoaches[i]);
+    if (!sameCoaches || (student.coachName ?? '') !== nextCoach) {
+      student.coachNames = uniqueCoaches;
+      student.coachName = nextCoach;
+      changed = true;
+    }
   }
   return changed;
 }

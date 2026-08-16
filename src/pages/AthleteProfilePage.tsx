@@ -42,9 +42,11 @@ import { canAccessAmka, canAccessMedical, formatAmkaForViewer } from '../utils/a
 import { announcementVisibleToAthlete } from '../utils/announcementAudience';
 import {
   classIdsOf,
+  sportsMatch,
   visibleClassesForSession,
 } from '../utils/coachScope';
 import { studentClassIds, studentInAnyClass } from '../utils/studentClasses';
+import { studentCoachNames } from '../utils/studentCoaches';
 import { studentSports } from '../utils/studentSports';
 type ProfileTab =
   | 'personal'
@@ -218,6 +220,7 @@ function toForm(student: Student): StudentInput {
     athleticLevel: student.athleticLevel ?? '',
     athleticStartDate: student.athleticStartDate ?? '',
     coachName: student.coachName ?? '',
+    coachNames: studentCoachNames(student),
     emergencyName: student.emergencyName ?? student.guardianName ?? '',
     emergencyPhone: student.emergencyPhone ?? student.guardianPhone ?? '',
     emergencyRelation: student.emergencyRelation ?? '',
@@ -501,18 +504,24 @@ export function AthleteProfilePage() {
     return options;
   }, [data.sports, form?.sport, form?.sports]);
 
-  const coachOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(data.coaches ?? [])
-        .filter((c) => c.active)
-        .map((c) => ({
-          value: `${c.firstName} ${c.lastName}`.trim(),
-          label: `${c.firstName} ${c.lastName}`.trim(),
-        })),
-    ],
-    [data.coaches],
-  );
+  const coachOptions = useMemo(() => {
+    const selected = studentSports(form ?? { sport: '', sports: [] });
+    const list = (data.coaches ?? []).filter((c) => c.active);
+    const filtered =
+      selected.length === 0
+        ? list
+        : list.filter((c) =>
+            selected.some((sport) => sportsMatch(c.sport, sport)),
+          );
+    const source = filtered.length > 0 ? filtered : list;
+    return source.map((c) => {
+      const name = `${c.firstName} ${c.lastName}`.trim();
+      return {
+        value: name,
+        label: c.sport ? `${name} · ${c.sport}` : name,
+      };
+    });
+  }, [data.coaches, form?.sport, form?.sports]);
 
   const profileClubId = getPreviewClubId() ?? session?.clubId ?? null;
   const profileClub = useMemo(
@@ -1094,9 +1103,16 @@ export function AthleteProfilePage() {
       .join(', ') || '—';
   const classCoachId = data.classes.find((c) => c.id === form.classId)?.coachId;
   const linkedCoach = data.coaches.find((c) => c.id === classCoachId);
-  const coachDisplay =
-    form.coachName ||
-    (linkedCoach ? `${linkedCoach.firstName} ${linkedCoach.lastName}` : '');
+  const linkedCoachName = linkedCoach
+    ? `${linkedCoach.firstName} ${linkedCoach.lastName}`.trim()
+    : '';
+  const selectedCoachNames = (() => {
+    const names = studentCoachNames(form);
+    if (names.length > 0) return names;
+    return linkedCoachName ? [linkedCoachName] : [];
+  })();
+  const allowMultiCoaches =
+    selectedSports.length > 1 || selectedClassIds.length > 1;
   const age = ageFromBirthDate(form.birthDate);
 
   return (
@@ -1514,18 +1530,70 @@ export function AthleteProfilePage() {
                     })}
                   </ApField>
                   <ApField label="Προπονητής" className="ap-span-2">
-                    <select
-                      className={inputClass}
-                      value={coachDisplay}
-                      disabled={disabled}
-                      onChange={(e) => setField('coachName', e.target.value)}
-                    >
-                      {coachOptions.map((o) => (
-                        <option key={o.value || 'empty'} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    {allowMultiCoaches ? (
+                      <>
+                        <ApMultiCheckDropdown
+                          summary={selectedCoachNames.join(', ')}
+                          placeholder="Επιλογή προπονητή…"
+                          emptyText="Δεν υπάρχουν διαθέσιμοι προπονητές."
+                          disabled={disabled}
+                          options={coachOptions.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                            checked: selectedCoachNames.includes(o.value),
+                            onToggle: (checked) => {
+                              const current = studentCoachNames(form);
+                              const next = checked
+                                ? [...current, o.value]
+                                : current.filter((name) => name !== o.value);
+                              const unique = [...new Set(next.map((n) => n.trim()).filter(Boolean))];
+                              setField('coachNames', unique);
+                              setField(
+                                'coachName',
+                                form.coachName && unique.includes(form.coachName)
+                                  ? form.coachName
+                                  : unique[0] ?? '',
+                              );
+                            },
+                          }))}
+                        />
+                        {selectedCoachNames.length > 1 ? (
+                          <div className="ap-primary-class">
+                            <span>Κύριος προπονητής</span>
+                            <select
+                              className={inputClass}
+                              value={form.coachName ?? ''}
+                              disabled={disabled}
+                              onChange={(e) => setField('coachName', e.target.value)}
+                            >
+                              {selectedCoachNames.map((name) => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <select
+                        className={inputClass}
+                        value={selectedCoachNames[0] ?? ''}
+                        disabled={disabled}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setField('coachName', value);
+                          setField('coachNames', value ? [value] : []);
+                        }}
+                      >
+                        <option value="">—</option>
+                        {coachOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </ApField>
                 </div>
               </ApCard>
