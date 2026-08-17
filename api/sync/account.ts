@@ -12,6 +12,8 @@ import {
   isDurableStoreEnabled,
   listClubWaitlist,
   listLoginActivity,
+  deleteLoginActivity,
+  clearLoginActivity,
   loadAccountBundle,
   saveAccountBundle,
   signSession,
@@ -147,6 +149,19 @@ async function handleClubProfile(req: VercelRequest, res: VercelResponse) {
 
 function clip(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+function assertLoginActivityAdmin(req: VercelRequest, res: VercelResponse): boolean {
+  if (!assertSyncAuthorized(req, res)) return false;
+  const auth = String(req.headers['authorization'] ?? '').trim();
+  const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : auth;
+  if (!token.includes('.')) return true;
+  const claims = verifySessionToken(token);
+  if (claims && claims.role !== 'platform_admin') {
+    res.status(403).json({ ok: false, error: 'Μόνο Platform Admin μπορεί να διαγράψει ιστορικό εισόδων' });
+    return false;
+  }
+  return true;
 }
 
 function assertWaitlistAdmin(req: VercelRequest, res: VercelResponse): boolean {
@@ -640,7 +655,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    res.setHeader('Allow', 'GET, POST');
+    if (req.method === 'DELETE') {
+      if (!assertLoginActivityAdmin(req, res)) return;
+      const body = (req.body ?? {}) as { id?: string; all?: boolean };
+      const all =
+        body.all === true ||
+        String(req.query.all ?? '').trim() === '1' ||
+        String(req.query.all ?? '').trim().toLowerCase() === 'true';
+      if (all) {
+        const cleared = await clearLoginActivity();
+        return res.status(200).json({
+          ok: true,
+          durable: isDurableStoreEnabled(),
+          cleared,
+        });
+      }
+      const id = clip(
+        typeof body.id === 'string' ? body.id : typeof req.query.id === 'string' ? req.query.id : '',
+        80,
+      );
+      if (!id) {
+        return res.status(400).json({ ok: false, error: 'Missing login activity id' });
+      }
+      const deleted = await deleteLoginActivity(id);
+      if (!deleted) {
+        return res.status(404).json({ ok: false, error: 'Login activity not found' });
+      }
+      return res.status(200).json({
+        ok: true,
+        durable: isDurableStoreEnabled(),
+        deleted: true,
+        id,
+      });
+    }
+
+    res.setHeader('Allow', 'GET, POST, DELETE');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 

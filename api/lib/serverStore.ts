@@ -466,6 +466,20 @@ export async function listLoginActivity(limit = 100): Promise<LoginActivityEvent
   return all.slice(0, capped);
 }
 
+export async function deleteLoginActivity(id: string): Promise<boolean> {
+  const prev = await readLoginActivity();
+  const next = prev.filter((e) => e.id !== id);
+  if (next.length === prev.length) return false;
+  await writeLoginActivity(next);
+  return true;
+}
+
+export async function clearLoginActivity(): Promise<number> {
+  const prev = await readLoginActivity();
+  await writeLoginActivity([]);
+  return prev.length;
+}
+
 async function readClubWaitlist(): Promise<ClubWaitlistEntry[]> {
   if (!isDurableKvEnabled()) return memory().clubWaitlist ?? [];
   const raw = await kvGet<ClubWaitlistEntry[]>(CLUB_WAITLIST_KEY);

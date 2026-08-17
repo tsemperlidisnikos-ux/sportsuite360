@@ -156,3 +156,52 @@ export async function fetchLoginActivity(limit = 100) {
     return { events: merged, durable: Boolean(json.durable) };
   });
 }
+
+function removeLocal(id?: string, all = false): void {
+  try {
+    if (all) {
+      localStorage.removeItem(LOCAL_KEY);
+      return;
+    }
+    if (!id) return;
+    writeLocal(readLocal().filter((e) => e.id !== id));
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function deleteLoginActivityRecord(id: string) {
+  return apiClient(async () => {
+    const response = await fetch('/api/sync/account?kind=login-activity', {
+      method: 'DELETE',
+      headers: syncAuthHeaders(),
+      body: JSON.stringify({ id }),
+    });
+    const json = (await response.json()) as { ok?: boolean; error?: string };
+    if (!response.ok || !json.ok) {
+      throw new Error(json.error || `Login activity HTTP ${response.status}`);
+    }
+    removeLocal(id);
+    return { id };
+  });
+}
+
+export async function clearLoginActivityRecords() {
+  return apiClient(async () => {
+    const response = await fetch('/api/sync/account?kind=login-activity', {
+      method: 'DELETE',
+      headers: syncAuthHeaders(),
+      body: JSON.stringify({ all: true }),
+    });
+    const json = (await response.json()) as {
+      ok?: boolean;
+      error?: string;
+      cleared?: number;
+    };
+    if (!response.ok || !json.ok) {
+      throw new Error(json.error || `Login activity HTTP ${response.status}`);
+    }
+    removeLocal(undefined, true);
+    return { cleared: json.cleared ?? 0 };
+  });
+}

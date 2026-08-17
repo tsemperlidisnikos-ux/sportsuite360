@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { pushAccountBundle } from '../api/services/accountSyncService';
-import { getSession, getUsers, logout, saveUsers } from '../auth/auth';
+import { getUsers, saveUsers } from '../auth/auth';
 import { getClubs, saveClubs, type Club } from '../auth/clubs';
 import { BackupSchedulePanel } from '../components/BackupSchedulePanel';
 import { ClubWaitlistPanel } from '../components/ClubWaitlistPanel';
 import { LoginActivityPanel } from '../components/LoginActivityPanel';
 import { PlatformDiagnosticPanel } from '../components/PlatformDiagnosticPanel';
+import { AdminZone, PlatformAdminShell } from '../components/layout/PlatformAdminShell';
 import { Button } from '../components/ui/Button';
 import { createId, getData, mutateData, replaceAllClubsData, replaceData, resetData } from '../data/repository';
 import { downloadBackupZip, formatBackupError, readBackupFile } from '../utils/backupArchive';
@@ -36,15 +37,6 @@ import {
 } from '../platform/platformConfig';
 
 type AdminWorkspaceTab = 'platform' | 'academio' | 'backup';
-
-function AdminZone({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="admin-zone">
-      <h2 className="admin-zone-title">{title}</h2>
-      <div className="admin-zone-stack">{children}</div>
-    </section>
-  );
-}
 
 function AdminRow({
   title,
@@ -174,7 +166,6 @@ function EditableRecordLine({
 
 export function PlatformAdminPage() {
   const navigate = useNavigate();
-  const session = getSession();
   const [clubsTick, setClubsTick] = useState(0);
   const clubs = useMemo(() => getClubs(), [clubsTick]);
   const [config, setConfig] = useState<PlatformConfig>(() => {
@@ -378,20 +369,12 @@ export function PlatformAdminPage() {
   }
 
   return (
-    <div className="platform-admin-page">
-      <header className="platform-admin-header">
-        <div>
-          <p className="eyebrow">Platform Admin</p>
-          <h1>Διαχείριση</h1>
-          <p className="lede">
-            Ρυθμίσεις πλατφόρμας και ακαδημίας για συλλόγους και καταλόγους.
-          </p>
-        </div>
-        <div className="platform-admin-actions">
-          <span className="platform-admin-user">{session?.fullName}</span>
-          <Link className="btn btn-secondary" to="/platform/users">
-            Χρήστες
-          </Link>
+    <PlatformAdminShell
+      title="Διαχείριση"
+      lede="Ρυθμίσεις πλατφόρμας και ακαδημίας για συλλόγους και καταλόγους."
+      banner={message}
+      extraActions={
+        <>
           <button
             type="button"
             className="btn btn-secondary"
@@ -406,24 +389,9 @@ export function PlatformAdminPage() {
           >
             Ιστορικό εισόδων
           </button>
-          <Link className="btn btn-secondary" to="/platform/packages">
-            Πακέτα αδειών
-          </Link>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              logout();
-              navigate('/login', { replace: true });
-            }}
-          >
-            Αποσύνδεση
-          </Button>
-        </div>
-      </header>
-
-      {message ? <p className="platform-admin-banner">{message}</p> : null}
-
+        </>
+      }
+    >
       <nav className="admin-workspace-tabs" aria-label="Ενότητες διαχείρισης">
         {(
           [
@@ -1404,6 +1372,6 @@ export function PlatformAdminPage() {
         </AdminZone>
       </div>
       ) : null}
-    </div>
+    </PlatformAdminShell>
   );
 }

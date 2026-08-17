@@ -52,6 +52,11 @@
   font-weight: 650;
 }
 
+.platform-admin-banner-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .admin-workspace-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -75,7 +80,8 @@
   cursor: pointer;
 }
 
-.admin-workspace-tab.is-active {
+.admin-workspace-tab.is-active,
+.platform-admin-actions .btn-secondary.is-current {
   background: #17362e;
   color: #e9f7f0;
 }
@@ -140,11 +146,27 @@
   font-weight: 800;
 }
 
-.admin-zone-card-head p {
-  margin: 0;
+.admin-zone-card-head .platform-card-tools {
+  margin-top: 0.45rem;
+}
+
+.admin-package-features {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
   color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.35;
+}
+
+.admin-package-features .is-included {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.admin-package-features .is-excluded {
+  opacity: 0.65;
 }
 
 .admin-zone-card-body {
@@ -256,7 +278,8 @@
 }
 
 .admin-entry input,
-.admin-entry select {
+.admin-entry select,
+.admin-entry textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;

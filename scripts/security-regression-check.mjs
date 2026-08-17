@@ -24,6 +24,7 @@ assert.match(email, /loadClubNotifyConfig\(clubId\)/, 'email must use server-sid
 assert.doesNotMatch(email, /body\.smtp/, 'email endpoint must not trust caller SMTP settings');
 assert.match(publicJoin, /Forbidden: club mismatch/, 'public application reads must be tenant scoped');
 assert.match(auth, /Μόνο Platform Admin μπορεί να κάνει impersonation/, 'impersonation must be role guarded');
+assert.match(account, /Μόνο Platform Admin μπορεί να διαγράψει ιστορικό εισόδων/, 'login activity delete must be platform admin');
 assert.match(durableKv, /kvIncrementWithExpiry/, 'rate limiting must use an atomic Redis counter when available');
 assert.match(account, /Πολλά αιτήματα upload/, 'media uploads must be rate limited');
 assert.match(viva, /Πολλά webhook requests/, 'Viva webhooks must be rate limited');

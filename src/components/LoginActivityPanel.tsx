@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  clearLoginActivityRecords,
+  deleteLoginActivityRecord,
   fetchLoginActivity,
   type LoginActivityEvent,
 } from '../api/services/loginActivityService';
@@ -32,6 +34,8 @@ export function LoginActivityPanel({
   onSaved?: (message: string) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
   const [events, setEvents] = useState<LoginActivityEvent[]>([]);
   const [durable, setDurable] = useState<boolean | null>(null);
   const [clubFilter, setClubFilter] = useState('');
@@ -77,6 +81,38 @@ export function LoginActivityPanel({
     });
   }, [events, clubFilter, query]);
 
+  const busy = loading || clearing || Boolean(busyId);
+
+  async function handleDelete(id: string) {
+    if (!confirm('Διαγραφή αυτής της καταγραφής εισόδου;')) return;
+    setBusyId(id);
+    const result = await deleteLoginActivityRecord(id);
+    setBusyId(null);
+    if (!result.success) {
+      onSaved?.(result.error ?? 'Αποτυχία διαγραφής');
+      return;
+    }
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    onSaved?.('Η καταγραφή διαγράφηκε.');
+  }
+
+  async function handleClearAll() {
+    if (!confirm('Διαγραφή όλου του ιστορικού εισόδων; Η ενέργεια δεν αναιρείται.')) return;
+    setClearing(true);
+    const result = await clearLoginActivityRecords();
+    setClearing(false);
+    if (!result.success) {
+      onSaved?.(result.error ?? 'Αποτυχία εκκαθάρισης');
+      return;
+    }
+    setEvents([]);
+    onSaved?.(
+      result.data?.cleared
+        ? `Διαγράφηκαν ${result.data.cleared} καταγραφές.`
+        : 'Το ιστορικό εισόδων διαγράφηκε.',
+    );
+  }
+
   return (
     <div className="entry-form admin-entry login-activity-panel">
       <p className="admin-entry-note">
@@ -109,8 +145,16 @@ export function LoginActivityPanel({
       </div>
 
       <div className="admin-entry-actions">
-        <Button type="button" onClick={() => void load()} disabled={loading}>
+        <Button type="button" onClick={() => void load()} disabled={busy}>
           {loading ? 'Φόρτωση…' : 'Ανανέωση'}
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          onClick={() => void handleClearAll()}
+          disabled={busy || events.length === 0}
+        >
+          {clearing ? 'Διαγραφή…' : 'Διαγραφή ιστορικού'}
         </Button>
       </div>
 
@@ -123,8 +167,8 @@ export function LoginActivityPanel({
           <table>
             <thead>
               <tr>
-                {(['Ώρα', 'Χρήστης', 'Σύλλογος', 'Ρόλος', 'Τύπος'] as const).map((label) => (
-                  <th key={label}>{label}</th>
+                {(['Ώρα', 'Χρήστης', 'Σύλλογος', 'Ρόλος', 'Τύπος', ''] as const).map((label, i) => (
+                  <th key={label || `act-${i}`}>{label}</th>
                 ))}
               </tr>
             </thead>
@@ -139,6 +183,16 @@ export function LoginActivityPanel({
                   <td>{e.clubName ?? '—'}</td>
                   <td>{roleLabel(e.role)}</td>
                   <td>{e.source === 'impersonate' ? 'Impersonate' : 'Σύνδεση'}</td>
+                  <td>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => void handleDelete(e.id)}
+                    >
+                      {busyId === e.id ? '…' : 'Διαγραφή'}
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
