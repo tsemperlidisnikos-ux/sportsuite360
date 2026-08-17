@@ -67,8 +67,11 @@ function licenseText(club: Club | null): string | null {
   if (!club) return null;
   const pkg = resolveClubLicensePackage(club);
   const usage = `${club.athleteLicenseUsed} / ${club.athleteLicenseLimit}`;
-  if (pkg) return `${pkg.name} · ${usage}`;
-  return `ΑΔΕΙΕΣ ΑΘΛΗΤΩΝ ${usage}`;
+  const period = club.usageStartsOn || club.usageEndsOn
+    ? ` · ${club.usageStartsOn ? `Από ${club.usageStartsOn}` : 'Από τώρα'}${club.usageEndsOn ? ` έως ${club.usageEndsOn}` : ''}`
+    : '';
+  if (pkg) return `${pkg.name} · ${usage}${period}`;
+  return `ΑΔΕΙΕΣ ΑΘΛΗΤΩΝ ${usage}${period}`;
 }
 
 function buildRows(): PlatformUserRow[] {
@@ -160,6 +163,8 @@ export function PlatformUsersPage() {
   const [licenseLimit, setLicenseLimit] = useState(10);
   const [licenseUsed, setLicenseUsed] = useState(0);
   const [licensePackageId, setLicensePackageId] = useState('');
+  const [usageStartsOn, setUsageStartsOn] = useState('');
+  const [usageEndsOn, setUsageEndsOn] = useState('');
   const activePackages = useMemo(
     () => getLicensePackages().filter((p) => p.active),
     [],
@@ -241,6 +246,8 @@ export function PlatformUsersPage() {
     setLicenseUsed(Number(club.athleteLicenseUsed) || 0);
     const pkg = resolveClubLicensePackage(club);
     setLicensePackageId(pkg?.id ?? club.licensePackageId ?? '');
+    setUsageStartsOn(club.usageStartsOn ?? '');
+    setUsageEndsOn(club.usageEndsOn ?? '');
     setError('');
     setMessage('');
   }
@@ -268,6 +275,8 @@ export function PlatformUsersPage() {
       athleteLicenseLimit: limit,
       athleteLicenseUsed: used,
       licensePackageId: licensePackageId || null,
+      usageStartsOn: usageStartsOn || null,
+      usageEndsOn: usageEndsOn || null,
     });
     if (!result.success || !result.data) {
       setError(result.error ?? 'Αποτυχία ενημέρωσης αδειών');
@@ -510,6 +519,16 @@ export function PlatformUsersPage() {
                 onChange={(e) => setLicenseUsed(Number(e.target.value))}
               />
             </label>
+            <div className="platform-date-grid">
+              <label>
+                <span>Έναρξη χρήσης</span>
+                <input type="date" value={usageStartsOn} onChange={(e) => setUsageStartsOn(e.target.value)} />
+              </label>
+              <label>
+                <span>Λήξη χρήσης</span>
+                <input type="date" value={usageEndsOn} onChange={(e) => setUsageEndsOn(e.target.value)} />
+              </label>
+            </div>
             <div className="platform-modal-actions">
               <button
                 type="button"

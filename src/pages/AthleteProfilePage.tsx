@@ -47,7 +47,8 @@ import {
 } from '../utils/coachScope';
 import { studentClassIds, studentInAnyClass } from '../utils/studentClasses';
 import { studentCoachNames } from '../utils/studentCoaches';
-import { studentSports } from '../utils/studentSports';
+import { studentSports, normalizeStudentSports } from '../utils/studentSports';
+import { activeClubSportSelectOptions } from '../utils/clubSports';
 type ProfileTab =
   | 'personal'
   | 'guardians'
@@ -182,8 +183,10 @@ function toForm(student: Student): StudentInput {
     city: student.city ?? '',
     clubName: student.clubName ?? '',
     registrationNumber: student.registrationNumber ?? '',
-    sport: student.sport ?? '',
-    sports: studentSports(student),
+    ...(() => {
+      const normalized = normalizeStudentSports(student.sports, student.sport);
+      return { sport: normalized.sport, sports: normalized.sports };
+    })(),
     healthCardStatus: student.healthCardStatus ?? '',
     healthCard: student.healthCard ?? student.healthCardStatus === 'Έγκυρη',
     healthCardExpires: student.healthCardExpires ?? '',
@@ -486,22 +489,10 @@ export function AthleteProfilePage() {
   }, [data.associations, form?.clubName]);
 
   const sportOptions = useMemo(() => {
-    const options: Array<{ value: string; label: string }> = [];
-    const seen = new Set<string>();
-    for (const sport of data.sports ?? []) {
-      if (sport.active === false) continue;
-      const name = sport.name.trim();
-      if (!name || seen.has(name.toLowerCase())) continue;
-      seen.add(name.toLowerCase());
-      options.push({ value: name, label: name });
-    }
-    for (const current of studentSports(form ?? { sport: '', sports: [] })) {
-      if (!seen.has(current.toLowerCase())) {
-        seen.add(current.toLowerCase());
-        options.push({ value: current, label: current });
-      }
-    }
-    return options;
+    return activeClubSportSelectOptions(data.sports, {
+      includeEmpty: false,
+      retain: studentSports(form ?? { sport: '', sports: [] }),
+    });
   }, [data.sports, form?.sport, form?.sports]);
 
   const coachOptions = useMemo(() => {
@@ -1418,7 +1409,7 @@ export function AthleteProfilePage() {
                     <ApMultiCheckDropdown
                       summary={studentSports(form).join(', ')}
                       placeholder="Επιλογή αθλήματος…"
-                      emptyText="Δεν υπάρχουν αθλήματα. Πρόσθεσέ τα από Ρυθμίσεις."
+                      emptyText="Δεν υπάρχουν ενεργά αθλήματα. Επίλεξέ τα από Ρυθμίσεις → Άθλημα."
                       disabled={disabled}
                       options={sportOptions.map((o) => ({
                         value: o.value,
@@ -1803,7 +1794,7 @@ export function AthleteProfilePage() {
                 <ApMultiCheckDropdown
                   summary={studentSports(form).join(', ')}
                   placeholder="Επιλογή αθλήματος…"
-                  emptyText="Δεν υπάρχουν αθλήματα."
+                  emptyText="Δεν υπάρχουν ενεργά αθλήματα. Επίλεξέ τα από Ρυθμίσεις → Άθλημα."
                   disabled={disabled}
                   options={sportOptions.map((o) => ({
                     value: o.value,

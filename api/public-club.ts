@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
+  assertClubTenantAccess,
   isDurableStoreEnabled,
   loadPublicClubBySlug,
   saveClubNotifyConfig,
@@ -42,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!body.publicClub?.clubId || !body.publicClub?.slug) {
       return res.status(400).json({ ok: false, error: 'publicClub.clubId και slug απαιτούνται' });
     }
+    if (!assertClubTenantAccess(req, res, body.publicClub.clubId)) return;
 
     const now = new Date().toISOString();
     const publicClub: PublicClubConfig = {
@@ -78,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 function trimMedia(value: string | null | undefined): string | null {
   if (!value) return null;
-  // Keep Redis payloads small — large base64 logos/heroes stay local-only.
-  if (value.length > 120_000) return null;
+  // Keep account/public-club payloads bounded while allowing optimized logos.
+  if (value.length > 180_000) return null;
   return value;
 }

@@ -12,7 +12,7 @@ const AMKA_LOG_RETENTION_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
 
 /** Greek AMKA is typically 11 digits; also catch labeled mentions. */
 const AMKA_DIGIT_RE = /(?<!\d)\d{11}(?!\d)/g;
-const AMKA_LABEL_RE = /ΑΜΚΑ\s*[:\-]?\s*\d{5,}/gi;
+const AMKA_LABEL_RE = /ΑΜΚΑ\s*[:-]?\s*\d{5,}/gi;
 
 export function canAccessAmka(role: string | null | undefined): boolean {
   if (!role) return false;

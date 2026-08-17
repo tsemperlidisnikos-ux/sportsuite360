@@ -1,12 +1,12 @@
 import { apiClient } from '../apiClient';
 import {
   appendClubSmtpSendLog,
-  getClubById,
   getClubSmtp,
 } from '../../auth/clubs';
 import { getData, mutateData } from '../../data/repository';
 import { localDateTimeIso } from '../../utils/dates';
 import { sanitizeOutboundEmail } from '../../utils/amkaAccess';
+import { syncAuthHeaders } from '../syncAuth';
 
 export type SendEmailInput = {
   clubId: string;
@@ -49,7 +49,6 @@ export async function unsubscribeEmail(email: string) {
 export async function sendClubEmail(input: SendEmailInput) {
   return apiClient(async () => {
     const smtp = getClubSmtp(input.clubId);
-    const club = getClubById(input.clubId);
     if (!smtp.enabled) {
       throw new Error('Το SMTP του συλλόγου δεν είναι ενεργό. Ρυθμίστε το στις Ρυθμίσεις → Email.');
     }
@@ -86,15 +85,9 @@ export async function sendClubEmail(input: SendEmailInput) {
 
     const response = await fetch('/api/send-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: syncAuthHeaders(),
       body: JSON.stringify({
-        smtp: {
-          host: smtp.host,
-          port: Number(smtp.port) || 587,
-          username: smtp.username,
-          password: smtp.password,
-          fromName: smtp.fromName || club?.name || 'SPORTSUITE 360',
-        },
+        clubId: input.clubId,
         to,
         subject: sanitized.subject,
         text: sanitized.text,

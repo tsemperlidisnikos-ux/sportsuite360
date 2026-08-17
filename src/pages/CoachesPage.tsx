@@ -10,6 +10,7 @@ import { useAppData } from '../hooks/useAppData';
 import type { CoachInput } from '../schemas';
 import type { Coach } from '../types';
 import { formatDate } from '../utils/labels';
+import { activeClubSportSelectOptions } from '../utils/clubSports';
 
 const MAX_PHOTO_BYTES = 800_000;
 const MAX_DOC_BYTES = 2_500_000;
@@ -126,13 +127,12 @@ export function CoachesPage() {
   );
 
   const sportOptions = useMemo(
-    () => [
-      { value: '', label: 'Επιλέξτε άθλημα' },
-      ...(data.sports ?? [])
-        .filter((s) => s.active)
-        .map((s) => ({ value: s.name, label: s.name })),
-    ],
-    [data.sports],
+    () =>
+      activeClubSportSelectOptions(data.sports, {
+        emptyLabel: 'Επιλέξτε άθλημα',
+        retain: form.sport ? [form.sport] : [],
+      }),
+    [data.sports, form.sport],
   );
 
   function openCreate() {

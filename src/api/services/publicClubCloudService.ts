@@ -1,4 +1,5 @@
 import { apiClient } from '../apiClient';
+import { syncAuthHeaders } from '../syncAuth';
 import { getUserById } from '../../auth/auth';
 import {
   getClubById,
@@ -25,7 +26,7 @@ export type RemotePublicClub = {
 
 function trimMedia(value: string | null | undefined): string | null {
   if (!value) return null;
-  if (value.length > 120_000) return null;
+  if (value.length > 180_000) return null;
   return value;
 }
 
@@ -41,7 +42,7 @@ export async function publishPublicClubCloud(clubId: string) {
 
     const response = await fetch('/api/public-club', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: syncAuthHeaders(),
       body: JSON.stringify({
         publicClub: {
           clubId,
@@ -168,7 +169,9 @@ export async function submitPublicJoinRemote(input: RemotePublicJoinInput) {
 /** Pull remote pending applications into the active club local store. */
 export async function pullRemoteRegistrationApplications(clubId: string) {
   return apiClient(async () => {
-    const response = await fetch(`/api/public-join?clubId=${encodeURIComponent(clubId)}`);
+    const response = await fetch(`/api/public-join?clubId=${encodeURIComponent(clubId)}`, {
+      headers: syncAuthHeaders(false),
+    });
     const json = (await response.json()) as {
       ok?: boolean;
       error?: string;

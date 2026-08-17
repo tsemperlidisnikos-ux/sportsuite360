@@ -498,6 +498,7 @@ export function StudentsPage() {
           <thead>
             <tr>
               <th>Αθλητής</th>
+              <th>Άθλημα</th>
               <th>{isDoctor ? 'ΑΜΚΑ' : 'Τμήμα'}</th>
               <th>Γονέας</th>
               <th>Κατάσταση</th>
@@ -547,6 +548,7 @@ export function StudentsPage() {
                       </div>
                     </div>
                   </td>
+                  <td>{student.sport || '—'}</td>
                   <td>
                     {isDoctor
                       ? formatAmkaForViewer(student.amka, true)

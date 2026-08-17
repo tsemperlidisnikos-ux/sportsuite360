@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { pushAccountBundle } from '../api/services/accountSyncService';
 import { getSession, getUsers, logout, saveUsers } from '../auth/auth';
@@ -35,6 +35,17 @@ import {
   type PlatformConfig,
 } from '../platform/platformConfig';
 
+type AdminWorkspaceTab = 'platform' | 'academio' | 'backup';
+
+function AdminZone({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="admin-zone">
+      <h2 className="admin-zone-title">{title}</h2>
+      <div className="admin-zone-stack">{children}</div>
+    </section>
+  );
+}
+
 function AdminRow({
   title,
   description,
@@ -49,14 +60,14 @@ function AdminRow({
   id?: string;
 }) {
   return (
-    <div className="admin-board-row" id={id}>
-      <div className="admin-board-title">
+    <article className="admin-zone-card" id={id}>
+      <header className="admin-zone-card-head">
         <h3>{title}</h3>
         <p>{description}</p>
-      </div>
-      <div className="admin-board-entry">{entry}</div>
-      <div className="admin-board-records">{records}</div>
-    </div>
+      </header>
+      <div className="admin-zone-card-body">{entry}</div>
+      <div className="admin-zone-card-status">{records}</div>
+    </article>
   );
 }
 
@@ -187,6 +198,7 @@ export function PlatformAdminPage() {
   const [newSport, setNewSport] = useState('');
   const [newSeason, setNewSeason] = useState('');
   const [tick, setTick] = useState(0);
+  const [adminTab, setAdminTab] = useState<AdminWorkspaceTab>('platform');
 
   useEffect(() => {
     const onClubsUpdated = () => setClubsTick((n) => n + 1);
@@ -204,10 +216,10 @@ export function PlatformAdminPage() {
     savePlatformConfig(next);
   }
 
-  function flash(text: string) {
+  const flash = useCallback((text: string) => {
     setMessage(text);
     window.setTimeout(() => setMessage(''), 2500);
-  }
+  }, []);
 
   function toggleClubPermission(permission: ClubPermission) {
     const current = config.clubRolePermissions?.[clubRole] ?? [];
@@ -380,12 +392,20 @@ export function PlatformAdminPage() {
           <Link className="btn btn-secondary" to="/platform/users">
             Χρήστες
           </Link>
-          <a className="btn btn-secondary" href="#club-waitlist">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setAdminTab('platform')}
+          >
             Λίστα αναμονής
-          </a>
-          <a className="btn btn-secondary" href="#login-activity">
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setAdminTab('platform')}
+          >
             Ιστορικό εισόδων
-          </a>
+          </button>
           <Link className="btn btn-secondary" to="/platform/packages">
             Πακέτα αδειών
           </Link>
@@ -404,15 +424,28 @@ export function PlatformAdminPage() {
 
       {message ? <p className="platform-admin-banner">{message}</p> : null}
 
-      <section className="admin-board-section">
-        <h2 className="admin-section-label">Πλατφόρμα</h2>
-        <div className="admin-board">
-          <div className="admin-board-header" aria-hidden="true">
-            <div>Τίτλος</div>
-            <div>Εισαγωγή δεδομένων</div>
-            <div>Καταχωρημένα δεδομένα</div>
-          </div>
+      <nav className="admin-workspace-tabs" aria-label="Ενότητες διαχείρισης">
+        {(
+          [
+            ['platform', 'Πλατφόρμα'],
+            ['academio', 'Academio'],
+            ['backup', 'Backup'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={`admin-workspace-tab${adminTab === id ? ' is-active' : ''}`}
+            onClick={() => setAdminTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
 
+      {adminTab === 'platform' ? (
+      <div className="admin-zones">
+        <AdminZone title="Λειτουργία">
           <AdminRow
             id="club-waitlist"
             title="Λίστα αναμονής ακαδημιών"
@@ -453,7 +486,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
 
+        <AdminZone title="Εμφάνιση">
           <AdminRow
             title="Logo εφαρμογής"
             description="Εμφανίζεται αριστερά από το όνομα SPORTSUITE 360. Μόνο Platform Admin."
@@ -575,7 +610,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
 
+        <AdminZone title="Κατάλογος & δικαιώματα">
           <AdminRow
             title="Κατηγορίες εσόδων"
             description="Υποκατηγορίες εσόδων που εμφανίζονται στη φόρμα καταχώρησης."
@@ -956,7 +993,13 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
+      </div>
+      ) : null}
 
+      {adminTab === 'backup' ? (
+      <div className="admin-zones">
+        <AdminZone title="Αντίγραφα">
           <AdminRow
             title="Backup βάσης"
             description="Εξαγωγή / εισαγωγή πλήρους αντιγράφου (δεδομένα εφαρμογής + ρυθμίσεις πλατφόρμας)."
@@ -995,7 +1038,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
 
+        <AdminZone title="Πρόγραμμα">
           <AdminRow
             title="Πρόγραμμα backup"
             description="Ορίστε πότε γίνεται full backup εφαρμογής και πότε backup δεδομένων κάθε συλλόγου/χρήστη."
@@ -1014,7 +1059,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
 
+        <AdminZone title="Έλεγχος">
           <AdminRow
             title="Διαγνωστικό τεστ εφαρμογής"
             description="Αναλυτικός έλεγχος όλων των βασικών λειτουργιών για bugs/ασυνέπειες, με οδηγίες διόρθωσης."
@@ -1034,19 +1081,13 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
+      </div>
+      ) : null}
 
-        </div>
-      </section>
-
-      <section className="admin-board-section">
-        <h2 className="admin-section-label">Academio</h2>
-        <div className="admin-board">
-          <div className="admin-board-header" aria-hidden="true">
-            <div>Τίτλος</div>
-            <div>Εισαγωγή δεδομένων</div>
-            <div>Καταχωρημένα δεδομένα</div>
-          </div>
-
+      {adminTab === 'academio' ? (
+      <div className="admin-zones">
+        <AdminZone title="Preview">
           <AdminRow
             title="Preview συλλόγου"
             description="Δείτε την εφαρμογή όπως εμφανίζεται σε συγκεκριμένο λογαριασμό, χωρίς αποθήκευση αλλαγών."
@@ -1155,7 +1196,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
 
+        <AdminZone title="Κατάλογος ακαδημίας">
           <AdminRow
             title="Αθλήματα"
             description="Αθλήματα καταλόγου για φόρμες και προφίλ."
@@ -1272,7 +1315,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
+        </AdminZone>
 
+        <AdminZone title="Σεζόν & άδειες">
           <AdminRow
             title="Σεζόν"
             description="Διαθέσιμες αγωνιστικές σεζόν για φίλτρα και οικονομικά."
@@ -1356,8 +1401,9 @@ export function PlatformAdminPage() {
               </RecordsTable>
             }
           />
-        </div>
-      </section>
+        </AdminZone>
+      </div>
+      ) : null}
     </div>
   );
 }

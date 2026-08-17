@@ -44,6 +44,7 @@ import {
   visibleStudentsForSession,
 } from '../utils/coachScope';
 import { normalizeSportKey } from '../utils/sport';
+import { listActiveClubSportNames } from '../utils/clubSports';
 import { studentClassIds, studentInClass } from '../utils/studentClasses';
 import { studentHasSport, studentSports } from '../utils/studentSports';
 
@@ -243,8 +244,8 @@ export function AnnouncementsPage() {
   }, [visibleClasses, data.students, form.sportCategories, form.teamsLabel]);
 
   const sportFilterOptions = useMemo(() => {
-    const active = (data.sports ?? []).filter((s) => s.active);
-    if (active.length > 0) return active.map((s) => s.name);
+    const active = listActiveClubSportNames(data.sports);
+    if (active.length > 0) return active;
     const names = new Set<string>();
     for (const c of visibleClasses) {
       if (c.sport?.trim()) names.add(c.sport.trim());

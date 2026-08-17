@@ -14,6 +14,7 @@ import {
   visibleClassesForSession,
 } from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
+import { listActiveClubSportNames } from '../utils/clubSports';
 import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm: TrainingInput = {
@@ -61,17 +62,17 @@ export function TrainingsPage() {
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
 
   const sportOptions = useMemo(() => {
-    const active = (data.sports ?? []).filter((s) => s.active);
+    const activeNames = listActiveClubSportNames(data.sports);
+    const toItems = (names: string[]) =>
+      names.map((name, i) => ({ id: `sport-${i}-${name}`, name, active: true }));
     if (isCoach && coach?.sport) {
       const key = normalizeSportKey(coach.sport);
-      const matched = active.filter((s) => normalizeSportKey(s.name) === key);
-      return matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
+      const matched = activeNames.filter((n) => normalizeSportKey(n) === key);
+      return matched.length > 0
+        ? toItems(matched)
+        : [{ id: 'coach-sport', name: coach.sport, active: true }];
     }
-    if (active.length > 0) {
-      return active.filter((s) =>
-        visibleClasses.some((c) => sportsMatch(c.sport, s.name)),
-      );
-    }
+    if (activeNames.length > 0) return toItems(activeNames);
     const fromClasses = new Map<string, string>();
     for (const cls of visibleClasses) {
       const name = (cls.sport ?? '').trim();
@@ -79,11 +80,7 @@ export function TrainingsPage() {
       const key = normalizeSportKey(name);
       if (!fromClasses.has(key)) fromClasses.set(key, name);
     }
-    return [...fromClasses.values()].map((name, i) => ({
-      id: `sport-${i}`,
-      name,
-      active: true,
-    }));
+    return toItems([...fromClasses.values()]);
   }, [data.sports, isCoach, coach, visibleClasses]);
 
   const [showAdd, setShowAdd] = useState(false);

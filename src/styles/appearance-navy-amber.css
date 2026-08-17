@@ -636,6 +636,43 @@ html[data-appearance='navy-amber'] .admin-board-title p {
   color: #b6c3d6;
 }
 
+html[data-appearance='navy-amber'] .admin-zone,
+html[data-appearance='navy-amber'] .admin-workspace-tabs {
+  background: #121f35;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-zone-title,
+html[data-appearance='navy-amber'] .admin-workspace-tab.is-active {
+  background: #0b1f3a;
+  color: #e8eef7;
+}
+
+html[data-appearance='navy-amber'] .admin-workspace-tab {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .admin-zone-card,
+html[data-appearance='navy-amber'] .admin-zone-card-status {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #121f35;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-zone-card-head {
+  background: #0e1a2e;
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-zone-card-head h3 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .admin-zone-card-head p {
+  color: #b6c3d6;
+}
+
 html[data-appearance='navy-amber'] .admin-board-entry,
 html[data-appearance='navy-amber'] .admin-board-records {
   background: #121f35;

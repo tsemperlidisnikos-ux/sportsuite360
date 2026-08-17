@@ -165,6 +165,25 @@ export async function kvDel(key: string): Promise<void> {
   }
 }
 
+export async function kvIncrementWithExpiry(key: string, windowSeconds: number): Promise<number | null> {
+  const redis = redisClient();
+  if (!redis) return null;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, windowSeconds);
+  return count;
+}
+
+export async function kvSetIfAbsent(
+  key: string,
+  value: string,
+  expirySeconds: number,
+): Promise<boolean | null> {
+  const redis = redisClient();
+  if (!redis) return null;
+  const result = await redis.set(key, value, { nx: true, ex: expirySeconds });
+  return result === 'OK';
+}
+
 /** Public binary upload for gallery media (returns CDN URL). */
 export async function putPublicBinary(
   pathname: string,

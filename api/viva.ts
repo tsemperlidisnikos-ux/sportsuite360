@@ -2,9 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   addSettlement,
+  allowRateLimit,
+  assertPlatformAdminOrSecret,
   consumeSettlement,
   isDurableStoreEnabled,
   listOpenSettlements,
+  requestAddress,
 } from './lib/serverStore.js';
 
 /**
@@ -58,7 +61,7 @@ function safeEqual(a: string, b: string): boolean {
 
 function assertVivaWebhookAuthorized(req: VercelRequest): boolean {
   const secret = (process.env.VIVA_WEBHOOK_SECRET || '').trim();
-  if (!secret) return true;
+  if (!secret) return false;
 
   const headerKey = String(
     req.headers['x-viva-signature'] ??
@@ -85,6 +88,9 @@ async function handleCreateOrder(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+  if (!(await allowRateLimit(`viva-order:${requestAddress(req)}`, 20, 300))) {
+    return res.status(429).json({ ok: false, error: 'Πολλά αιτήματα πληρωμής. Δοκιμάστε ξανά αργότερα.' });
   }
 
   const body = (req.body ?? {}) as CreateOrderBody;
@@ -170,6 +176,7 @@ async function handleCreateOrder(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handleSettlements(req: VercelRequest, res: VercelResponse) {
+  if (!assertPlatformAdminOrSecret(req, res)) return;
   if (req.method === 'GET') {
     const settlements = await listOpenSettlements();
     return res.status(200).json({
@@ -211,6 +218,9 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+  if (!(await allowRateLimit(`viva-webhook:${requestAddress(req)}`, 60, 60))) {
+    return res.status(429).json({ ok: false, error: 'Πολλά webhook requests.' });
   }
 
   if (!assertVivaWebhookAuthorized(req)) {

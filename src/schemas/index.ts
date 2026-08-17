@@ -236,6 +236,9 @@ export type AssociationInput = z.infer<typeof associationSchema>;
 export const sportItemSchema = z.object({
   name: z.string().min(2, 'Το όνομα αθλήματος είναι υποχρεωτικό'),
   active: z.boolean().default(true),
+  category: z
+    .enum(['team', 'individual', 'water', 'martial', 'racket', 'dance', 'gym', 'winter', 'other'])
+    .default('other'),
 });
 
 export type SportItemInput = z.infer<typeof sportItemSchema>;

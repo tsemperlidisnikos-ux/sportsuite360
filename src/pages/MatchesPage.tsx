@@ -16,6 +16,7 @@ import {
 } from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
 import { formatDate } from '../utils/labels';
+import { listActiveClubSportNames } from '../utils/clubSports';
 import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm = (): MatchInput => ({
@@ -67,13 +68,17 @@ export function MatchesPage() {
   const [saving, setSaving] = useState(false);
 
   const sportOptions = useMemo(() => {
-    const active = (data.sports ?? []).filter((s) => s.active);
+    const activeNames = listActiveClubSportNames(data.sports);
+    const toItems = (names: string[]) =>
+      names.map((name, i) => ({ id: `sport-${i}-${name}`, name, active: true }));
     if (isCoach && coach?.sport) {
       const key = normalizeSportKey(coach.sport);
-      const matched = active.filter((s) => normalizeSportKey(s.name) === key);
-      return matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
+      const matched = activeNames.filter((n) => normalizeSportKey(n) === key);
+      return matched.length > 0
+        ? toItems(matched)
+        : [{ id: 'coach-sport', name: coach.sport, active: true }];
     }
-    return active;
+    return toItems(activeNames);
   }, [data.sports, isCoach, coach]);
 
   const classesForSelectedSport = useMemo(() => {

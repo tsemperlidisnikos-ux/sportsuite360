@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MoreHorizontal, RotateCcw, Search, Send, Users } from 'lucide-react';
 import * as parentsService from '../api/services/parentsService';
 import { getSession } from '../auth/auth';
@@ -39,6 +39,8 @@ export function ParentsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loadingRows, setLoadingRows] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const athletes = useMemo(
     () =>
@@ -50,18 +52,26 @@ export function ParentsPage() {
     [data.students],
   );
 
-  async function loadRows() {
+  const loadRows = useCallback(async () => {
+    setLoadError('');
     if (!clubId) {
       setRows([]);
       return;
     }
+    setLoadingRows(true);
     const result = await parentsService.listParentDirectory(clubId);
-    if (result.success) setRows(result.data ?? []);
-  }
+    if (result.success) {
+      setRows(result.data ?? []);
+    } else {
+      setRows([]);
+      setLoadError(result.error ?? 'Αποτυχία φόρτωσης γονέων.');
+    }
+    setLoadingRows(false);
+  }, [clubId]);
 
   useEffect(() => {
     void loadRows();
-  }, [clubId, data.parentLinks, data.students]);
+  }, [data.parentLinks, data.students, loadRows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -227,7 +237,11 @@ export function ParentsPage() {
       </section>
 
       <section className="parents-table-card panel">
-        {pageRows.length === 0 ? (
+        {loadingRows ? (
+          <p className="parents-empty">Φόρτωση γονέων…</p>
+        ) : loadError ? (
+          <p className="form-error">{loadError}</p>
+        ) : pageRows.length === 0 ? (
           <p className="parents-empty">Δεν υπάρχουν γονείς με αυτά τα κριτήρια.</p>
         ) : (
           <div className="table-wrap parents-table-wrap">

@@ -24,7 +24,7 @@ export function CashAccountsPanel({ onSaved }: { onSaved: () => void }) {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const balances = useMemo(() => cashAccountsService.getAccountBalances(), [data]);
+  const balances = cashAccountsService.getAccountBalances();
   const closedMonths = useMemo(
     () => [...(data.closedFinanceMonths ?? [])].sort().reverse(),
     [data.closedFinanceMonths],

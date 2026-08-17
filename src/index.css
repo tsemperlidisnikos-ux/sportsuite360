@@ -950,6 +950,12 @@ th {
   align-items: center;
 }
 
+td.row-actions {
+  display: table-cell;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .row-actions .btn-label-inline {
   margin-left: 0.25rem;
   font-size: 0.78rem;
@@ -2555,8 +2561,11 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
 }
 
 @media (max-width: 860px) {
-  .app-header {
+  .app-frame {
     --app-header-h: 84px;
+  }
+
+  .app-header {
     height: auto;
     min-height: var(--app-header-h);
     padding: 0.65rem 0.9rem;

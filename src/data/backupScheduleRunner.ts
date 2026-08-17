@@ -158,7 +158,7 @@ async function runPerClubBackups(rule: BackupScheduleRule, clubIds: string[]) {
   for (const club of targets) {
     try {
       if (rule.mode === 'download' || rule.mode === 'both') {
-        const slug = (club.name || club.id).replace(/[^\w\-]+/g, '_').slice(0, 40);
+        const slug = (club.name || club.id).replace(/[^\w-]+/g, '_').slice(0, 40);
         const name = downloadBackupZip(
           buildClubBackupPayload(club.id),
           `academyhub-club-${slug}`,

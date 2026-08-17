@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import {
   Building2,
   Database,
@@ -30,6 +30,7 @@ import {
   resolveClubLicensePackage,
 } from '../auth/licensePackages';
 import * as emailService from '../api/services/emailService';
+import { getSessionToken, updateCloudClubLogo } from '../api/services/sessionService';
 import { BackupPanel } from '../components/BackupPanel';
 import { ChangePasswordPanel } from '../components/ChangePasswordPanel';
 import { ClubEmailPanel } from '../components/ClubEmailPanel';
@@ -46,6 +47,7 @@ import { SportsPage } from './SportsPage';
 import { TermsOfUsePanel } from './TermsOfUsePanel';
 
 const MAX_LOGO_BYTES = 2_000_000;
+const MAX_LOGO_DATA_URL_LENGTH = 180_000;
 
 type SettingsTab =
   | 'club'
@@ -71,6 +73,41 @@ type ClubForm = {
   phone: string;
   email: string;
 };
+
+async function optimizeLogoDataUrl(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Αποτυχία ανάγνωσης αρχείου.'));
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.readAsDataURL(file);
+  });
+
+  if (file.type === 'image/svg+xml' || dataUrl.length <= MAX_LOGO_DATA_URL_LENGTH) {
+    if (dataUrl.length > MAX_LOGO_DATA_URL_LENGTH) {
+      throw new Error('Το SVG λογότυπο είναι υπερβολικά μεγάλο. Χρησιμοποιήστε μικρότερο αρχείο.');
+    }
+    return dataUrl;
+  }
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error('Αποτυχία επεξεργασίας λογοτύπου.'));
+    element.src = dataUrl;
+  });
+  const scale = Math.min(1, 512 / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Αδυναμία επεξεργασίας λογοτύπου.');
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const optimized = canvas.toDataURL('image/jpeg', 0.82);
+  if (optimized.length > MAX_LOGO_DATA_URL_LENGTH) {
+    throw new Error('Το λογότυπο παραμένει υπερβολικά μεγάλο. Χρησιμοποιήστε μικρότερο αρχείο.');
+  }
+  return optimized;
+}
 
 const PRIMARY_TABS: Array<{ id: SettingsTab; label: string }> = [
   { id: 'club', label: 'Σύλλογος' },
@@ -126,7 +163,7 @@ export function SettingsPage() {
   const [smtpForm, setSmtpForm] = useState<ClubSmtpSettings>(() => getClubSmtp(clubId));
   const [vivaForm, setVivaForm] = useState<ClubVivaSettings>(() => getClubViva(clubId));
 
-  function refreshClub() {
+  const refreshClub = useCallback(() => {
     const next = ensureSessionClub(getSession()) ?? getClubById(clubId);
     setClub(next);
     if (next) {
@@ -143,19 +180,19 @@ export function SettingsPage() {
     }
     setSmtpForm(getClubSmtp(clubId));
     setVivaForm(getClubViva(clubId));
-  }
+  }, [clubId]);
 
   useEffect(() => {
     refreshClub();
-  }, [clubId]);
+  }, [refreshClub]);
 
   useEffect(() => {
     const onClubsUpdated = () => refreshClub();
     window.addEventListener('academyhub-clubs-updated', onClubsUpdated);
     return () => window.removeEventListener('academyhub-clubs-updated', onClubsUpdated);
-  }, [clubId]);
+  }, [refreshClub]);
 
-  function readLogoFile(file: File) {
+  async function readLogoFile(file: File) {
     if (!clubId) return;
     if (!file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
       setError('Επιλέξτε εικόνα (PNG, JPG ή SVG).');
@@ -168,37 +205,35 @@ export function SettingsPage() {
     setSaving(true);
     setError('');
     setMessage('');
-    const reader = new FileReader();
-    reader.onerror = () => {
-      setSaving(false);
-      setError('Αποτυχία ανάγνωσης αρχείου.');
-    };
-    reader.onload = () => {
-      const logoUrl = String(reader.result ?? '');
-      const result = updateClubLogo(clubId, logoUrl);
-      setSaving(false);
-      if (!result.success) {
-        setError(result.error ?? 'Σφάλμα αποθήκευσης');
-        return;
+    try {
+      const logoUrl = await optimizeLogoDataUrl(file);
+      if (getSessionToken()) {
+        const cloud = await updateCloudClubLogo(clubId, logoUrl);
+        if (!cloud.success) throw new Error(cloud.error ?? 'Αποτυχία cloud αποθήκευσης λογοτύπου.');
       }
-      setMessage('Το λογότυπο αποθηκεύτηκε.');
+      const result = updateClubLogo(clubId, logoUrl);
+      if (!result.success) throw new Error(result.error ?? 'Σφάλμα αποθήκευσης');
+      setMessage(getSessionToken() ? 'Το λογότυπο αποθηκεύτηκε στο cloud.' : 'Το λογότυπο αποθηκεύτηκε τοπικά.');
       refreshClub();
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Αποτυχία αποθήκευσης λογοτύπου.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    readLogoFile(file);
+    void readLogoFile(file);
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragOver(false);
     const file = event.dataTransfer.files?.[0];
-    if (file) readLogoFile(file);
+    if (file) void readLogoFile(file);
   }
 
   async function handleSaveAll() {
@@ -347,6 +382,11 @@ export function SettingsPage() {
                   ) : (
                     <em>Το όριο ορίζεται από τον διαχειριστή πλατφόρμας.</em>
                   )}
+                  <em>
+                    {club.usageEndsOn
+                      ? `Λογαριασμός ενεργός έως ${new Date(`${club.usageEndsOn}T00:00:00`).toLocaleDateString('el-GR')}`
+                      : 'Λογαριασμός χωρίς ημερομηνία λήξης'}
+                  </em>
                 </div>
                 <div className="set-license-stat">
                   <span>Χρήση αδειών</span>

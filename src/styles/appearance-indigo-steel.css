@@ -679,6 +679,8 @@ html[data-appearance='indigo-steel'] .page-header-actions .btn-primary {
 }
 
 html[data-appearance='indigo-steel'] .admin-board-header,
+html[data-appearance='indigo-steel'] .admin-zone-title,
+html[data-appearance='indigo-steel'] .admin-workspace-tab.is-active,
 html[data-appearance='indigo-steel'] .preview-banner {
   background: #2a3344;
   color: #eef1f6;
@@ -689,6 +691,16 @@ html[data-appearance='indigo-steel'] .admin-board {
   color: #1a1f2e;
 }
 
+html[data-appearance='indigo-steel'] .admin-zone,
+html[data-appearance='indigo-steel'] .admin-workspace-tabs,
+html[data-appearance='indigo-steel'] .admin-zone-card,
+html[data-appearance='indigo-steel'] .admin-zone-card-status {
+  background: #ffffff;
+  color: #1a1f2e;
+  border-color: rgba(26, 31, 46, 0.14);
+}
+
+html[data-appearance='indigo-steel'] .admin-zone-card-head,
 html[data-appearance='indigo-steel'] .admin-board-title,
 html[data-appearance='indigo-steel'] .admin-board-entry,
 html[data-appearance='indigo-steel'] .admin-board-records,

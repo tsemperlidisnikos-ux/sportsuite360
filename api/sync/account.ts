@@ -3,7 +3,9 @@ import nodemailer from 'nodemailer';
 import {
   appendClubWaitlist,
   appendLoginActivity,
+  allowRateLimit,
   assertSyncAuthorized,
+  getSyncAuthContext,
   consumePasswordResetToken,
   createPasswordResetToken,
   hashPassword,
@@ -18,6 +20,7 @@ import {
   uploadClubMedia,
   verifyPassword,
   verifySessionToken,
+  requestAddress,
   type ClubWaitlistEntry,
   type LoginActivityEvent,
 } from '../lib/serverStore.js';
@@ -35,6 +38,8 @@ type BundleUser = {
 type BundleClub = {
   id: string;
   name?: string;
+  usageStartsOn?: string | null;
+  usageEndsOn?: string | null;
   smtp?: {
     enabled?: boolean;
     host?: string;
@@ -101,6 +106,43 @@ function parseLoginEvent(body: unknown): LoginActivityEvent | null {
 
 function kindOf(req: VercelRequest): string {
   return String(req.query.kind ?? req.query.view ?? '').trim();
+}
+
+async function handleClubProfile(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'PATCH' && req.method !== 'POST') {
+    res.setHeader('Allow', 'PATCH, POST');
+    return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+  const body = (req.body ?? {}) as { clubId?: string; logoUrl?: string | null };
+  const clubId = String(body.clubId ?? '').trim();
+  const logoUrl = body.logoUrl == null ? null : String(body.logoUrl).trim();
+  if (!clubId) return res.status(400).json({ ok: false, error: 'clubId required' });
+  if (logoUrl && !logoUrl.startsWith('https://') && !logoUrl.startsWith('data:image/')) {
+    return res.status(400).json({ ok: false, error: 'logoUrl must be an HTTPS URL or image data URL' });
+  }
+  if (logoUrl && logoUrl.length > 180_000) {
+    return res.status(400).json({ ok: false, error: 'Το λογότυπο είναι υπερβολικά μεγάλο' });
+  }
+  const auth = getSyncAuthContext(req);
+  if (!auth.viaSecret && auth.claims?.role !== 'platform_admin' && auth.claims?.clubId !== clubId) {
+    return res.status(403).json({ ok: false, error: 'Forbidden: club mismatch' });
+  }
+  const bundle = await loadAccountBundle();
+  if (!bundle || !Array.isArray(bundle.clubs)) {
+    return res.status(404).json({ ok: false, error: 'No account bundle' });
+  }
+  const clubs = (bundle.clubs as BundleClub[]).map((club) =>
+    club.id === clubId ? { ...club, logoUrl: logoUrl || null } : club,
+  );
+  if (!clubs.some((club) => club.id === clubId)) {
+    return res.status(404).json({ ok: false, error: 'Club not found' });
+  }
+  const saved = await saveAccountBundle({
+    users: bundle.users,
+    clubs,
+    platformConfig: bundle.platformConfig,
+  });
+  return res.status(200).json({ ok: true, durable: isDurableStoreEnabled(), updatedAt: saved.updatedAt });
 }
 
 function clip(value: unknown, max: number): string {
@@ -259,6 +301,14 @@ function publicUser(user: BundleUser) {
   };
 }
 
+function isClubUsageActive(club: BundleClub | undefined): boolean {
+  if (!club) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  if (club.usageStartsOn && today < club.usageStartsOn) return false;
+  if (club.usageEndsOn && today > club.usageEndsOn) return false;
+  return true;
+}
+
 function resolvePlatformSmtp(): SmtpConfig | null {
   const host = (process.env.SMTP_HOST || process.env.PLATFORM_SMTP_HOST || '').trim();
   const port = Number(process.env.SMTP_PORT || process.env.PLATFORM_SMTP_PORT || 587);
@@ -320,12 +370,27 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
 
   const body = (req.body ?? {}) as Record<string, unknown>;
   const action = String(body.action ?? 'login').trim();
+  const address = requestAddress(req);
+
+  if (!(await allowRateLimit(`${action}:${address}`, action === 'forgot' ? 5 : 15, 300))) {
+    return res.status(429).json({ ok: false, error: 'Πολλά αιτήματα. Δοκιμάστε ξανά αργότερα.' });
+  }
 
   if (action === 'verify') {
     const token = String(body.token ?? '').trim();
     const claims = verifySessionToken(token);
     if (!claims) return res.status(401).json({ ok: false, error: 'Invalid session' });
-    return res.status(200).json({ ok: true, user: claims });
+    const bundle = await loadAccountBundle();
+    const users = Array.isArray(bundle?.users) ? (bundle!.users as BundleUser[]) : [];
+    const current = users.find((user) => user.id === claims.sub);
+    if (!current || current.active === false || current.email.toLowerCase() !== claims.email.toLowerCase()) {
+      return res.status(401).json({ ok: false, error: 'Session user is no longer active' });
+    }
+    const clubs = Array.isArray(bundle?.clubs) ? (bundle!.clubs as BundleClub[]) : [];
+    if (current.role !== 'platform_admin' && !isClubUsageActive(clubs.find((club) => club.id === current.clubId))) {
+      return res.status(403).json({ ok: false, error: 'Η περίοδος χρήσης του συλλόγου έχει λήξει' });
+    }
+    return res.status(200).json({ ok: true, user: publicUser(current) });
   }
 
   if (action === 'login') {
@@ -341,6 +406,10 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
     const user = users.find((u) => u.email?.toLowerCase() === email && u.active !== false);
     if (!user || !(await verifyPassword(password, user.password ?? ''))) {
       return res.status(401).json({ ok: false, error: 'Λάθος email ή κωδικός' });
+    }
+    const clubs = Array.isArray(bundle?.clubs) ? (bundle!.clubs as BundleClub[]) : [];
+    if (user.role !== 'platform_admin' && !isClubUsageActive(clubs.find((club) => club.id === user.clubId))) {
+      return res.status(403).json({ ok: false, error: 'Η περίοδος χρήσης του συλλόγου έχει λήξει' });
     }
     let nextPassword = user.password;
     if (user.password && !user.password.startsWith('pbkdf2$')) {
@@ -485,10 +554,12 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handleMedia(req: VercelRequest, res: VercelResponse) {
-  if (!assertSyncAuthorized(req, res)) return;
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+  if (!(await allowRateLimit(`media:${requestAddress(req)}`, 40, 300))) {
+    return res.status(429).json({ ok: false, error: 'Πολλά αιτήματα upload. Δοκιμάστε ξανά αργότερα.' });
   }
   const body = (req.body ?? {}) as Record<string, unknown>;
   const clubId = String(body.clubId ?? '').trim();
@@ -497,6 +568,16 @@ async function handleMedia(req: VercelRequest, res: VercelResponse) {
   const dataBase64 = String(body.dataBase64 ?? '').trim();
   if (!clubId || !dataBase64) {
     return res.status(400).json({ ok: false, error: 'clubId and dataBase64 required' });
+  }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+    return res.status(400).json({ ok: false, error: 'Unsupported media type' });
+  }
+  const auth = getSyncAuthContext(req);
+  if (!auth.viaSecret && auth.claims?.clubId !== clubId && auth.claims?.role !== 'platform_admin') {
+    return res.status(403).json({ ok: false, error: 'Forbidden: club mismatch' });
+  }
+  if (!auth.claims && !auth.viaSecret) {
+    if (!assertSyncAuthorized(req, res)) return;
   }
   try {
     const uploaded = await uploadClubMedia({ clubId, fileName, contentType, dataBase64 });
@@ -521,6 +602,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (kind === 'media') {
     return handleMedia(req, res);
+  }
+
+  if (kind === 'club-profile') {
+    return handleClubProfile(req, res);
   }
 
   if (kind === 'club-waitlist') {
@@ -568,6 +653,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'No account bundle',
       });
     }
+    const auth = getSyncAuthContext(req);
+    if (auth.claims && auth.claims.role !== 'platform_admin') {
+      const clubId = auth.claims.clubId;
+      const users = Array.isArray(bundle.users)
+        ? (bundle.users as BundleUser[])
+            .filter((user) => user.clubId === clubId)
+            .map(({ password: _password, ...user }) => user)
+        : [];
+      const clubs = Array.isArray(bundle.clubs)
+        ? (bundle.clubs as BundleClub[]).filter((club) => club.id === clubId).map(({ smtp: _smtp, ...club }) => club)
+        : [];
+      return res.status(200).json({
+        ok: true,
+        durable: isDurableStoreEnabled(),
+        users,
+        clubs,
+      });
+    }
     return res.status(200).json({
       ok: true,
       durable: isDurableStoreEnabled(),
@@ -576,6 +679,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
+    const auth = getSyncAuthContext(req);
+    if (!auth.viaSecret && auth.claims?.role !== 'platform_admin') {
+      return res.status(403).json({ ok: false, error: 'Μόνο Platform Admin μπορεί να αποθηκεύσει account bundle' });
+    }
     const body = (req.body ?? {}) as {
       users?: unknown;
       clubs?: unknown;

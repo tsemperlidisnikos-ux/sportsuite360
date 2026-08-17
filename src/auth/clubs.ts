@@ -57,6 +57,8 @@ export interface Club {
   athleteLicenseUsed: number;
   /** Πακέτο συνδρομής πλατφόρμας (ESSENTIAL / GROWTH / …). */
   licensePackageId?: string | null;
+  usageStartsOn?: string | null;
+  usageEndsOn?: string | null;
   logoUrl?: string | null;
   vatNumber?: string;
   taxOffice?: string;
@@ -257,6 +259,8 @@ export function updateClubLicenses(
     athleteLicenseLimit: number;
     athleteLicenseUsed: number;
     licensePackageId?: string | null;
+    usageStartsOn?: string | null;
+    usageEndsOn?: string | null;
   },
 ): ApiResult<Club> {
   const clubs = getClubs();
@@ -270,6 +274,11 @@ export function updateClubLicenses(
   if (!Number.isFinite(rawUsed) || rawUsed < 0) {
     return fail('Μη έγκυρος αριθμός χρησιμοποιημένων αδειών');
   }
+  const usageStartsOn = input.usageStartsOn?.trim() || null;
+  const usageEndsOn = input.usageEndsOn?.trim() || null;
+  if (usageStartsOn && usageEndsOn && usageStartsOn > usageEndsOn) {
+    return fail('Η ημερομηνία έναρξης πρέπει να είναι πριν από τη λήξη');
+  }
   const limit = Math.max(0, Math.floor(rawLimit));
   const used = Math.max(0, Math.min(limit, Math.floor(rawUsed)));
   clubs[index] = {
@@ -280,10 +289,18 @@ export function updateClubLicenses(
       input.licensePackageId === undefined
         ? clubs[index].licensePackageId ?? null
         : input.licensePackageId,
+    usageStartsOn,
+    usageEndsOn,
   };
   saveClubs(clubs);
   window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
   return ok(clubs[index]);
+}
+
+export function isClubUsageActive(club: Club, today = new Date().toISOString().slice(0, 10)): boolean {
+  if (club.usageStartsOn && today < club.usageStartsOn) return false;
+  if (club.usageEndsOn && today > club.usageEndsOn) return false;
+  return true;
 }
 
 export function acceptClubDpa(clubId: string): ApiResult<Club> {

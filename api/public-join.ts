@@ -2,11 +2,15 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
 import {
   appendPendingApplication,
+  allowRateLimit,
+  assertSyncAuthorized,
+  getSyncAuthContext,
   isDurableStoreEnabled,
   listPendingApplications,
   loadClubNotifyConfig,
   loadMirror,
   loadPublicClubBySlug,
+  requestAddress,
   saveMirror,
   type RemoteRegistrationApplication,
 } from './lib/serverStore.js';
@@ -29,9 +33,14 @@ type Body = {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     // Staff pull of remote pending applications
+    if (!assertSyncAuthorized(req, res)) return;
     const clubId = String(req.query.clubId ?? '').trim();
     if (!clubId) {
       return res.status(400).json({ ok: false, error: 'clubId required' });
+    }
+    const auth = getSyncAuthContext(req);
+    if (!auth.viaSecret && auth.claims?.role !== 'platform_admin' && auth.claims?.clubId !== clubId) {
+      return res.status(403).json({ ok: false, error: 'Forbidden: club mismatch' });
     }
     const applications = await listPendingApplications(clubId);
     return res.status(200).json({
@@ -44,6 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+  if (!(await allowRateLimit(`public-join:${requestAddress(req)}`, 10, 300))) {
+    return res.status(429).json({ ok: false, error: 'Πολλά αιτήματα εγγραφής. Δοκιμάστε ξανά αργότερα.' });
   }
 
   const body = (req.body ?? {}) as Body;

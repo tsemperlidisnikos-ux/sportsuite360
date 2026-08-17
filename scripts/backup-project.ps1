@@ -51,6 +51,10 @@ try {
 
   Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
+  if (!(Test-Path $zipPath) -or ((Get-Item $zipPath).Length -le 0)) {
+    throw "Backup archive was not created or is empty: $zipPath"
+  }
+
   Write-Output $zipPath
 }
 finally {

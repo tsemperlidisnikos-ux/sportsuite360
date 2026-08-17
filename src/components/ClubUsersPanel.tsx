@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { UserPlus } from 'lucide-react';
 import * as clubUsersService from '../api/services/clubUsersService';
 import {
@@ -90,7 +90,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     });
   }, [directory, searchLastName, searchFirstName, searchRole]);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     const [usersResult, directoryResult] = await Promise.all([
       clubUsersService.listClubUsers(clubId),
@@ -107,11 +107,11 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     }
     setUsers(usersResult.data ?? []);
     setDirectory(directoryResult.data ?? []);
-  }
+  }, [clubId]);
 
   useEffect(() => {
     void refresh();
-  }, [clubId]);
+  }, [refresh]);
 
   useEffect(() => {
     if (isInvitations) {

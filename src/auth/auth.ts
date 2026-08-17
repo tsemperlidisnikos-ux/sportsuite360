@@ -368,6 +368,9 @@ export function deleteUser(userId: string): { success: boolean; error?: string }
 export function impersonateUser(
   userId: string,
 ): { success: boolean; data?: AppUser; error?: string } {
+  if (!isPlatformAdmin()) {
+    return { success: false, error: 'Μόνο Platform Admin μπορεί να κάνει impersonation' };
+  }
   const user = getUsers().find((u) => u.id === userId && u.active);
   if (!user) return { success: false, error: 'Ο χρήστης δεν βρέθηκε' };
   setSessionFromUser(user);

@@ -636,6 +636,43 @@ html[data-appearance='midnight-ice'] .admin-board-title p {
   color: #b6c3d6;
 }
 
+html[data-appearance='midnight-ice'] .admin-zone,
+html[data-appearance='midnight-ice'] .admin-workspace-tabs {
+  background: #0f1826;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-zone-title,
+html[data-appearance='midnight-ice'] .admin-workspace-tab.is-active {
+  background: #061018;
+  color: #e8eef7;
+}
+
+html[data-appearance='midnight-ice'] .admin-workspace-tab {
+  color: #b6c3d6;
+}
+
+html[data-appearance='midnight-ice'] .admin-zone-card,
+html[data-appearance='midnight-ice'] .admin-zone-card-status {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #0f1826;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-zone-card-head {
+  background: #0c1520;
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-zone-card-head h3 {
+  color: #f4f7fb;
+}
+
+html[data-appearance='midnight-ice'] .admin-zone-card-head p {
+  color: #b6c3d6;
+}
+
 html[data-appearance='midnight-ice'] .admin-board-entry,
 html[data-appearance='midnight-ice'] .admin-board-records {
   background: #0f1826;

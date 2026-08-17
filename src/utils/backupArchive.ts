@@ -9,6 +9,8 @@ import { localDateIso, localDateTimeIso } from './dates';
 import { createZip, extractZipAsync } from './zip';
 
 export const BACKUP_JSON_FILENAME = 'academyhub-backup.json';
+const MAX_BACKUP_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_EXTRACTED_BACKUP_BYTES = 100 * 1024 * 1024;
 
 export type BackupPayload = {
   exportedAt: string;
@@ -86,6 +88,9 @@ export function downloadBackupJson(
 }
 
 function parseBackupJson(text: string): BackupPayload {
+  if (text.length > MAX_BACKUP_FILE_BYTES) {
+    throw new Error('Το backup είναι υπερβολικά μεγάλο. Μέγιστο μέγεθος 50MB.');
+  }
   const cleaned = text.replace(/^\uFEFF/, '').trim();
   let parsed: BackupPayload;
   try {
@@ -96,7 +101,24 @@ function parseBackupJson(text: string): BackupPayload {
   if (!parsed.appData && !parsed.appDataByClub && !parsed.platformConfig && !parsed.users && !parsed.clubs) {
     throw new Error('Το αρχείο δεν είναι έγκυρο backup της εφαρμογής.');
   }
+  if (parsed.appData && !isAppDataShape(parsed.appData)) {
+    throw new Error('Το backup περιέχει μη έγκυρα δεδομένα συλλόγου.');
+  }
+  if (parsed.appDataByClub) {
+    if (typeof parsed.appDataByClub !== 'object' || Array.isArray(parsed.appDataByClub)) {
+      throw new Error('Το backup περιέχει μη έγκυρο multi-tenant σχήμα.');
+    }
+    for (const data of Object.values(parsed.appDataByClub)) {
+      if (!isAppDataShape(data)) throw new Error('Το backup περιέχει μη έγκυρα δεδομένα συλλόγου.');
+    }
+  }
   return parsed;
+}
+
+function isAppDataShape(value: unknown): value is AppData {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as Record<string, unknown>;
+  return Array.isArray(data.students) && Array.isArray(data.classes);
 }
 
 export function formatBackupError(err: unknown): string {
@@ -134,6 +156,9 @@ export async function readBackupFile(file: File): Promise<BackupPayload> {
   const name = file.name.toLowerCase();
 
   if (name.endsWith('.json') || file.type === 'application/json') {
+    if (file.size > MAX_BACKUP_FILE_BYTES) {
+      throw new Error('Το backup είναι υπερβολικά μεγάλο. Μέγιστο μέγεθος 50MB.');
+    }
     return parseBackupJson(await file.text());
   }
 
@@ -143,8 +168,15 @@ export async function readBackupFile(file: File): Promise<BackupPayload> {
     file.type === 'application/x-zip-compressed'
   ) {
     const buffer = await file.arrayBuffer();
+    if (buffer.byteLength > MAX_BACKUP_FILE_BYTES) {
+      throw new Error('Το ZIP backup είναι υπερβολικά μεγάλο. Μέγιστο μέγεθος 50MB.');
+    }
     try {
       const entries = await extractZipAsync(buffer);
+      const extractedBytes = entries.reduce((total, entry) => total + entry.data.byteLength, 0);
+      if (extractedBytes > MAX_EXTRACTED_BACKUP_BYTES) {
+        throw new Error('Το ZIP backup αποσυμπιέζεται σε υπερβολικά μεγάλο μέγεθος.');
+      }
       const jsonEntry =
         entries.find((entry) =>
           entry.name.toLowerCase().replace(/\\/g, '/').endsWith('.json'),

@@ -1,5 +1,4 @@
-import fontkit from '@pdf-lib/fontkit';
-import { PDFDocument, StandardFonts, rgb, type PDFImage, type PDFPage } from 'pdf-lib';
+import type { PDFDocument as PDFDocumentType, PDFImage, PDFPage } from 'pdf-lib';
 import { isVolleyballSport } from './sport';
 
 export type HealthCardAthleteInput = {
@@ -26,7 +25,6 @@ export type HealthCardAthleteInput = {
 
 const PAGE_HEIGHT = 596;
 const OVERLAY_FONT_SIZE = 10;
-const OVERLAY_COLOR = rgb(0, 0, 0);
 const CM_TO_PT = 72 / 2.54;
 const PHOTO_WIDTH_CM = 3.35;
 const PHOTO_HEIGHT_CM = 4.1;
@@ -152,7 +150,7 @@ function buildFieldValues(athlete: HealthCardAthleteInput) {
   };
 }
 
-async function embedPhoto(pdfDoc: PDFDocument, photoUrl: string | null | undefined) {
+async function embedPhoto(pdfDoc: PDFDocumentType, photoUrl: string | null | undefined) {
   if (!photoUrl) return null;
   try {
     let bytes: Uint8Array;
@@ -174,12 +172,13 @@ async function embedPhoto(pdfDoc: PDFDocument, photoUrl: string | null | undefin
   }
 }
 
-function drawPhotoCover(
+async function drawPhotoCover(
   page: PDFPage,
   image: PDFImage,
   blueFrame: typeof DEFAULT_BLUE_FRAME,
   photoBox: ReturnType<typeof buildPhotoBox>,
-) {
+): Promise<void> {
+  const { rgb } = await import('pdf-lib');
   const frameWidth = blueFrame.right - blueFrame.left;
   const frameHeight = blueFrame.bottom - blueFrame.top;
   page.drawRectangle({
@@ -200,6 +199,10 @@ function drawPhotoCover(
 }
 
 async function buildFallbackPdf(values: Record<string, string>): Promise<Uint8Array> {
+  const [{ PDFDocument, StandardFonts, rgb }, { default: fontkit }] = await Promise.all([
+    import('pdf-lib'),
+    import('@pdf-lib/fontkit'),
+  ]);
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]);
   pdfDoc.registerFontkit(fontkit);
@@ -219,7 +222,7 @@ async function buildFallbackPdf(values: Record<string, string>): Promise<Uint8Ar
     y,
     size: 16,
     font: textFont,
-    color: OVERLAY_COLOR,
+    color: rgb(0, 0, 0),
   });
   y -= 36;
 
@@ -248,7 +251,7 @@ async function buildFallbackPdf(values: Record<string, string>): Promise<Uint8Ar
       y,
       size: 11,
       font: textFont,
-      color: OVERLAY_COLOR,
+      color: rgb(0, 0, 0),
     });
     y -= 22;
   }
@@ -260,6 +263,10 @@ export async function buildHealthCardPdf(
   athlete: HealthCardAthleteInput,
 ): Promise<{ success: boolean; data?: Blob; error?: string; volleyball?: boolean }> {
   try {
+    const [{ PDFDocument }, { default: fontkit }] = await Promise.all([
+      import('pdf-lib'),
+      import('@pdf-lib/fontkit'),
+    ]);
     const volleyball = isVolleyballSport(athlete.sport);
     const values = buildFieldValues(athlete);
     const templateUrl = volleyball
@@ -293,7 +300,7 @@ export async function buildHealthCardPdf(
 
     const photo = await embedPhoto(pdfDoc, athlete.photoUrl);
     if (photo) {
-      drawPhotoCover(page, photo, blueFrame, photoBox);
+      await drawPhotoCover(page, photo, blueFrame, photoBox);
     }
 
     for (const field of overlay) {
@@ -305,7 +312,7 @@ export async function buildHealthCardPdf(
         y: pdfBaselineY(field.baselineY),
         size: OVERLAY_FONT_SIZE,
         font,
-        color: OVERLAY_COLOR,
+        color: (await import('pdf-lib')).rgb(0, 0, 0),
       });
     }
 

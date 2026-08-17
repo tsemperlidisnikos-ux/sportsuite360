@@ -12,7 +12,7 @@ import {
   visibleClassesForSession,
 } from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
-import { normalizeSportKey } from '../utils/sport';
+import { activeClubSportSelectOptions } from '../utils/clubSports';
 import { studentInClass } from '../utils/studentClasses';
 
 const emptyForm: ClassInput = {
@@ -46,18 +46,20 @@ export function ClassesPage() {
   const [saving, setSaving] = useState(false);
 
   const sportOptions = useMemo(() => {
-    const activeSports = (data.sports ?? []).filter((s) => s.active);
     if (isCoach && coach?.sport) {
-      const key = normalizeSportKey(coach.sport);
-      const matched = activeSports.filter((s) => normalizeSportKey(s.name) === key);
-      const options = matched.length > 0 ? matched : [{ id: 'coach-sport', name: coach.sport, active: true }];
-      return options.map((s) => ({ value: s.name, label: s.name }));
+      const options = activeClubSportSelectOptions(data.sports, {
+        includeEmpty: false,
+        retain: [coach.sport],
+      }).filter((o) => o.value);
+      const key = coach.sport.trim().toLowerCase();
+      const matched = options.filter((o) => o.value.toLowerCase() === key);
+      return matched.length > 0 ? matched : [{ value: coach.sport, label: coach.sport }];
     }
-    return [
-      { value: '', label: '—' },
-      ...activeSports.map((s) => ({ value: s.name, label: s.name })),
-    ];
-  }, [data.sports, isCoach, coach]);
+    return activeClubSportSelectOptions(data.sports, {
+      emptyLabel: '—',
+      retain: form.sport ? [form.sport] : [],
+    });
+  }, [data.sports, isCoach, coach, form.sport]);
 
   function openCreate() {
     setEditing(null);

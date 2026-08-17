@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ChangeEvent } from 'react';
+import { useId, useState, type ChangeEvent } from 'react';
 import * as accountSyncService from '../api/services/accountSyncService';
 import * as backendSyncService from '../api/services/backendSyncService';
 import { getSession } from '../auth/auth';
@@ -44,9 +44,8 @@ export function BackupPanel() {
     null,
   );
   const [restoring, setRestoring] = useState(false);
-  const [clubTick, setClubTick] = useState(0);
-
-  const clubId = useMemo(() => resolveTargetClubId(), [clubTick]);
+  const [, setClubTick] = useState(0);
+  const clubId = resolveTargetClubId();
   const club = clubId ? getClubById(clubId) : null;
   const isDemoClub = isDemoClubName(club?.name);
   const autoSync = clubId ? isAutoSyncEnabled(clubId) : false;

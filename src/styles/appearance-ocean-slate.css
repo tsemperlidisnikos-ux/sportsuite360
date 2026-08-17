@@ -590,3 +590,13 @@ html[data-appearance='ocean-slate'] .empty-state p,
 html[data-appearance='ocean-slate'] .placeholder {
   color: var(--ocean-muted);
 }
+
+html[data-appearance='ocean-slate'] .admin-zone-title,
+html[data-appearance='ocean-slate'] .admin-workspace-tab.is-active {
+  background: #1c2b3a;
+  color: #e8eef4;
+}
+
+html[data-appearance='ocean-slate'] .admin-zone-card-head {
+  background: #eef3f7;
+}

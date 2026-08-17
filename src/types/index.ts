@@ -275,6 +275,16 @@ export interface SportItem {
   id: string;
   name: string;
   active: boolean;
+  category?:
+    | 'team'
+    | 'individual'
+    | 'water'
+    | 'martial'
+    | 'racket'
+    | 'dance'
+    | 'gym'
+    | 'winter'
+    | 'other';
 }
 
 export type AnnouncementAudienceRole = 'athletes' | 'coaches' | 'staff' | 'parents';

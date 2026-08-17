@@ -4,7 +4,9 @@ import {
   isDurableKvEnabled,
   kvDel,
   kvGet,
+  kvIncrementWithExpiry,
   kvSet,
+  kvSetIfAbsent,
   putPublicBinary,
 } from './durableKv.js';
 
@@ -157,6 +159,36 @@ export function isDurableStoreEnabled(): boolean {
   return isDurableKvEnabled();
 }
 
+const localRateLimits = new Map<string, { count: number; resetAt: number }>();
+
+export async function allowRateLimit(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  const redisCount = await kvIncrementWithExpiry(`ss360:rate:${key}`, windowSeconds);
+  if (redisCount != null) return redisCount <= limit;
+
+  const now = Date.now();
+  const current = localRateLimits.get(key);
+  if (!current || current.resetAt <= now) {
+    localRateLimits.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
+    if (localRateLimits.size > 2000) {
+      for (const [entryKey, entry] of localRateLimits) {
+        if (entry.resetAt <= now) localRateLimits.delete(entryKey);
+      }
+    }
+    return true;
+  }
+  current.count += 1;
+  return current.count <= limit;
+}
+
+export function requestAddress(req: { headers: Record<string, unknown> }): string {
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
+  return forwarded || String(req.headers['x-real-ip'] ?? 'unknown').trim() || 'unknown';
+}
+
 export function getDurableStoreBackend(): 'redis' | 'blob' | 'memory' {
   return durableKvBackend();
 }
@@ -178,6 +210,9 @@ async function writeSettlements(items: VivaSettlement[]): Promise<void> {
 export async function addSettlement(
   input: Omit<VivaSettlement, 'id' | 'consumed' | 'createdAt'>,
 ): Promise<VivaSettlement> {
+  if (!String(input.orderCode ?? '').trim() || !String(input.transactionId ?? '').trim()) {
+    throw new Error('Settlement requires orderCode and transactionId');
+  }
   const item: VivaSettlement = {
     ...input,
     id: `vs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -185,7 +220,12 @@ export async function addSettlement(
     consumed: false,
   };
   const all = await readSettlements();
-  const next = [item, ...all.filter((x) => x.orderCode !== item.orderCode)].slice(0, 200);
+  const next = [
+    item,
+    ...all.filter(
+      (x) => x.orderCode !== item.orderCode && x.transactionId !== item.transactionId,
+    ),
+  ].slice(0, 200);
   await writeSettlements(next);
   return item;
 }
@@ -196,8 +236,12 @@ export async function listOpenSettlements(): Promise<VivaSettlement[]> {
 }
 
 export async function consumeSettlement(orderCode: string): Promise<VivaSettlement | null> {
+  const normalized = String(orderCode).trim();
+  if (!normalized) return null;
+  const claim = await kvSetIfAbsent(`ss360:settlement-claim:${normalized}`, 'claimed', 120);
+  if (claim === false) return null;
   const all = await readSettlements();
-  const found = all.find((x) => x.orderCode === String(orderCode) && !x.consumed);
+  const found = all.find((x) => x.orderCode === normalized && !x.consumed);
   if (!found) return null;
   found.consumed = true;
   await writeSettlements(all);
@@ -508,8 +552,7 @@ export function getSyncAuthContext(req: {
     return { viaSecret: true, claims: null };
   }
 
-  const isVercelProd = process.env.VERCEL_ENV === 'production';
-  if (!expected && !isVercelProd) {
+  if (!expected && process.env.SS360_ALLOW_INSECURE_SYNC === '1') {
     return { viaSecret: true, claims: null };
   }
 
@@ -521,16 +564,15 @@ export function assertSyncAuthorized(
   res: { status: (code: number) => { json: (body: unknown) => unknown } },
 ): boolean {
   const expected = (process.env.SS360_SYNC_SECRET ?? '').trim();
-  const isVercelProd = process.env.VERCEL_ENV === 'production';
   const ctx = getSyncAuthContext(req);
 
   if (ctx.claims || ctx.viaSecret) return true;
 
   if (!expected) {
-    if (isVercelProd) {
+    if (process.env.SS360_ALLOW_INSECURE_SYNC !== '1') {
       res.status(503).json({
         ok: false,
-        error: 'Sync locked: configure SS360_SYNC_SECRET on Vercel',
+        error: 'Sync locked: configure SS360_SYNC_SECRET',
       });
       return false;
     }
@@ -553,6 +595,17 @@ export function assertClubTenantAccess(
   if (ctx.claims?.role === 'platform_admin') return true;
   if (ctx.claims?.clubId && ctx.claims.clubId === clubId) return true;
   res.status(403).json({ ok: false, error: 'Forbidden: club mismatch' });
+  return false;
+}
+
+export function assertPlatformAdminOrSecret(
+  req: { headers: Record<string, unknown>; query?: Record<string, unknown> },
+  res: { status: (code: number) => { json: (body: unknown) => unknown } },
+): boolean {
+  if (!assertSyncAuthorized(req, res)) return false;
+  const ctx = getSyncAuthContext(req);
+  if (ctx.viaSecret || ctx.claims?.role === 'platform_admin') return true;
+  res.status(403).json({ ok: false, error: 'Μόνο Platform Admin' });
   return false;
 }
 

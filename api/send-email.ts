@@ -1,5 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
+import {
+  allowRateLimit,
+  assertSyncAuthorized,
+  getSyncAuthContext,
+  loadClubNotifyConfig,
+  requestAddress,
+} from './lib/serverStore.js';
 
 type Body = {
   smtp?: {
@@ -14,6 +21,7 @@ type Body = {
   text?: string;
   html?: string;
   listUnsubscribe?: string;
+  clubId?: string;
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -22,8 +30,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
+  if (!assertSyncAuthorized(req, res)) return;
+  if (!(await allowRateLimit(`email:${requestAddress(req)}`, 30, 300))) {
+    return res.status(429).json({ ok: false, error: 'Πολλά αιτήματα email. Δοκιμάστε ξανά αργότερα.' });
+  }
+
   const body = (req.body ?? {}) as Body;
-  const smtp = body.smtp;
+  const clubId = String(body.clubId ?? '').trim();
+  const auth = getSyncAuthContext(req);
+  if (!clubId || (!auth.viaSecret && auth.claims?.role !== 'platform_admin' && auth.claims?.clubId !== clubId)) {
+    return res.status(403).json({ ok: false, error: 'Απαιτείται έγκυρος σύλλογος αποστολής' });
+  }
+  const configured = await loadClubNotifyConfig(clubId);
+  const smtp = configured?.smtp?.enabled ? configured.smtp : null;
   const to = String(body.to ?? '').trim();
   const subject = String(body.subject ?? '').trim();
   const text = String(body.text ?? '').trim();

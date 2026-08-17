@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchLoginActivity,
   type LoginActivityEvent,
@@ -39,7 +39,7 @@ export function LoginActivityPanel({
 
   const clubs = useMemo(() => getClubs(), []);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await fetchLoginActivity(150);
@@ -57,11 +57,11 @@ export function LoginActivityPanel({
     } finally {
       setLoading(false);
     }
-  }
+  }, [onSaved]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

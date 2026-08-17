@@ -1,18 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import * as financeService from '../api/services/financeService';
 import { ExpenseEntryPanel } from '../components/ExpenseEntryPanel';
 import { BudgetPanel } from '../components/BudgetPanel';
@@ -37,6 +24,12 @@ import {
   formatMonth,
   revenueCategoryLabels,
 } from '../utils/labels';
+
+const FinanceAnalysisCharts = lazy(() =>
+  import('../components/FinanceAnalysisCharts').then((module) => ({
+    default: module.FinanceAnalysisCharts,
+  })),
+);
 
 type Tab = 'analysis' | 'revenues' | 'expenses' | 'budget' | 'reports' | 'accounts';
 
@@ -205,79 +198,14 @@ export function FinancePage() {
             />
           </section>
 
-          <section className="panel">
-            <div className="panel-head">
-              <h2>Μηνιαία σύγκριση εσόδων / εξόδων</h2>
-            </div>
-            <div className="chart-box tall">
-              {monthlyChart.length === 0 ? (
-                <p className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
-                  Δεν υπάρχουν ακόμη μηνιαία δεδομένα.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={monthlyChart}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
-                    <Legend />
-                    <Bar dataKey="revenue" name="Έσοδα" fill={colors.revenue} radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="expense" name="Έξοδα" fill={colors.expense} radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </section>
-
-          <section className="grid-2">
-            <article className="panel">
-              <div className="panel-head">
-                <h2>Έσοδα ανά κατηγορία</h2>
-              </div>
-              <div className="chart-box">
-                {revenuePie.length === 0 ? (
-                  <p className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
-                    Δεν υπάρχουν έσοδα για εμφάνιση.
-                  </p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie data={revenuePie} dataKey="value" nameKey="name" outerRadius={95} label>
-                        {revenuePie.map((_, index) => (
-                          <Cell key={index} fill={colors.pie[index % colors.pie.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </article>
-            <article className="panel">
-              <div className="panel-head">
-                <h2>Έξοδα ανά κατηγορία</h2>
-              </div>
-              <div className="chart-box">
-                {expensePie.length === 0 ? (
-                  <p className="muted" style={{ padding: '2rem', textAlign: 'center' }}>
-                    Δεν υπάρχουν έξοδα για εμφάνιση.
-                  </p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie data={expensePie} dataKey="value" nameKey="name" outerRadius={95} label>
-                        {expensePie.map((_, index) => (
-                          <Cell key={index} fill={colors.pie[(index + 2) % colors.pie.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </article>
-          </section>
+          <Suspense fallback={<section className="panel chart-box tall"><p className="muted">Φόρτωση γραφημάτων…</p></section>}>
+            <FinanceAnalysisCharts
+              monthlyChart={monthlyChart}
+              revenuePie={revenuePie}
+              expensePie={expensePie}
+              colors={colors}
+            />
+          </Suspense>
         </>
       ) : null}
 

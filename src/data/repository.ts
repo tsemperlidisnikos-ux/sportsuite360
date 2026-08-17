@@ -20,6 +20,7 @@ import {
 } from './store';
 import type { AppData } from '../types';
 import { ensureAmkaPrivacySection } from '../shared/termsDefaults';
+import { resolveCatalogSportName } from '../shared/sportsCatalog';
 import { pruneAmkaAccessLogs } from '../utils/amkaAccess';
 
 let cache: AppData | null = null;
@@ -34,6 +35,68 @@ function ensureCollections(data: AppData): boolean {
   if (!data.staff) data.staff = structuredClone(seedData.staff);
   if (!data.associations) data.associations = structuredClone(seedData.associations);
   if (!data.sports) data.sports = structuredClone(seedData.sports);
+  {
+    const byKey = new Map<string, (typeof data.sports)[number]>();
+    for (const sport of data.sports ?? []) {
+      const canonical = resolveCatalogSportName(sport.name) ?? String(sport.name ?? '').trim();
+      if (!canonical) continue;
+      if (typeof sport.active !== 'boolean') sport.active = true;
+      if (sport.name !== canonical) {
+        sport.name = canonical;
+        changed = true;
+      }
+      const key = canonical
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, sport);
+        continue;
+      }
+      // Κράτα ένα record ανά άθλημα· active αν οποιοδήποτε ήταν ενεργό.
+      existing.active = Boolean(existing.active || sport.active);
+      changed = true;
+    }
+    const deduped = [...byKey.values()];
+    if (deduped.length !== (data.sports?.length ?? 0)) {
+      data.sports = deduped;
+      changed = true;
+    }
+  }
+  for (const student of data.students ?? []) {
+    const nextSports = [
+      ...(student.sports ?? []),
+      ...(student.sport?.trim() ? [student.sport.trim()] : []),
+    ]
+      .map((s) => resolveCatalogSportName(s) ?? s.trim())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const name of nextSports) {
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(name);
+    }
+    const primary =
+      (student.sport?.trim()
+        ? resolveCatalogSportName(student.sport) ?? student.sport.trim()
+        : '') ||
+      unique[0] ||
+      '';
+    const primaryCanon = primary ? resolveCatalogSportName(primary) ?? primary : '';
+    const nextPrimary = unique.find((s) => s.toLowerCase() === primaryCanon.toLowerCase()) ?? unique[0] ?? '';
+    if (
+      student.sport !== nextPrimary ||
+      JSON.stringify(student.sports ?? []) !== JSON.stringify(unique)
+    ) {
+      student.sport = nextPrimary;
+      student.sports = unique;
+      changed = true;
+    }
+  }
   if (!data.announcements) data.announcements = structuredClone(seedData.announcements);
   if (!data.budgets) data.budgets = structuredClone(seedData.budgets);
   if (!data.products) data.products = structuredClone(seedData.products);

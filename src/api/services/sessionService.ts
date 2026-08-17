@@ -133,3 +133,18 @@ export async function uploadClubPhotoBlob(input: {
     return { url: json.url };
   });
 }
+
+export async function updateCloudClubLogo(clubId: string, logoUrl: string | null) {
+  return apiClient(async () => {
+    const response = await fetch('/api/sync/account?kind=club-profile', {
+      method: 'PATCH',
+      headers: syncAuthHeaders(),
+      body: JSON.stringify({ clubId, logoUrl }),
+    });
+    const json = (await response.json()) as { ok?: boolean; error?: string; updatedAt?: string };
+    if (!response.ok || !json.ok) {
+      throw new Error(json.error || `Club profile HTTP ${response.status}`);
+    }
+    return { updatedAt: json.updatedAt ?? null };
+  });
+}

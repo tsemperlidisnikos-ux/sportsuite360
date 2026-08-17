@@ -14,6 +14,7 @@ import { getPreviewClubId, loadPlatformConfig } from '../platform/platformConfig
 import type { FeeChargeTemplateInput } from '../schemas';
 import type { FeeChargeTemplate } from '../types';
 import { formatCurrency, formatDate } from '../utils/labels';
+import { listActiveClubSportNames } from '../utils/clubSports';
 import { normalizeSportKey } from '../utils/sport';
 import { canAccessAmka, formatAmkaForViewer } from '../utils/amkaAccess';
 import { studentClassIds } from '../utils/studentClasses';
@@ -118,12 +119,9 @@ export function FeesPage() {
   const templates = data.feeChargeTemplates ?? [];
 
   const sports = useMemo(() => {
+    const active = listActiveClubSportNames(data.sports);
+    if (active.length > 0) return active;
     const map = new Map<string, string>();
-    for (const item of data.sports ?? []) {
-      if (item.active === false) continue;
-      const key = normalizeSportKey(item.name);
-      if (key) map.set(key, item.name.trim());
-    }
     for (const cls of data.classes) {
       const label = cls.sport?.trim();
       const key = normalizeSportKey(label);

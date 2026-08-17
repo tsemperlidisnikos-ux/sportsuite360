@@ -33,6 +33,7 @@ import {
   type SVGProps,
 } from 'react';
 import { getSession, getUserById, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
+import { getSessionToken, serverVerifySession } from '../../api/services/sessionService';
 import { getClubById, ensureSessionClub } from '../../auth/clubs';
 import { AthletesIcon } from '../icons/AthletesIcon';
 import { TrainingsIcon } from '../icons/TrainingsIcon';
@@ -108,9 +109,9 @@ export function AppLayout() {
   const club = useMemo(() => {
     if (previewClubId) return getClubById(previewClubId);
     return ensureSessionClub(session) ?? getClubById(clubId);
-  }, [clubId, clubTick, previewClubId, session?.clubId, session?.id, session?.email]);
-  const appName = useMemo(() => getAppName(), [platformTick]);
-  const appLogoUrl = useMemo(() => getAppLogoUrl(), [platformTick]);
+  }, [clubId, clubTick, previewClubId, session]);
+  const appName = getAppName();
+  const appLogoUrl = getAppLogoUrl();
   const appLogoInputRef = useRef<HTMLInputElement>(null);
   const canUploadAppLogo = isPlatformAdmin();
 
@@ -122,6 +123,20 @@ export function AppLayout() {
         .length,
     [appData.registrationApplications],
   );
+
+  useEffect(() => {
+    if (!getSessionToken()) return;
+    let active = true;
+    void serverVerifySession().then((result) => {
+      if (active && !result.success) {
+        logout();
+        navigate('/login', { replace: true });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const onClubsUpdated = () => setClubTick((n) => n + 1);
