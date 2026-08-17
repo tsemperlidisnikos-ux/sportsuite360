@@ -186,7 +186,6 @@ export function PlatformAdminPage() {
   const [newIncomeDesc, setNewIncomeDesc] = useState('');
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newAssociation, setNewAssociation] = useState('');
-  const [newSport, setNewSport] = useState('');
   const [newSeason, setNewSeason] = useState('');
   const [tick, setTick] = useState(0);
   const [adminTab, setAdminTab] = useState<AdminWorkspaceTab>('platform');
@@ -396,7 +395,7 @@ export function PlatformAdminPage() {
         {(
           [
             ['platform', 'Πλατφόρμα'],
-            ['academio', 'Academio'],
+            ['academio', 'Σύλλογος'],
             ['backup', 'Backup'],
           ] as const
         ).map(([id, label]) => (
@@ -1167,66 +1166,6 @@ export function PlatformAdminPage() {
         </AdminZone>
 
         <AdminZone title="Κατάλογος ακαδημίας">
-          <AdminRow
-            title="Αθλήματα"
-            description="Αθλήματα καταλόγου για φόρμες και προφίλ."
-            entry={
-              <form
-                className="entry-form admin-entry"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const name = newSport.trim();
-                  if (!name) return;
-                  mutateData((data) => {
-                    data.sports.push({
-                      id: createId('sport'),
-                      name,
-                      active: true,
-                    });
-                  });
-                  setNewSport('');
-                  setTick((n) => n + 1);
-                }}
-              >
-                <label className="field">
-                  <span>Νέο άθλημα</span>
-                  <input value={newSport} onChange={(e) => setNewSport(e.target.value)} />
-                </label>
-                <Button type="submit">Προσθήκη</Button>
-              </form>
-            }
-            records={
-              <RecordsTable>
-                {appData.sports.length === 0 ? (
-                  <RecordsRow title="Κατάσταση">Δεν υπάρχουν αθλήματα.</RecordsRow>
-                ) : (
-                  appData.sports.map((item) => (
-                    <RecordsRow key={item.id} title="Άθλημα">
-                      <EditableRecordLine
-                        value={item.name}
-                        onSave={(next) => {
-                          mutateData((data) => {
-                            const target = data.sports.find((s) => s.id === item.id);
-                            if (target) target.name = next;
-                          });
-                          setTick((n) => n + 1);
-                          flash('Το άθλημα ενημερώθηκε.');
-                          return { success: true };
-                        }}
-                        onDelete={() => {
-                          mutateData((data) => {
-                            data.sports = data.sports.filter((s) => s.id !== item.id);
-                          });
-                          setTick((n) => n + 1);
-                        }}
-                      />
-                    </RecordsRow>
-                  ))
-                )}
-              </RecordsTable>
-            }
-          />
-
           <AdminRow
             title="Καρτέλες μενού ακαδημίας"
             description="Εμφάνιση/απόκρυψη στοιχείων sidebar (Αθλητές, Τμήματα, Οικονομικά κ.λπ.)."

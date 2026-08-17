@@ -8,6 +8,18 @@ function canonicalSportLabel(raw: string): string {
   return resolveCatalogSportName(trimmed) ?? trimmed;
 }
 
+/** Σύγκριση αθλημάτων με aliases καταλόγου (π.χ. Basketball ≡ Μπάσκετ). */
+export function clubSportsMatch(
+  a: string | undefined | null,
+  b: string | undefined | null,
+): boolean {
+  const left = canonicalSportLabel(String(a ?? ''));
+  const right = canonicalSportLabel(String(b ?? ''));
+  const ka = normalizeSportKey(left);
+  const kb = normalizeSportKey(right);
+  return Boolean(ka && kb && ka === kb);
+}
+
 /** Ενεργά αθλήματα συλλόγου (Ρυθμίσεις → Άθλημα), μοναδικά με κανονικά ονόματα. */
 export function listActiveClubSportNames(
   sports: SportItem[] | undefined | null,

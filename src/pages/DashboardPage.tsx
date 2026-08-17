@@ -15,7 +15,7 @@ import { openAthleteHealthCardPreview } from '../utils/healthCardPreview';
 import { formatCurrency, studentStatusLabels } from '../utils/labels';
 import { studentClassIds, studentInClass } from '../utils/studentClasses';
 import { studentSports } from '../utils/studentSports';
-import { normalizeSportKey } from '../utils/sport';
+import { clubSportsMatch, listActiveClubSportNames } from '../utils/clubSports';
 
 type SportBucket = { key: string; label: string };
 
@@ -45,7 +45,7 @@ function resolveStudentSport(
 }
 
 function matchesSport(value: string | undefined | null, sportKey: string): boolean {
-  return normalizeSportKey(value) === sportKey;
+  return clubSportsMatch(value, sportKey);
 }
 
 function DoctorDashboard() {
@@ -188,28 +188,11 @@ export function DashboardPage() {
   }, [data.classes]);
 
   const sports = useMemo(() => {
-    const map = new Map<string, string>();
-    const add = (label: string | undefined | null) => {
-      const trimmed = String(label || '').trim();
-      const key = normalizeSportKey(trimmed);
-      if (!key || map.has(key)) return;
-      map.set(key, trimmed);
-    };
-
-    for (const item of data.sports ?? []) {
-      if (item.active === false) continue;
-      add(item.name);
-    }
-    for (const cls of data.classes) add(cls.sport);
-    for (const student of data.students) {
-      add(resolveStudentSport(student, classSportById));
-    }
-    for (const coach of data.coaches) add(coach.sport);
-
-    return [...map.entries()]
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'el')) as SportBucket[];
-  }, [data.sports, data.classes, data.students, data.coaches, classSportById]);
+    return listActiveClubSportNames(data.sports).map((label) => ({
+      key: label,
+      label,
+    })) as SportBucket[];
+  }, [data.sports]);
 
   function statsForSport(sportKey: string | null) {
     const students = data.students.filter((student) => {
