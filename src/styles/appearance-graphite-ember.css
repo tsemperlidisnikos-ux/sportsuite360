@@ -1,5 +1,5 @@
 /**
- * Graphite Ember ù charcoal shell + ember orange accents.
+ * Graphite Ember - charcoal shell + ember orange accents.
  * Applied when html[data-appearance="graphite-ember"].
  */
 
@@ -1461,7 +1461,7 @@ html[data-appearance='graphite-ember'] .login-submit.packages-save {
   border-radius: 8px;
 }
 
-/* Transactions ù amber primary actions */
+/* Transactions - amber primary actions */
 html[data-appearance='graphite-ember'] .tx-save-btn {
   background: var(--accent);
   color: var(--ember-ink);
@@ -1634,7 +1634,7 @@ html[data-appearance='graphite-ember'] .tx-empty-info p {
   color: #c5d0e0;
 }
 
-/* Fees / ????????? ù list + toolbar contrast */
+/* Fees / ????????? - list + toolbar contrast */
 html[data-appearance='graphite-ember'] .toolbar .tx-search {
   background: var(--field-bg, #16181c);
   border-color: var(--line);
@@ -2183,7 +2183,7 @@ html[data-appearance='graphite-ember'] .training-modal-backdrop {
   background: rgba(11, 12, 14), 0.55);
 }
 
-/* Parents page ù dark surfaces, readable filters/status */
+/* Parents page - dark surfaces, readable filters/status */
 html[data-appearance='graphite-ember'] .parents-hero,
 html[data-appearance='graphite-ember'] .parents-filters,
 html[data-appearance='graphite-ember'] .parents-table-card {
@@ -2269,7 +2269,7 @@ html[data-appearance='graphite-ember'] .parents-pager-btns button.is-active {
   color: #140c08;
 }
 
-/* Schedule / ????????? ù readable filters on dark theme */
+/* Schedule / ????????? - readable filters on dark theme */
 html[data-appearance='graphite-ember'] .prog-toolbar,
 html[data-appearance='graphite-ember'] .prog-board {
   background: var(--surface);
@@ -2418,7 +2418,7 @@ html[data-appearance='graphite-ember'] .wh-pager-btns button.is-active {
   color: #140c08;
 }
 
-/* Fee charge modal ù keep labels/months readable on dark body (must beat white-modal label rules) */
+/* Fee charge modal - keep labels/months readable on dark body (must beat white-modal label rules) */
 html[data-appearance='graphite-ember'] .modal.fee-charge-modal .field-label,
 html[data-appearance='graphite-ember'] .modal.fee-charge-modal label > span,
 html[data-appearance='graphite-ember'] .modal.fee-charge-modal .field > span,
@@ -2731,7 +2731,7 @@ html[data-appearance='graphite-ember'] .feed-list span {
   color: #d0dae8;
 }
 
-/* Public join card is white ù instructional text must stay dark */
+/* Public join card is white - instructional text must stay dark */
 html[data-appearance='graphite-ember'] .public-join-page {
   color: #1a1d24;
 }
@@ -2754,7 +2754,7 @@ html[data-appearance='graphite-ember'] .public-join-card .field-label {
 }
 
 /* ========================================================================== */
-/* Midnight Ice ù extra contrast pass                                          */
+/* Midnight Ice - extra contrast pass                                          */
 /* ========================================================================== */
 
 html[data-appearance='graphite-ember'] .fee-charge-hero {

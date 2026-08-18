@@ -1,5 +1,5 @@
 /**
- * Pitch Heritage ù forest chrome + cream content + brass gold.
+ * Pitch Heritage - forest chrome + cream content + brass gold.
  * Applied when html[data-appearance="pitch-heritage"].
  */
 
@@ -263,7 +263,7 @@ html[data-appearance='pitch-heritage'] .ssr-card .ssr-link {
   color: var(--brand-dark);
 }
 
-/* Fee charge modal ù light surfaces, dark text */
+/* Fee charge modal - light surfaces, dark text */
 html[data-appearance='pitch-heritage'] .modal.fee-charge-modal {
   background: var(--surface);
   color: var(--ink);
@@ -543,7 +543,7 @@ html[data-appearance='pitch-heritage'] .att-select select optgroup {
   color: #1a2418;
 }
 
-/* Fee charge hero ù steel + indigo instead of navy/amber */
+/* Fee charge hero - steel + indigo instead of navy/amber */
 html[data-appearance='pitch-heritage'] .fee-charge-hero {
   background: linear-gradient(135deg, #0d2818 0%, #0d2818 55%, #164a28 100%);
   color: #f6f1e6;
@@ -607,7 +607,7 @@ html[data-appearance='pitch-heritage'] .placeholder {
 }
 
 /* ========================================================================== */
-/* Indigo Steel ù extra contrast pass                                          */
+/* Indigo Steel - extra contrast pass                                          */
 /* ========================================================================== */
 
 html[data-appearance='pitch-heritage'] {
