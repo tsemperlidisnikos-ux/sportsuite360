@@ -1387,7 +1387,7 @@ html[data-appearance='graphite-ember'] .brand-mark {
 
 html[data-appearance='graphite-ember'] .mobile-nav,
 html[data-appearance='graphite-ember'] .sidebar-backdrop {
-  background: rgba(11, 12, 14), 0.45);
+  background: rgba(11, 12, 14, 0.45);
 }
 
 html[data-appearance='graphite-ember'] .form-error {
@@ -2180,7 +2180,7 @@ html[data-appearance='graphite-ember'] .training-modal-fields textarea {
 }
 
 html[data-appearance='graphite-ember'] .training-modal-backdrop {
-  background: rgba(11, 12, 14), 0.55);
+  background: rgba(11, 12, 14, 0.55);
 }
 
 /* Parents page - dark surfaces, readable filters/status */
