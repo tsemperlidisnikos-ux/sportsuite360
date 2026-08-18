@@ -12,6 +12,7 @@ export const seedData: AppData = {
   trainings: [],
   staff: [],
   associations: [],
+  facilities: [],
   sports: [],
   announcements: [],
   budgets: [],

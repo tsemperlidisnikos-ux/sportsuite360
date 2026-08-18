@@ -15,6 +15,7 @@ import {
 } from '../utils/coachScope';
 import { formatDate } from '../utils/labels';
 import { listActiveClubSportNames } from '../utils/clubSports';
+import { listActiveFacilities } from '../utils/facilityHours';
 import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm: TrainingInput = {
@@ -60,6 +61,10 @@ export function TrainingsPage() {
     [data.classes, data.coaches, session],
   );
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
+  const facilityLocations = useMemo(
+    () => listActiveFacilities(data.facilities).map((item) => item.name),
+    [data.facilities],
+  );
 
   const sportOptions = useMemo(() => {
     const activeNames = listActiveClubSportNames(data.sports);
@@ -408,12 +413,21 @@ export function TrainingsPage() {
                 />
               </label>
               <label>
-                <span>Τοποθεσία</span>
-                <input
-                  type="text"
+                <span>Τοποθεσία / Γήπεδο</span>
+                <select
                   value={form.location ?? ''}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
-                />
+                >
+                  <option value="">—</option>
+                  {form.location && !facilityLocations.includes(form.location) ? (
+                    <option value={form.location}>{form.location}</option>
+                  ) : null}
+                  {facilityLocations.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 <span>Άθλημα</span>
@@ -567,12 +581,21 @@ export function TrainingsPage() {
                 />
               </label>
               <label>
-                <span>Τοποθεσία</span>
-                <input
-                  type="text"
+                <span>Τοποθεσία / Γήπεδο</span>
+                <select
                   value={recForm.location}
                   onChange={(e) => setRecForm({ ...recForm, location: e.target.value })}
-                />
+                >
+                  <option value="">—</option>
+                  {recForm.location && !facilityLocations.includes(recForm.location) ? (
+                    <option value={recForm.location}>{recForm.location}</option>
+                  ) : null}
+                  {facilityLocations.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 <span>Σημειώσεις</span>

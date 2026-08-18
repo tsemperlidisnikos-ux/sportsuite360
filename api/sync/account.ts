@@ -42,6 +42,7 @@ type BundleClub = {
   name?: string;
   usageStartsOn?: string | null;
   usageEndsOn?: string | null;
+  logoUrl?: string | null;
   smtp?: {
     enabled?: boolean;
     host?: string;
@@ -50,7 +51,54 @@ type BundleClub = {
     password?: string;
     fromName?: string;
   };
+  viva?: unknown;
+  publicRegistration?: {
+    heroImageUrl?: string | null;
+    [key: string]: unknown;
+  };
 };
+
+function pickKeptMedia(incoming: unknown, existing: unknown): unknown {
+  const next = typeof incoming === 'string' ? incoming.trim() : '';
+  if (next) return incoming;
+  const prev = typeof existing === 'string' ? existing.trim() : '';
+  if (prev) return existing;
+  return incoming === undefined ? existing : incoming;
+}
+
+/** Keep logos/SMTP when a full account push arrives without those fields filled. */
+function mergeBundleClubs(existing: unknown, incoming: unknown): unknown {
+  if (!Array.isArray(incoming)) return existing ?? incoming;
+  const prevList = Array.isArray(existing) ? (existing as BundleClub[]) : [];
+  const prevById = new Map(
+    prevList
+      .filter((club) => club && typeof club.id === 'string')
+      .map((club) => [club.id, club]),
+  );
+  return incoming.map((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const club = raw as BundleClub;
+    const prev = club.id ? prevById.get(club.id) : undefined;
+    if (!prev) return club;
+    const incomingReg = club.publicRegistration;
+    const prevReg = prev.publicRegistration;
+    return {
+      ...prev,
+      ...club,
+      logoUrl: pickKeptMedia(club.logoUrl, prev.logoUrl),
+      smtp: club.smtp ?? prev.smtp,
+      viva: club.viva ?? prev.viva,
+      publicRegistration:
+        incomingReg || prevReg
+          ? {
+              ...(prevReg ?? {}),
+              ...(incomingReg ?? {}),
+              heroImageUrl: pickKeptMedia(incomingReg?.heroImageUrl, prevReg?.heroImageUrl),
+            }
+          : club.publicRegistration ?? prev.publicRegistration,
+    };
+  });
+}
 
 type SmtpConfig = {
   host: string;
@@ -711,7 +759,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .map(({ password: _password, ...user }) => user)
         : [];
       const clubs = Array.isArray(bundle.clubs)
-        ? (bundle.clubs as BundleClub[]).filter((club) => club.id === clubId).map(({ smtp: _smtp, ...club }) => club)
+        ? (bundle.clubs as BundleClub[]).filter((club) => club.id === clubId)
         : [];
       return res.status(200).json({
         ok: true,
@@ -740,9 +788,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (body.users == null || body.clubs == null) {
       return res.status(400).json({ ok: false, error: 'users and clubs required' });
     }
+    const existing = await loadAccountBundle();
     const saved = await saveAccountBundle({
       users: body.users,
-      clubs: body.clubs,
+      clubs: mergeBundleClubs(existing?.clubs, body.clubs),
       platformConfig: body.platformConfig,
     });
     return res.status(200).json({

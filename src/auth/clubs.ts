@@ -120,6 +120,58 @@ export function getClubById(clubId: string | null | undefined): Club | null {
   return getClubs().find((c) => c.id === clubId) ?? null;
 }
 
+function pickMediaUrl(
+  incoming: string | null | undefined,
+  existing: string | null | undefined,
+): string | null {
+  const next = incoming?.trim() || '';
+  if (next) return incoming ?? null;
+  const prev = existing?.trim() || '';
+  if (prev) return existing ?? null;
+  return incoming ?? existing ?? null;
+}
+
+/**
+ * Cloud pull/push δεν πρέπει να σβήνει logo (και συναφή media) όταν το
+ * εισερχόμενο πακέτο τα έχει κενά — π.χ. Push από άλλο browser χωρίς το αρχείο.
+ */
+export function mergeClubCatalog(localClubs: Club[], incomingClubs: Club[]): Club[] {
+  const localById = new Map(localClubs.map((club) => [club.id, club]));
+  const merged = incomingClubs.map((incoming) => {
+    const local = localById.get(incoming.id);
+    if (!local) return incoming;
+    return {
+      ...local,
+      ...incoming,
+      logoUrl: pickMediaUrl(incoming.logoUrl, local.logoUrl),
+      smtp: incoming.smtp ?? local.smtp,
+      viva: incoming.viva ?? local.viva,
+      smtpSendLog: incoming.smtpSendLog ?? local.smtpSendLog,
+      publicRegistration:
+        incoming.publicRegistration || local.publicRegistration
+          ? {
+              enabled: false,
+              autoApprove: false,
+              allowTrial: false,
+              allowWaitlist: false,
+              slug: '',
+              ...(local.publicRegistration ?? {}),
+              ...(incoming.publicRegistration ?? {}),
+              heroImageUrl: pickMediaUrl(
+                incoming.publicRegistration?.heroImageUrl,
+                local.publicRegistration?.heroImageUrl,
+              ),
+            }
+          : incoming.publicRegistration ?? local.publicRegistration,
+    };
+  });
+  const seen = new Set(merged.map((club) => club.id));
+  for (const local of localClubs) {
+    if (!seen.has(local.id)) merged.push(local);
+  }
+  return merged;
+}
+
 /**
  * If the session points to a clubId that is missing from the clubs list
  * (e.g. after a bad backup restore of users/clubs), recreate a stub club

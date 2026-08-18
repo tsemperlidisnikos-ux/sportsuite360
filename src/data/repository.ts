@@ -34,6 +34,7 @@ function ensureCollections(data: AppData): boolean {
   if (!data.trainings) data.trainings = structuredClone(seedData.trainings);
   if (!data.staff) data.staff = structuredClone(seedData.staff);
   if (!data.associations) data.associations = structuredClone(seedData.associations);
+  if (!data.facilities) data.facilities = structuredClone(seedData.facilities ?? []);
   if (!data.sports) data.sports = structuredClone(seedData.sports);
   {
     const byKey = new Map<string, (typeof data.sports)[number]>();

@@ -271,6 +271,17 @@ export interface Association {
   active: boolean;
 }
 
+/** Γήπεδο / εγκατάσταση συλλόγου (Ρυθμίσεις → Γήπεδο). */
+export interface Facility {
+  id: string;
+  name: string;
+  active: boolean;
+  sports: string[];
+  /** π.χ. 08:00-00:00-15 */
+  timeLayout: string;
+  sortOrder: number;
+}
+
 export interface SportItem {
   id: string;
   name: string;
@@ -554,6 +565,7 @@ export interface AppData {
   trainings: Training[];
   staff: StaffMember[];
   associations: Association[];
+  facilities: Facility[];
   sports: SportItem[];
   announcements: Announcement[];
   budgets: BudgetLine[];

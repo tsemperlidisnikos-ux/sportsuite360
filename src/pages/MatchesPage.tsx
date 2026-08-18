@@ -17,6 +17,7 @@ import {
 import { localDateIso } from '../utils/dates';
 import { formatDate } from '../utils/labels';
 import { listActiveClubSportNames } from '../utils/clubSports';
+import { listActiveFacilities } from '../utils/facilityHours';
 import { normalizeSportKey } from '../utils/sport';
 
 const emptyForm = (): MatchInput => ({
@@ -58,6 +59,10 @@ export function MatchesPage() {
     [data.classes, data.coaches, session],
   );
   const allowedClassIds = useMemo(() => classIdsOf(visibleClasses), [visibleClasses]);
+  const facilityLocations = useMemo(
+    () => listActiveFacilities(data.facilities).map((item) => item.name),
+    [data.facilities],
+  );
   const [form, setForm] = useState<MatchInput>(() => ({
     ...emptyForm(),
     sport: coach?.sport ?? '',
@@ -256,11 +261,21 @@ export function MatchesPage() {
               </select>
             </label>
             <label className="field">
-              <span>Χώρος</span>
-              <input
+              <span>Γήπεδο / Χώρος</span>
+              <select
                 value={form.location}
                 onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-              />
+              >
+                <option value="">—</option>
+                {form.location && !facilityLocations.includes(form.location) ? (
+                  <option value={form.location}>{form.location}</option>
+                ) : null}
+                {facilityLocations.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="field">
               <span>Κατάσταση</span>

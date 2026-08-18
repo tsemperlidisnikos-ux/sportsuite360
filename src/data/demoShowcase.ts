@@ -3,7 +3,7 @@ import { DEFAULT_TERMS_OF_USE_HTML } from '../shared/termsDefaults';
 import { localDateIso } from '../utils/dates';
 
 /** Bump to re-seed DEMO clubs after showcase content changes. */
-export const DEMO_SHOWCASE_VERSION = 3;
+export const DEMO_SHOWCASE_VERSION = 4;
 
 const APPLIED_KEY = 'academyhub-demo-showcase-applied-v1';
 
@@ -85,6 +85,33 @@ export function buildDemoShowcaseData(now = new Date()): AppData {
         email: 'info@eska.gr',
         address: 'Πατησίων 100',
         active: true,
+      },
+    ],
+
+    facilities: [
+      {
+        id: 'demo_fac_1',
+        name: 'Γήπεδο Α',
+        active: true,
+        sports: ['Ποδόσφαιρο'],
+        timeLayout: '08:00-00:00-15',
+        sortOrder: 1,
+      },
+      {
+        id: 'demo_fac_2',
+        name: 'Κλειστό 1',
+        active: true,
+        sports: ['Μπάσκετ'],
+        timeLayout: '08:00-00:00-15',
+        sortOrder: 2,
+      },
+      {
+        id: 'demo_fac_3',
+        name: 'Κολυμβητήριο',
+        active: true,
+        sports: ['Κολύμβηση'],
+        timeLayout: '08:00-00:00-15',
+        sortOrder: 3,
       },
     ],
 

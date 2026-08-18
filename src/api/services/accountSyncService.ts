@@ -1,7 +1,7 @@
 import { apiClient } from '../apiClient';
 import { syncAuthHeaders } from '../syncAuth';
 import { getUsers, saveUsers, type AppUser } from '../../auth/auth';
-import { getClubs, saveClubs, type Club } from '../../auth/clubs';
+import { getClubs, mergeClubCatalog, saveClubs, type Club } from '../../auth/clubs';
 import {
   clearStampedRoleDefaultPermissions,
   loadPlatformConfig,
@@ -94,5 +94,5 @@ export function applyAccountBundle(
   } else {
     saveUsers(cleanedUsers);
   }
-  saveClubs(bundle.clubs);
+  saveClubs(mergeClubCatalog(getClubs(), bundle.clubs));
 }

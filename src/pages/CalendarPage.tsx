@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { CalendarPlus, ChevronLeft, ChevronRight, Link2 } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Info, Link2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getSession } from '../auth/auth';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -12,6 +12,11 @@ import {
   visibleClassesForSession,
 } from '../utils/coachScope';
 import { localDateIso } from '../utils/dates';
+import {
+  facilityTimeSlots,
+  listActiveFacilities,
+  resolveFacilityForLocation,
+} from '../utils/facilityHours';
 import { dayNames } from '../utils/labels';
 
 const MONTH_LABELS = [
@@ -29,20 +34,67 @@ const MONTH_LABELS = [
   'Δεκέμβριος',
 ];
 
-type CalView = 'month' | 'week' | 'day';
+type CalView = 'month' | 'week' | 'day' | 'facilities';
 type EventKind = 'training' | 'match' | 'other';
 
 type CalEvent = {
   id: string;
   title: string;
   time: string;
+  endTime: string;
   kind: EventKind;
   classId: string | null;
   location: string;
 };
 
+function eventOccupiesSlot(event: CalEvent, slot: string, nextSlot: string): boolean {
+  const start = event.time || '';
+  if (!start) return false;
+  const slotEnd = nextSlot || '24:00';
+  const end = event.endTime && event.endTime > start ? event.endTime : '';
+  if (end) return start < slotEnd && end > slot;
+  return start >= slot && start < slotEnd;
+}
+
 function pad(n: number): string {
   return String(n).padStart(2, '0');
+}
+
+const FACILITY_HOUR_COLUMNS: Array<{ start: string; end: string; label: string }> = Array.from(
+  { length: 16 },
+  (_, i) => {
+    const hour = 8 + i;
+    const start = `${pad(hour)}:00`;
+    const endHour = hour + 1;
+    const endLabel = endHour === 24 ? '00:00' : `${pad(endHour)}:00`;
+    return { start, end: endHour === 24 ? '24:00' : endLabel, label: `${start}-${endLabel}` };
+  },
+);
+
+/** 08:00 … 23:45, βήμα 15 λεπτά (64 κελιά / ημέρα). */
+const DAY_QUARTER_SLOTS: string[] = Array.from({ length: 64 }, (_, i) => {
+  const total = 8 * 60 + i * 15;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+});
+
+function quarterIndex(time: string): number {
+  const value = time.slice(0, 5);
+  if (value === '00:00' || value === '24:00') return DAY_QUARTER_SLOTS.length;
+  return DAY_QUARTER_SLOTS.findIndex((slot, i) => {
+    const next = DAY_QUARTER_SLOTS[i + 1] ?? '24:00';
+    return value >= slot && value < next;
+  });
+}
+
+function eventQuarterSpan(event: CalEvent): { start: number; span: number } | null {
+  if (!event.time) return null;
+  const start = quarterIndex(event.time);
+  if (start < 0 || start >= DAY_QUARTER_SLOTS.length) return null;
+  const endTime = event.endTime && event.endTime > event.time ? event.endTime : '';
+  if (!endTime) return { start, span: 1 };
+  const end = quarterIndex(endTime);
+  const exclusive = end < 0 ? start + 1 : end;
+  return { start, span: Math.max(1, exclusive - start) };
 }
 
 function daysInMonth(year: number, monthIndex: number): number {
@@ -120,10 +172,16 @@ export function CalendarPage() {
 
   const locations = useMemo(() => {
     const set = new Set<string>();
+    for (const facility of listActiveFacilities(data.facilities)) set.add(facility.name);
     for (const t of data.trainings ?? []) if (t.location) set.add(t.location);
     for (const m of data.matches ?? []) if (m.location) set.add(m.location);
     return [...set].sort((a, b) => a.localeCompare(b, 'el'));
-  }, [data.trainings, data.matches]);
+  }, [data.facilities, data.trainings, data.matches]);
+
+  const activeFacilities = useMemo(
+    () => listActiveFacilities(data.facilities),
+    [data.facilities],
+  );
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalEvent[]>();
@@ -143,6 +201,7 @@ export function CalendarPage() {
         id: training.id,
         title: cls?.name || training.location || 'Προπόνηση',
         time: training.startTime || '',
+        endTime: training.endTime || '',
         kind: 'training',
         classId: training.classId,
         location: training.location || '',
@@ -160,6 +219,7 @@ export function CalendarPage() {
         id: match.id,
         title: `Αγώνας vs ${match.opponent}`,
         time: match.time || '',
+        endTime: '',
         kind: 'match',
         classId: match.classId,
         location: match.location || '',
@@ -183,23 +243,6 @@ export function CalendarPage() {
 
   const miniCells = useMemo(() => buildMonthCells(year, monthIndex), [year, monthIndex]);
 
-  const weekDays = useMemo(() => {
-    const selected = new Date(`${selectedIso}T12:00:00`);
-    const mondayOffset = (selected.getDay() + 6) % 7;
-    const monday = new Date(selected);
-    monday.setDate(selected.getDate() - mondayOffset);
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      return {
-        day: d.getDate(),
-        iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-        inMonth: d.getMonth() === monthIndex,
-        label: dayNames[(d.getDay() + 7) % 7],
-      };
-    });
-  }, [selectedIso, monthIndex]);
-
   function shiftMonth(delta: number) {
     const next = new Date(year, monthIndex + delta, 1);
     setYear(next.getFullYear());
@@ -212,7 +255,8 @@ export function CalendarPage() {
       return;
     }
     const base = new Date(`${selectedIso}T12:00:00`);
-    base.setDate(base.getDate() + delta * (view === 'week' ? 7 : 1));
+    const step = view === 'week' ? 7 : 1;
+    base.setDate(base.getDate() + delta * step);
     const iso = localDateIso(base);
     setSelectedIso(iso);
     setYear(base.getFullYear());
@@ -228,8 +272,25 @@ export function CalendarPage() {
 
   const weekdayHeaders = [...dayNames.slice(1), dayNames[0]].map((n) => n.slice(0, 3));
 
+  const agendaDays = useMemo(() => {
+    const start = new Date(`${selectedIso}T12:00:00`);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return {
+        iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+        heading: d.toLocaleDateString('el-GR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+      };
+    });
+  }, [selectedIso]);
+
   const titleLabel =
-    view === 'day'
+    view === 'day' || view === 'facilities'
       ? new Date(`${selectedIso}T12:00:00`).toLocaleDateString('el-GR', {
           weekday: 'long',
           day: 'numeric',
@@ -237,8 +298,45 @@ export function CalendarPage() {
           year: 'numeric',
         })
       : view === 'week'
-        ? `Εβδομάδα · ${weekDays[0]?.iso.slice(8)}–${weekDays[6]?.iso.slice(8)} ${MONTH_LABELS[monthIndex]} ${year}`
+        ? agendaDays[0]?.heading ?? ''
         : `${MONTH_LABELS[monthIndex]} ${year}`;
+
+  const facilityColumns = useMemo(() => {
+    if (locationFilter) {
+      return activeFacilities.filter((item) => item.name === locationFilter);
+    }
+    return activeFacilities;
+  }, [activeFacilities, locationFilter]);
+
+  const facilitySlots = useMemo(() => {
+    if (facilityColumns.length === 1) return facilityTimeSlots(facilityColumns[0]?.timeLayout);
+    return facilityTimeSlots('08:00-00:00-15');
+  }, [facilityColumns]);
+
+  function eventEditPath(event: CalEvent): string {
+    return event.kind === 'match' ? '/matches' : '/trainings';
+  }
+
+  function renderFacilityEvent(event: CalEvent) {
+    const end = event.endTime && event.endTime > event.time ? event.endTime : '';
+    const timeLabel = event.time ? (end ? `${event.time} - ${end}` : event.time) : '';
+    const title =
+      event.kind === 'match' || event.title.toLowerCase().startsWith('προπόνηση')
+        ? event.title
+        : `Προπόνηση - ${event.title}`;
+    return (
+      <Link
+        key={event.id}
+        to={eventEditPath(event)}
+        className={`cal-block is-${event.kind}`}
+        title={`${timeLabel} ${title}`.trim()}
+      >
+        {timeLabel ? <em>{timeLabel}</em> : null}
+        <strong>{title}</strong>
+        {event.location ? <span>{event.location}</span> : null}
+      </Link>
+    );
+  }
 
   function renderEventList(iso: string, limit = 12) {
     const events = (eventsByDate.get(iso) ?? []).filter(passesFilters);
@@ -278,7 +376,24 @@ export function CalendarPage() {
           <button type="button" className="cal-today-btn" onClick={goToday}>
             Σήμερα
           </button>
-          <strong className="cal-month-title">{titleLabel}</strong>
+          {view === 'week' || view === 'day' ? (
+            <input
+              type="date"
+              className="cal-date-input"
+              value={selectedIso}
+              onChange={(e) => {
+                const iso = e.target.value;
+                if (!iso) return;
+                setSelectedIso(iso);
+                const d = new Date(`${iso}T12:00:00`);
+                setYear(d.getFullYear());
+                setMonthIndex(d.getMonth());
+              }}
+            />
+          ) : null}
+          {view === 'week' || view === 'day' ? null : (
+            <strong className="cal-month-title">{titleLabel}</strong>
+          )}
         </div>
 
         <div className="cal-toolbar-right">
@@ -288,6 +403,7 @@ export function CalendarPage() {
                 ['month', 'Μήνας'],
                 ['week', 'Εβδομάδα'],
                 ['day', 'Ημέρα'],
+                ['facilities', 'Γήπεδα'],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -306,7 +422,7 @@ export function CalendarPage() {
         </div>
       </div>
 
-      <div className="cal-layout">
+      <div className={`cal-layout${view === 'week' || view === 'day' ? ' is-agenda' : ''}`}>
         <section className="cal-main">
           {view === 'month' ? (
             <>
@@ -354,26 +470,227 @@ export function CalendarPage() {
               </div>
             </>
           ) : view === 'week' ? (
-            <div className="cal-week-view">
-              {weekDays.map((day) => (
-                <article
-                  key={day.iso}
-                  className={`cal-week-col${day.iso === today ? ' is-today' : ''}${day.iso === selectedIso ? ' is-selected' : ''}`}
+            <div className="cal-agenda-view">
+              {facilityColumns.length === 0 ? (
+                <p className="cal-empty-day">
+                  Δεν υπάρχουν ενεργά γήπεδα. Πρόσθεσέ τα στις Ρυθμίσεις → Γήπεδο.
+                </p>
+              ) : (
+                <>
+                  {agendaDays.map((day) => {
+                    const dayEvents = (eventsByDate.get(day.iso) ?? []).filter(passesFilters);
+                    return (
+                      <section
+                        key={day.iso}
+                        className={`cal-agenda-day${day.iso === today ? ' is-today' : ''}`}
+                      >
+                        <h3 className="cal-agenda-day-title">{day.heading}</h3>
+                        <div className="cal-agenda-scroll">
+                          <div
+                            className="cal-agenda-grid"
+                            style={{
+                              gridTemplateColumns: `minmax(180px, 240px) repeat(${FACILITY_HOUR_COLUMNS.length}, minmax(78px, 1fr))`,
+                            }}
+                          >
+                            <div className="cal-agenda-corner" />
+                            {FACILITY_HOUR_COLUMNS.map((col) => (
+                              <div key={`${day.iso}-${col.start}`} className="cal-agenda-hour">
+                                {col.label}
+                              </div>
+                            ))}
+                            {facilityColumns.map((facility) => (
+                              <div key={`${day.iso}-${facility.id}`} className="cal-agenda-row">
+                                <div className="cal-agenda-room">{facility.name}</div>
+                                {FACILITY_HOUR_COLUMNS.map((col) => {
+                                  const cellEvents = dayEvents.filter(
+                                    (event) =>
+                                      (event.location === facility.name ||
+                                        resolveFacilityForLocation(data.facilities, event.location)
+                                          ?.id === facility.id) &&
+                                      eventOccupiesSlot(event, col.start, col.end),
+                                  );
+                                  return (
+                                    <div
+                                      key={`${day.iso}-${facility.id}-${col.start}`}
+                                      className="cal-agenda-cell"
+                                    >
+                                      {cellEvents.map((event) => renderFacilityEvent(event))}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </section>
+                    );
+                  })}
+                  <footer className="cal-agenda-foot">
+                    <ul className="cal-agenda-legend">
+                      <li>
+                        <i className="is-training" /> Προπόνηση
+                      </li>
+                      <li>
+                        <i className="is-match" /> Αγώνας
+                      </li>
+                    </ul>
+                    <p>
+                      <Info size={14} /> Κάντε κλικ σε ένα μπλοκ για επεξεργασία
+                    </p>
+                  </footer>
+                </>
+              )}
+            </div>
+          ) : view === 'day' ? (
+            <div className="cal-agenda-view">
+              {facilityColumns.length === 0 ? (
+                <p className="cal-empty-day">
+                  Δεν υπάρχουν ενεργά γήπεδα. Πρόσθεσέ τα στις Ρυθμίσεις → Γήπεδο.
+                </p>
+              ) : (
+                <section className={`cal-agenda-day${selectedIso === today ? ' is-today' : ''}`}>
+                  <h3 className="cal-agenda-day-title">{titleLabel}</h3>
+                  <div className="cal-agenda-scroll">
+                    <div
+                      className="cal-agenda-grid cal-day-quarters"
+                      style={{
+                        gridTemplateColumns: `minmax(180px, 240px) repeat(${DAY_QUARTER_SLOTS.length}, minmax(18px, 1fr))`,
+                      }}
+                    >
+                      <div className="cal-agenda-corner" />
+                      {FACILITY_HOUR_COLUMNS.map((col) => (
+                        <div
+                          key={`day-h-${col.start}`}
+                          className="cal-agenda-hour"
+                          style={{ gridColumn: 'span 4' }}
+                        >
+                          {col.label}
+                        </div>
+                      ))}
+                      {facilityColumns.map((facility) => {
+                        const dayEvents = (eventsByDate.get(selectedIso) ?? [])
+                          .filter(passesFilters)
+                          .filter(
+                            (event) =>
+                              event.location === facility.name ||
+                              resolveFacilityForLocation(data.facilities, event.location)?.id ===
+                                facility.id,
+                          );
+                        const used = new Set<number>();
+                        const cells: ReactNode[] = [];
+                        for (let i = 0; i < DAY_QUARTER_SLOTS.length; i += 1) {
+                          if (used.has(i)) continue;
+                          const starting = dayEvents.filter((event) => eventQuarterSpan(event)?.start === i);
+                          if (starting.length > 0) {
+                            const span = Math.max(
+                              ...starting.map((event) => eventQuarterSpan(event)?.span ?? 1),
+                            );
+                            const safeSpan = Math.min(span, DAY_QUARTER_SLOTS.length - i);
+                            for (let k = 0; k < safeSpan; k += 1) used.add(i + k);
+                            cells.push(
+                              <div
+                                key={`${facility.id}-q-${i}`}
+                                className={`cal-agenda-cell is-quarter${(i + safeSpan) % 4 === 0 ? ' is-hour-end' : ''}`}
+                                style={{ gridColumn: `span ${safeSpan}` }}
+                              >
+                                {starting.map((event) => renderFacilityEvent(event))}
+                              </div>,
+                            );
+                          } else {
+                            cells.push(
+                              <div
+                                key={`${facility.id}-q-${i}`}
+                                className={`cal-agenda-cell is-quarter${(i + 1) % 4 === 0 ? ' is-hour-end' : ''}`}
+                              />,
+                            );
+                          }
+                        }
+                        return (
+                          <div key={facility.id} className="cal-agenda-row">
+                            <div className="cal-agenda-room">{facility.name}</div>
+                            {cells}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <footer className="cal-agenda-foot">
+                    <ul className="cal-agenda-legend">
+                      <li>
+                        <i className="is-training" /> Προπόνηση
+                      </li>
+                      <li>
+                        <i className="is-match" /> Αγώνας
+                      </li>
+                    </ul>
+                    <p>
+                      <Info size={14} /> Κάντε κλικ σε ένα μπλοκ για επεξεργασία
+                    </p>
+                  </footer>
+                </section>
+              )}
+            </div>
+          ) : view === 'facilities' ? (
+            <div className="cal-facility-view">
+              {facilityColumns.length === 0 ? (
+                <p className="cal-empty-day">
+                  Δεν υπάρχουν ενεργά γήπεδα. Πρόσθεσέ τα στις Ρυθμίσεις → Γήπεδο.
+                </p>
+              ) : (
+                <div
+                  className="cal-facility-grid"
+                  style={{
+                    gridTemplateColumns: `72px repeat(${facilityColumns.length}, minmax(120px, 1fr))`,
+                  }}
                 >
-                  <button type="button" className="cal-week-head" onClick={() => setSelectedIso(day.iso)}>
-                    <span>{day.label.slice(0, 3)}</span>
-                    <strong>{day.day}</strong>
-                  </button>
-                  {renderEventList(day.iso, 8)}
-                </article>
-              ))}
+                  <div className="cal-facility-corner">Ώρα</div>
+                  {facilityColumns.map((facility) => (
+                    <div key={facility.id} className="cal-facility-head">
+                      <strong>{facility.name}</strong>
+                      <span>{facility.sports.join(' · ') || '—'}</span>
+                    </div>
+                  ))}
+                  {facilitySlots.map((slot, index) => {
+                    const nextSlot = facilitySlots[index + 1] ?? '';
+                    const dayEvents = (eventsByDate.get(selectedIso) ?? []).filter(passesFilters);
+                    return (
+                      <div key={slot} className="cal-facility-slot">
+                        <div className="cal-facility-time">{slot}</div>
+                        {facilityColumns.map((facility) => {
+                          const cellEvents = dayEvents.filter(
+                            (event) =>
+                              (event.location === facility.name ||
+                                resolveFacilityForLocation(data.facilities, event.location)?.id ===
+                                  facility.id) &&
+                              eventOccupiesSlot(event, slot, nextSlot),
+                          );
+                          return (
+                            <div key={`${facility.id}-${slot}`} className="cal-facility-cell">
+                              {cellEvents.map((event) => (
+                                <span
+                                  key={event.id}
+                                  className={`cal-facility-event is-${event.kind}`}
+                                  title={`${event.time} ${event.title}`}
+                                >
+                                  {event.title}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : (
             <div className="cal-day-view">{renderEventList(selectedIso)}</div>
           )}
         </section>
 
-        <aside className="cal-sidebar">
+        {view === 'week' || view === 'day' ? null : (
+          <aside className="cal-sidebar">
           <div className="cal-mini">
             <div className="cal-mini-head">
               <strong>
@@ -427,7 +744,7 @@ export function CalendarPage() {
               ))}
             </select>
             <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
-              <option value="">Όλοι οι Χώροι</option>
+              <option value="">Όλα τα γήπεδα</option>
               {locations.map((loc) => (
                 <option key={loc} value={loc}>
                   {loc}
@@ -458,6 +775,7 @@ export function CalendarPage() {
             </Link>
           </div>
         </aside>
+        )}
       </div>
     </div>
   );

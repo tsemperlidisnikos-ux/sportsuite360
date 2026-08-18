@@ -809,7 +809,10 @@ export async function uploadClubMedia(input: {
   if (!bytes.length) throw new Error('Empty media payload');
   if (bytes.length > 2_000_000) throw new Error('Media too large (max ~2MB)');
   const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 80) || 'photo';
-  const pathname = `ss360-media/${input.clubId}/${Date.now()}-${safeName}`;
+  const isClubLogo = /^club-logo/i.test(safeName);
+  const pathname = isClubLogo
+    ? `ss360-media/${input.clubId}/club-logo`
+    : `ss360-media/${input.clubId}/${Date.now()}-${safeName}`;
   const url = await putPublicBinary(pathname, bytes, input.contentType || 'image/jpeg');
   return { url, pathname };
 }

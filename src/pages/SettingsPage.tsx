@@ -30,7 +30,7 @@ import {
   resolveClubLicensePackage,
 } from '../auth/licensePackages';
 import * as emailService from '../api/services/emailService';
-import { getSessionToken, updateCloudClubLogo } from '../api/services/sessionService';
+import { getSessionToken, updateCloudClubLogo, uploadClubPhotoBlob } from '../api/services/sessionService';
 import { BackupPanel } from '../components/BackupPanel';
 import { ChangePasswordPanel } from '../components/ChangePasswordPanel';
 import { ClubEmailPanel } from '../components/ClubEmailPanel';
@@ -43,6 +43,7 @@ import { useAppData } from '../hooks/useAppData';
 import { getPreviewClubId } from '../platform/platformConfig';
 import { AssociationsPage } from './AssociationsPage';
 import { AmkaCompliancePanel } from './AmkaCompliancePanel';
+import { FacilitiesPage } from './FacilitiesPage';
 import { SportsPage } from './SportsPage';
 import { TermsOfUsePanel } from './TermsOfUsePanel';
 
@@ -57,6 +58,7 @@ type SettingsTab =
   | 'publicRegistration'
   | 'password'
   | 'associations'
+  | 'facilities'
   | 'sports'
   | 'sizes'
   | 'terms'
@@ -111,6 +113,7 @@ async function optimizeLogoDataUrl(file: File): Promise<string> {
 
 const PRIMARY_TABS: Array<{ id: SettingsTab; label: string }> = [
   { id: 'club', label: 'Σύλλογος' },
+  { id: 'facilities', label: 'Γήπεδο' },
   { id: 'users', label: 'Χρήστες' },
   { id: 'email', label: 'Email' },
   { id: 'viva', label: 'Viva' },
@@ -206,8 +209,20 @@ export function SettingsPage() {
     setError('');
     setMessage('');
     try {
-      const logoUrl = await optimizeLogoDataUrl(file);
+      let logoUrl = await optimizeLogoDataUrl(file);
       if (getSessionToken()) {
+        if (logoUrl.startsWith('data:image/') && !logoUrl.startsWith('data:image/svg')) {
+          const contentType = logoUrl.slice(5, logoUrl.indexOf(';')) || 'image/jpeg';
+          const uploaded = await uploadClubPhotoBlob({
+            clubId,
+            fileName: 'club-logo.jpg',
+            contentType,
+            dataBase64: logoUrl,
+          });
+          if (uploaded.success && uploaded.data?.url) {
+            logoUrl = uploaded.data.url;
+          }
+        }
         const cloud = await updateCloudClubLogo(clubId, logoUrl);
         if (!cloud.success) throw new Error(cloud.error ?? 'Αποτυχία cloud αποθήκευσης λογοτύπου.');
       }
@@ -438,9 +453,25 @@ export function SettingsPage() {
                       disabled={saving}
                       onClick={() => {
                         if (!confirm('Αφαίρεση λογότυπου;')) return;
-                        updateClubLogo(clubId, null);
-                        refreshClub();
-                        setMessage('Το λογότυπο αφαιρέθηκε.');
+                        void (async () => {
+                          setSaving(true);
+                          setError('');
+                          try {
+                            if (getSessionToken()) {
+                              const cloud = await updateCloudClubLogo(clubId, null);
+                              if (!cloud.success) {
+                                throw new Error(cloud.error ?? 'Αποτυχία αφαίρεσης στο cloud.');
+                              }
+                            }
+                            updateClubLogo(clubId, null);
+                            refreshClub();
+                            setMessage('Το λογότυπο αφαιρέθηκε.');
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : 'Αποτυχία αφαίρεσης λογοτύπου.');
+                          } finally {
+                            setSaving(false);
+                          }
+                        })();
                       }}
                     >
                       Αφαίρεση
@@ -701,6 +732,7 @@ export function SettingsPage() {
       ) : null}
       {tab === 'password' ? <ChangePasswordPanel /> : null}
       {tab === 'associations' ? <AssociationsPage /> : null}
+      {tab === 'facilities' ? <FacilitiesPage /> : null}
       {tab === 'sports' ? <SportsPage /> : null}
       {tab === 'sizes' ? <SizeChartPanel /> : null}
       {tab === 'terms' ? <TermsOfUsePanel /> : null}

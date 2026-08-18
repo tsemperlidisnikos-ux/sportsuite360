@@ -126,6 +126,16 @@ export async function syncClubOnLogin(clubId: string | null | undefined) {
     // ώστε να μην «εξαφανίζονται» μετά από login άλλου χρήστη.
     accountSyncService.applyAccountBundle(account.data, { mergeLocalUsers: true });
     pulledAccount = true;
+    const { getSessionToken, updateCloudClubLogo } = await import('../api/services/sessionService');
+    if (getSessionToken()) {
+      const { getClubs } = await import('../auth/clubs');
+      for (const club of getClubs()) {
+        const cloud = account.data.clubs.find((row) => row.id === club.id);
+        if (club.logoUrl && !(cloud?.logoUrl ?? '').trim()) {
+          void updateCloudClubLogo(club.id, club.logoUrl);
+        }
+      }
+    }
   }
 
   if (!clubId) {

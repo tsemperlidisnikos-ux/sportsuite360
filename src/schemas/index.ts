@@ -233,6 +233,23 @@ export const associationSchema = z.object({
 
 export type AssociationInput = z.infer<typeof associationSchema>;
 
+export const FACILITY_TIME_LAYOUT_IDS = [
+  '08:00-00:00-15',
+  '08:00-00:00-30',
+  '07:00-23:00-30',
+  '09:00-22:00-60',
+] as const;
+
+export const facilitySchema = z.object({
+  name: z.string().min(2, 'Το όνομα εγκατάστασης είναι υποχρεωτικό'),
+  active: z.coerce.boolean().default(true),
+  sports: z.array(z.string().min(1)).min(1, 'Επιλέξτε τουλάχιστον ένα άθλημα'),
+  timeLayout: z.enum(FACILITY_TIME_LAYOUT_IDS).default('08:00-00:00-15'),
+  sortOrder: z.coerce.number().int().min(0).max(999).default(1),
+});
+
+export type FacilityInput = z.infer<typeof facilitySchema>;
+
 export const sportItemSchema = z.object({
   name: z.string().min(2, 'Το όνομα αθλήματος είναι υποχρεωτικό'),
   active: z.boolean().default(true),
