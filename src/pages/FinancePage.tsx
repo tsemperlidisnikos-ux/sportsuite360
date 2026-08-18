@@ -66,6 +66,22 @@ function chartColors(theme: AppearanceTheme) {
       grid: 'rgba(42, 51, 68, 0.1)',
     };
   }
+  if (theme === 'pitch-heritage') {
+    return {
+      pie: ['#0d2818', '#1f6b3a', '#c9a227', '#c45c26', '#5c6554', '#067647'],
+      revenue: '#1f6b3a',
+      expense: '#c45c26',
+      grid: 'rgba(26, 36, 24, 0.1)',
+    };
+  }
+  if (theme === 'graphite-ember') {
+    return {
+      pie: ['#e85d2c', '#c44a20', '#ff7a45', '#8a8178', '#3dcf8e', '#f07167'],
+      revenue: '#e85d2c',
+      expense: '#c45c26',
+      grid: 'rgba(244, 238, 232, 0.12)',
+    };
+  }
   return {
     pie: ['#0d7377', '#14919b', '#c45c26', '#e8a838', '#2f4858', '#6b8f71'],
     revenue: '#0d7377',

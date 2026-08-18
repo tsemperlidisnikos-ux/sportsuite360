@@ -66,7 +66,9 @@ export function LoginPage() {
     appearance === 'navy-amber' ||
     appearance === 'midnight-ice' ||
     appearance === 'ocean-slate' ||
-    appearance === 'indigo-steel';
+    appearance === 'indigo-steel' ||
+    appearance === 'pitch-heritage' ||
+    appearance === 'graphite-ember';
 
   const heroTagline =
     appearance === 'navy-amber'
@@ -75,7 +77,11 @@ export function LoginPage() {
         ? 'One Suite. Every Sport. Total Control.'
         : appearance === 'indigo-steel'
           ? 'One Platform. Every Sport. Total Control.'
-          : 'Η ολοκληρωμένη πλατφόρμα διαχείρισης για αθλητικούς οργανισμούς και ομάδες.';
+          : appearance === 'pitch-heritage'
+            ? 'Παράδοση. Γήπεδο. Ομάδα.'
+            : appearance === 'graphite-ember'
+              ? 'Match day. Total control.'
+              : 'Η ολοκληρωμένη πλατφόρμα διαχείρισης για αθλητικούς οργανισμούς και ομάδες.';
 
   const cardSubtitle = showReset
     ? 'Ορίστε νέο κωδικό για τον λογαριασμό σας.'
@@ -83,7 +89,11 @@ export function LoginPage() {
       ? 'Καλώς ήρθατε πίσω! Παρακαλώ συνδεθείτε στον λογαριασμό σας.'
       : appearance === 'midnight-ice'
         ? 'Καλωσορίσατε ξανά! Παρακαλώ συνδεθείτε στον λογαριασμό σας.'
-        : 'Εισαγάγετε τα διαπιστευτήριά σας για να συνεχίσετε.';
+        : appearance === 'pitch-heritage'
+          ? 'Καλώς ήρθατε. Συνδεθείτε στον σύλλογο.'
+          : appearance === 'graphite-ember'
+            ? 'Συνδεθείτε για να συνεχίσετε.'
+            : 'Εισαγάγετε τα διαπιστευτήριά σας για να συνεχίσετε.';
 
   useEffect(() => {
     try {

@@ -518,8 +518,17 @@ html[data-appearance='indigo-steel'] .filter-chip.is-active {
 
 /* ---- Links on content ---- */
 html[data-appearance='indigo-steel'] .main-area a.text-link,
-html[data-appearance='indigo-steel'] .page a:not(.btn):not(.nav-link) {
+html[data-appearance='indigo-steel'] .page a:not(.btn):not(.nav-link):not([class*='-btn']):not(.cal-block):not(.ssr-submit) {
   color: var(--brand-dark);
+}
+
+html[data-appearance='indigo-steel'] .cal-new-btn,
+html[data-appearance='indigo-steel'] a.cal-new-btn:link,
+html[data-appearance='indigo-steel'] a.cal-new-btn:visited,
+html[data-appearance='indigo-steel'] a.cal-new-btn:hover,
+html[data-appearance='indigo-steel'] a.cal-new-btn:active {
+  background: var(--brand-dark);
+  color: #ffffff;
 }
 
 html[data-appearance='indigo-steel'] .att-select select option,

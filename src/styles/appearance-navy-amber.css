@@ -1158,7 +1158,11 @@ html[data-appearance='navy-amber'] .cal-mini-day.is-out {
 }
 
 html[data-appearance='navy-amber'] .cal-view-toggle button.is-active,
-html[data-appearance='navy-amber'] .cal-today-btn {
+html[data-appearance='navy-amber'] .cal-today-btn,
+html[data-appearance='navy-amber'] .cal-new-btn,
+html[data-appearance='navy-amber'] a.cal-new-btn:link,
+html[data-appearance='navy-amber'] a.cal-new-btn:visited,
+html[data-appearance='navy-amber'] a.cal-new-btn:hover {
   background: var(--accent);
   color: #0b1f3a;
   border-color: var(--accent);

@@ -212,7 +212,9 @@ export type AppearanceTheme =
   | 'navy-amber'
   | 'ocean-slate'
   | 'midnight-ice'
-  | 'indigo-steel';
+  | 'indigo-steel'
+  | 'pitch-heritage'
+  | 'graphite-ember';
 
 export const APPEARANCE_THEMES: Array<{
   id: AppearanceTheme;
@@ -235,6 +237,16 @@ export const APPEARANCE_THEMES: Array<{
     description: 'Ατσάλι γκρι-μπλε chrome + indigo accents, φωτεινό content.',
   },
   {
+    id: 'pitch-heritage',
+    label: 'Pitch Heritage',
+    description: 'Πράσινο γηπέδου + κρεμ content + μπρούτζινο χρυσό.',
+  },
+  {
+    id: 'graphite-ember',
+    label: 'Graphite Ember',
+    description: 'Κάρβουνο shell + πορτοκαλί ember accents.',
+  },
+  {
     id: 'classic',
     label: 'Κλασική',
     description: 'Teal / mint εμφάνιση.',
@@ -252,6 +264,8 @@ export function sanitizeAppearanceTheme(value: unknown): AppearanceTheme {
   if (value === 'ocean-slate') return 'ocean-slate';
   if (value === 'midnight-ice') return 'midnight-ice';
   if (value === 'indigo-steel') return 'indigo-steel';
+  if (value === 'pitch-heritage') return 'pitch-heritage';
+  if (value === 'graphite-ember') return 'graphite-ember';
   /* Default for new / unset configs */
   return 'ocean-slate';
 }
@@ -268,7 +282,7 @@ export type PlatformConfig = {
   seasons: string[];
   appLogoUrl?: string | null;
   appName?: string;
-  /** classic | navy-amber | ocean-slate | midnight-ice | indigo-steel */
+  /** classic | navy-amber | ocean-slate | midnight-ice | indigo-steel | pitch-heritage | graphite-ember */
   appearanceTheme?: AppearanceTheme;
   backupSchedules?: PlatformBackupSchedules;
 };

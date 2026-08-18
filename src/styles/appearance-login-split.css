@@ -1,5 +1,5 @@
 /**
- * Split login — Ocean Slate, Midnight Ice, Indigo Steel, Navy + Amber.
+ * Split login — shared shell plus per-theme atmospheres.
  * Abstract color atmospheres only (no stadium / photo backgrounds).
  */
 
@@ -8,6 +8,8 @@ html[data-appearance='navy-amber'] .login-page,
 html[data-appearance='ocean-slate'] .login-page,
 html[data-appearance='midnight-ice'] .login-page,
 html[data-appearance='indigo-steel'] .login-page,
+html[data-appearance='pitch-heritage'] .login-page,
+html[data-appearance='graphite-ember'] .login-page,
 .login-page--split {
   place-items: stretch;
   padding: 0;
@@ -20,6 +22,8 @@ html[data-appearance='navy-amber'] .login-hero-panel,
 html[data-appearance='ocean-slate'] .login-hero-panel,
 html[data-appearance='midnight-ice'] .login-hero-panel,
 html[data-appearance='indigo-steel'] .login-hero-panel,
+html[data-appearance='pitch-heritage'] .login-hero-panel,
+html[data-appearance='graphite-ember'] .login-hero-panel,
 .login-page--split .login-hero-panel {
   position: relative;
   display: flex;
@@ -35,6 +39,8 @@ html[data-appearance='navy-amber'] .login-hero-glow,
 html[data-appearance='ocean-slate'] .login-hero-glow,
 html[data-appearance='midnight-ice'] .login-hero-glow,
 html[data-appearance='indigo-steel'] .login-hero-glow,
+html[data-appearance='pitch-heritage'] .login-hero-glow,
+html[data-appearance='graphite-ember'] .login-hero-glow,
 .login-page--split .login-hero-glow {
   position: absolute;
   inset: 0;
@@ -46,6 +52,8 @@ html[data-appearance='navy-amber'] .login-hero-watermark,
 html[data-appearance='ocean-slate'] .login-hero-watermark,
 html[data-appearance='midnight-ice'] .login-hero-watermark,
 html[data-appearance='indigo-steel'] .login-hero-watermark,
+html[data-appearance='pitch-heritage'] .login-hero-watermark,
+html[data-appearance='graphite-ember'] .login-hero-watermark,
 .login-page--split .login-hero-watermark {
   position: absolute;
   right: -0.4rem;
@@ -65,6 +73,8 @@ html[data-appearance='navy-amber'] .login-hero-brand,
 html[data-appearance='ocean-slate'] .login-hero-brand,
 html[data-appearance='midnight-ice'] .login-hero-brand,
 html[data-appearance='indigo-steel'] .login-hero-brand,
+html[data-appearance='pitch-heritage'] .login-hero-brand,
+html[data-appearance='graphite-ember'] .login-hero-brand,
 .login-page--split .login-hero-brand {
   position: relative;
   z-index: 1;
@@ -75,6 +85,8 @@ html[data-appearance='navy-amber'] .login-hero-logo,
 html[data-appearance='ocean-slate'] .login-hero-logo,
 html[data-appearance='midnight-ice'] .login-hero-logo,
 html[data-appearance='indigo-steel'] .login-hero-logo,
+html[data-appearance='pitch-heritage'] .login-hero-logo,
+html[data-appearance='graphite-ember'] .login-hero-logo,
 .login-page--split .login-hero-logo {
   width: 56px;
   height: 56px;
@@ -89,6 +101,8 @@ html[data-appearance='navy-amber'] .login-hero-title,
 html[data-appearance='ocean-slate'] .login-hero-title,
 html[data-appearance='midnight-ice'] .login-hero-title,
 html[data-appearance='indigo-steel'] .login-hero-title,
+html[data-appearance='pitch-heritage'] .login-hero-title,
+html[data-appearance='graphite-ember'] .login-hero-title,
 .login-page--split .login-hero-title {
   display: flex;
   flex-wrap: wrap;
@@ -100,6 +114,8 @@ html[data-appearance='navy-amber'] .login-hero-name,
 html[data-appearance='ocean-slate'] .login-hero-name,
 html[data-appearance='midnight-ice'] .login-hero-name,
 html[data-appearance='indigo-steel'] .login-hero-name,
+html[data-appearance='pitch-heritage'] .login-hero-name,
+html[data-appearance='graphite-ember'] .login-hero-name,
 .login-page--split .login-hero-name {
   font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 3.1rem);
@@ -113,6 +129,8 @@ html[data-appearance='navy-amber'] .login-hero-360,
 html[data-appearance='ocean-slate'] .login-hero-360,
 html[data-appearance='midnight-ice'] .login-hero-360,
 html[data-appearance='indigo-steel'] .login-hero-360,
+html[data-appearance='pitch-heritage'] .login-hero-360,
+html[data-appearance='graphite-ember'] .login-hero-360,
 .login-page--split .login-hero-360 {
   font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 3.1rem);
@@ -126,6 +144,8 @@ html[data-appearance='navy-amber'] .login-hero-accent,
 html[data-appearance='ocean-slate'] .login-hero-accent,
 html[data-appearance='midnight-ice'] .login-hero-accent,
 html[data-appearance='indigo-steel'] .login-hero-accent,
+html[data-appearance='pitch-heritage'] .login-hero-accent,
+html[data-appearance='graphite-ember'] .login-hero-accent,
 .login-page--split .login-hero-accent {
   width: 3.25rem;
   height: 4px;
@@ -138,6 +158,8 @@ html[data-appearance='navy-amber'] .login-hero-tagline,
 html[data-appearance='ocean-slate'] .login-hero-tagline,
 html[data-appearance='midnight-ice'] .login-hero-tagline,
 html[data-appearance='indigo-steel'] .login-hero-tagline,
+html[data-appearance='pitch-heritage'] .login-hero-tagline,
+html[data-appearance='graphite-ember'] .login-hero-tagline,
 .login-page--split .login-hero-tagline {
   margin: 0;
   max-width: 28rem;
@@ -151,6 +173,8 @@ html[data-appearance='navy-amber'] .login-form-panel,
 html[data-appearance='ocean-slate'] .login-form-panel,
 html[data-appearance='midnight-ice'] .login-form-panel,
 html[data-appearance='indigo-steel'] .login-form-panel,
+html[data-appearance='pitch-heritage'] .login-form-panel,
+html[data-appearance='graphite-ember'] .login-form-panel,
 .login-page--split .login-form-panel {
   display: grid;
   place-items: center;
@@ -163,6 +187,8 @@ html[data-appearance='navy-amber'] .login-card,
 html[data-appearance='ocean-slate'] .login-card,
 html[data-appearance='midnight-ice'] .login-card,
 html[data-appearance='indigo-steel'] .login-card,
+html[data-appearance='pitch-heritage'] .login-card,
+html[data-appearance='graphite-ember'] .login-card,
 .login-page--split .login-card {
   width: min(420px, 100%);
   background: #ffffff;
@@ -177,6 +203,8 @@ html[data-appearance='navy-amber'] .login-card-head h1,
 html[data-appearance='ocean-slate'] .login-card-head h1,
 html[data-appearance='midnight-ice'] .login-card-head h1,
 html[data-appearance='indigo-steel'] .login-card-head h1,
+html[data-appearance='pitch-heritage'] .login-card-head h1,
+html[data-appearance='graphite-ember'] .login-card-head h1,
 .login-page--split .login-card-head h1 {
   color: #0f1b2d;
   font-size: 1.85rem;
@@ -186,6 +214,8 @@ html[data-appearance='navy-amber'] .login-card-head p,
 html[data-appearance='ocean-slate'] .login-card-head p,
 html[data-appearance='midnight-ice'] .login-card-head p,
 html[data-appearance='indigo-steel'] .login-card-head p,
+html[data-appearance='pitch-heritage'] .login-card-head p,
+html[data-appearance='graphite-ember'] .login-card-head p,
 .login-page--split .login-card-head p {
   color: #5b6b7c;
 }
@@ -194,11 +224,15 @@ html[data-appearance='navy-amber'] .login-field > span,
 html[data-appearance='ocean-slate'] .login-field > span,
 html[data-appearance='midnight-ice'] .login-field > span,
 html[data-appearance='indigo-steel'] .login-field > span,
+html[data-appearance='pitch-heritage'] .login-field > span,
+html[data-appearance='graphite-ember'] .login-field > span,
 .login-page--split .login-field > span,
 html[data-appearance='navy-amber'] .login-remember,
 html[data-appearance='ocean-slate'] .login-remember,
 html[data-appearance='midnight-ice'] .login-remember,
 html[data-appearance='indigo-steel'] .login-remember,
+html[data-appearance='pitch-heritage'] .login-remember,
+html[data-appearance='graphite-ember'] .login-remember,
 .login-page--split .login-remember {
   color: #1a2433;
 }
@@ -207,6 +241,8 @@ html[data-appearance='navy-amber'] .login-input-wrap input,
 html[data-appearance='ocean-slate'] .login-input-wrap input,
 html[data-appearance='midnight-ice'] .login-input-wrap input,
 html[data-appearance='indigo-steel'] .login-input-wrap input,
+html[data-appearance='pitch-heritage'] .login-input-wrap input,
+html[data-appearance='graphite-ember'] .login-input-wrap input,
 .login-page--split .login-input-wrap input {
   background: #ffffff;
   color: #0f1b2d;
@@ -217,6 +253,8 @@ html[data-appearance='navy-amber'] .login-input-wrap input:focus,
 html[data-appearance='ocean-slate'] .login-input-wrap input:focus,
 html[data-appearance='midnight-ice'] .login-input-wrap input:focus,
 html[data-appearance='indigo-steel'] .login-input-wrap input:focus,
+html[data-appearance='pitch-heritage'] .login-input-wrap input:focus,
+html[data-appearance='graphite-ember'] .login-input-wrap input:focus,
 .login-page--split .login-input-wrap input:focus {
   outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-color: var(--accent);
@@ -226,6 +264,8 @@ html[data-appearance='navy-amber'] .login-submit:not(.login-submit-secondary),
 html[data-appearance='ocean-slate'] .login-submit:not(.login-submit-secondary),
 html[data-appearance='midnight-ice'] .login-submit:not(.login-submit-secondary),
 html[data-appearance='indigo-steel'] .login-submit:not(.login-submit-secondary),
+html[data-appearance='pitch-heritage'] .login-submit:not(.login-submit-secondary),
+html[data-appearance='graphite-ember'] .login-submit:not(.login-submit-secondary),
 .login-page--split .login-submit:not(.login-submit-secondary) {
   background: var(--login-submit);
   color: var(--login-submit-fg);
@@ -238,6 +278,8 @@ html[data-appearance='navy-amber'] .login-submit-secondary,
 html[data-appearance='ocean-slate'] .login-submit-secondary,
 html[data-appearance='midnight-ice'] .login-submit-secondary,
 html[data-appearance='indigo-steel'] .login-submit-secondary,
+html[data-appearance='pitch-heritage'] .login-submit-secondary,
+html[data-appearance='graphite-ember'] .login-submit-secondary,
 .login-page--split .login-submit-secondary {
   background: #ffffff;
   color: #1a2433;
@@ -248,11 +290,15 @@ html[data-appearance='navy-amber'] .login-text-link,
 html[data-appearance='ocean-slate'] .login-text-link,
 html[data-appearance='midnight-ice'] .login-text-link,
 html[data-appearance='indigo-steel'] .login-text-link,
+html[data-appearance='pitch-heritage'] .login-text-link,
+html[data-appearance='graphite-ember'] .login-text-link,
 .login-page--split .login-text-link,
 html[data-appearance='navy-amber'] .login-footer-link a,
 html[data-appearance='ocean-slate'] .login-footer-link a,
 html[data-appearance='midnight-ice'] .login-footer-link a,
 html[data-appearance='indigo-steel'] .login-footer-link a,
+html[data-appearance='pitch-heritage'] .login-footer-link a,
+html[data-appearance='graphite-ember'] .login-footer-link a,
 .login-page--split .login-footer-link a {
   color: var(--brand-dark, var(--accent));
 }
@@ -261,6 +307,8 @@ html[data-appearance='navy-amber'] .login-demo-hint,
 html[data-appearance='ocean-slate'] .login-demo-hint,
 html[data-appearance='midnight-ice'] .login-demo-hint,
 html[data-appearance='indigo-steel'] .login-demo-hint,
+html[data-appearance='pitch-heritage'] .login-demo-hint,
+html[data-appearance='graphite-ember'] .login-demo-hint,
 .login-page--split .login-demo-hint {
   color: #5b6b7c;
 }
@@ -269,6 +317,8 @@ html[data-appearance='navy-amber'] .login-hero-panel::before,
 html[data-appearance='ocean-slate'] .login-hero-panel::before,
 html[data-appearance='midnight-ice'] .login-hero-panel::before,
 html[data-appearance='indigo-steel'] .login-hero-panel::before,
+html[data-appearance='pitch-heritage'] .login-hero-panel::before,
+html[data-appearance='graphite-ember'] .login-hero-panel::before,
 .login-page--split .login-hero-panel::before,
 .login-page--navy .login-hero-panel::before {
   content: none;
@@ -394,6 +444,82 @@ html[data-appearance='indigo-steel'] .login-submit:not(.login-submit-secondary) 
   color: #ffffff;
 }
 
+
+/* ---- Pitch Heritage: forest + brass ---- */
+html[data-appearance='pitch-heritage'] .login-hero-panel {
+  background: linear-gradient(160deg, #0d2818 0%, #163c24 55%, #0a1c12 100%);
+}
+
+html[data-appearance='pitch-heritage'] .login-hero-glow {
+  background:
+    radial-gradient(circle at 22% 26%, rgba(201, 162, 39, 0.26), transparent 34%),
+    radial-gradient(circle at 78% 72%, rgba(31, 107, 58, 0.28), transparent 32%),
+    linear-gradient(118deg, transparent 46%, rgba(246, 241, 230, 0.05) 47%, transparent 48%);
+}
+
+html[data-appearance='pitch-heritage'] .login-hero-360,
+html[data-appearance='pitch-heritage'] .login-hero-accent {
+  color: #c9a227;
+  background-color: #c9a227;
+}
+
+html[data-appearance='pitch-heritage'] .login-hero-360 {
+  background: none;
+}
+
+html[data-appearance='pitch-heritage'] .login-form-panel {
+  background: #f6f1e6;
+}
+
+html[data-appearance='pitch-heritage'] .login-text-link,
+html[data-appearance='pitch-heritage'] .login-footer-link a {
+  color: #164a28;
+}
+
+html[data-appearance='pitch-heritage'] .login-submit:not(.login-submit-secondary) {
+  background: #c9a227;
+  color: #1a2418;
+}
+
+/* ---- Graphite Ember: charcoal + ember ---- */
+html[data-appearance='graphite-ember'] .login-hero-panel {
+  background: linear-gradient(165deg, #0b0c0e 0%, #16181c 50%, #111318 100%);
+}
+
+html[data-appearance='graphite-ember'] .login-hero-glow {
+  background:
+    radial-gradient(circle at 28% 30%, rgba(232, 93, 44, 0.22), transparent 36%),
+    radial-gradient(circle at 76% 68%, rgba(232, 93, 44, 0.14), transparent 34%),
+    linear-gradient(rgba(232, 93, 44, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 93, 44, 0.06) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    48px 48px,
+    48px 48px;
+}
+
+html[data-appearance='graphite-ember'] .login-hero-360 {
+  color: #e85d2c;
+}
+
+html[data-appearance='graphite-ember'] .login-hero-accent {
+  background: #e85d2c;
+}
+
+html[data-appearance='graphite-ember'] .login-form-panel {
+  background: #f4eee8;
+}
+
+html[data-appearance='graphite-ember'] .login-text-link,
+html[data-appearance='graphite-ember'] .login-footer-link a {
+  color: #c44a20;
+}
+
+html[data-appearance='graphite-ember'] .login-submit:not(.login-submit-secondary) {
+  background: #e85d2c;
+  color: #140c08;
+}
 /* ---- Navy + Amber: navy + soft amber orbs ---- */
 html[data-appearance='navy-amber'] .login-hero-panel {
   background: linear-gradient(165deg, #071526 0%, #0b1f3a 48%, #05101f 100%);
@@ -433,6 +559,8 @@ html[data-appearance='navy-amber'] .login-submit:not(.login-submit-secondary) {
   html[data-appearance='ocean-slate'] .login-page,
   html[data-appearance='midnight-ice'] .login-page,
   html[data-appearance='indigo-steel'] .login-page,
+  html[data-appearance='pitch-heritage'] .login-page,
+  html[data-appearance='graphite-ember'] .login-page,
   .login-page--split {
     grid-template-columns: 1fr;
   }
@@ -441,6 +569,8 @@ html[data-appearance='navy-amber'] .login-submit:not(.login-submit-secondary) {
   html[data-appearance='ocean-slate'] .login-hero-panel,
   html[data-appearance='midnight-ice'] .login-hero-panel,
   html[data-appearance='indigo-steel'] .login-hero-panel,
+  html[data-appearance='pitch-heritage'] .login-hero-panel,
+  html[data-appearance='graphite-ember'] .login-hero-panel,
   .login-page--split .login-hero-panel {
     padding: 2.25rem 1.5rem 1.75rem;
     min-height: auto;
@@ -450,6 +580,8 @@ html[data-appearance='navy-amber'] .login-submit:not(.login-submit-secondary) {
   html[data-appearance='ocean-slate'] .login-form-panel,
   html[data-appearance='midnight-ice'] .login-form-panel,
   html[data-appearance='indigo-steel'] .login-form-panel,
+  html[data-appearance='pitch-heritage'] .login-form-panel,
+  html[data-appearance='graphite-ember'] .login-form-panel,
   .login-page--split .login-form-panel {
     min-height: auto;
   }

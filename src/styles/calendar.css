@@ -73,7 +73,11 @@
   color: #fff;
 }
 
-.cal-new-btn {
+.cal-new-btn,
+a.cal-new-btn:link,
+a.cal-new-btn:visited,
+a.cal-new-btn:hover,
+a.cal-new-btn:active {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;

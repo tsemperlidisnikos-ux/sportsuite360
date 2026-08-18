@@ -532,6 +532,8 @@ export function PlatformAdminPage() {
                     'ocean-slate': ['#1c2b3a', '#f0f4f8', '#2a9bb5'],
                     'midnight-ice': ['#060b14', '#0f1826', '#5ec8e8'],
                     'indigo-steel': ['#2a3344', '#eef1f6', '#4f5fd4'],
+                    'pitch-heritage': ['#0d2818', '#f6f1e6', '#c9a227'],
+                    'graphite-ember': ['#0b0c0e', '#1a1d24', '#e85d2c'],
                     classic: ['#0d7377', '#eef3f1', '#e8a838'],
                     'navy-amber': ['#0b1f3a', '#f4f6f8', '#d4a017'],
                   };
