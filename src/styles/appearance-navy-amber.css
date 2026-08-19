@@ -2753,3 +2753,23 @@ html[data-appearance='navy-amber'] .public-join-card .field-label {
   color: #3a4f68;
 }
 
+html[data-appearance='navy-amber'] .settings-backup-block,
+html[data-appearance='navy-amber'] .settings-backup-copy,
+html[data-appearance='navy-amber'] .settings-backup-copy strong,
+html[data-appearance='navy-amber'] .settings-backup-block .admin-check,
+html[data-appearance='navy-amber'] .settings-backup-block .admin-check span,
+html[data-appearance='navy-amber'] .settings-backup-file-btn {
+  color: #f4f7fb;
+}
+
+html[data-appearance='navy-amber'] .settings-backup-copy p,
+html[data-appearance='navy-amber'] .settings-backup-file-name,
+html[data-appearance='navy-amber'] .settings-backup .settings-hint {
+  color: #b6c3d6;
+}
+
+html[data-appearance='navy-amber'] .settings-backup-file-btn {
+  background: #0e1a2e;
+  border-color: rgba(244, 247, 251, 0.16);
+}
+

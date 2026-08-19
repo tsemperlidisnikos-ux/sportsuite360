@@ -56,10 +56,10 @@ export function LoginPage() {
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [appearance, setAppearance] = useState(() => getAppearanceTheme());
-
-  const appName = useMemo(() => getAppName(), []);
+  const [appName, setAppName] = useState(() => getAppName());
+  const [appLogoUrl, setAppLogoUrl] = useState(() => getAppLogoUrl());
   const brand = useMemo(() => splitAppName(appName), [appName]);
-  const appLogoUrl = useMemo(() => getAppLogoUrl(), []);
+
   const demoHint = useMemo(() => getDemoLoginHint(), []);
   const demoRoles = useMemo(() => getDemoRoleHints(), []);
   const useSplitLogin =
@@ -108,7 +108,11 @@ export function LoginPage() {
   }, []);
 
   useEffect(() => {
-    const sync = () => setAppearance(getAppearanceTheme());
+    const sync = () => {
+      setAppearance(getAppearanceTheme());
+      setAppName(getAppName());
+      setAppLogoUrl(getAppLogoUrl());
+    };
     sync();
     window.addEventListener('academyhub-platform-updated', sync);
     return () => window.removeEventListener('academyhub-platform-updated', sync);

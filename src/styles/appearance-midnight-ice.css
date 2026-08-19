@@ -2943,5 +2943,25 @@ html[data-appearance='midnight-ice'] .modal:not(.fee-charge-modal) #modal-title 
   color: #061018 !important;
 }
 
+html[data-appearance='midnight-ice'] .settings-backup-block,
+html[data-appearance='midnight-ice'] .settings-backup-copy,
+html[data-appearance='midnight-ice'] .settings-backup-copy strong,
+html[data-appearance='midnight-ice'] .settings-backup-block .admin-check,
+html[data-appearance='midnight-ice'] .settings-backup-block .admin-check span,
+html[data-appearance='midnight-ice'] .settings-backup-file-btn {
+  color: #e8f4fc;
+}
+
+html[data-appearance='midnight-ice'] .settings-backup-copy p,
+html[data-appearance='midnight-ice'] .settings-backup-file-name,
+html[data-appearance='midnight-ice'] .settings-backup .settings-hint {
+  color: #a8bdd0;
+}
+
+html[data-appearance='midnight-ice'] .settings-backup-file-btn {
+  background: #0c1520;
+  border-color: rgba(232, 244, 252, 0.16);
+}
+
 
 

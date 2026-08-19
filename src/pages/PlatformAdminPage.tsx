@@ -522,7 +522,7 @@ export function PlatformAdminPage() {
 
           <AdminRow
             title="Εμφάνιση εφαρμογής"
-            description="Επιλέξτε θέμα εμφάνισης για όλη την εφαρμογή (login, shell, modules)."
+            description="Το θέμα ισχύει για όλους τους συλλόγους: login, shell και modules. Δεν αλλάζει ανά σωματείο."
             entry={
               <div className="entry-form admin-entry appearance-theme-picker">
                 {APPEARANCE_THEMES.map((theme) => {
@@ -552,6 +552,14 @@ export function PlatformAdminPage() {
                           const next = setAppearanceTheme(theme.id as AppearanceTheme);
                           setConfig(next);
                           flash(`Ενεργό θέμα: ${theme.label}.`);
+                          void pushAccountBundle().then((pushed) => {
+                            if (!pushed.success) {
+                              flash(
+                                pushed.error ??
+                                  'Το θέμα αποθηκεύτηκε τοπικά, αλλά όχι στο cloud. Κάντε Push από Backup.',
+                              );
+                            }
+                          });
                         }}
                       />
                       <div>
@@ -575,7 +583,7 @@ export function PlatformAdminPage() {
                     (t) => t.id === (config.appearanceTheme ?? 'ocean-slate'),
                   )?.label ?? 'Ocean Slate'}
                 </RecordsRow>
-                <RecordsRow title="Εμβέλεια">Όλη η εφαρμογή (login, shell, modules)</RecordsRow>
+                <RecordsRow title="Εμβέλεια">Όλοι οι σύλλογοι (login, shell, modules)</RecordsRow>
               </RecordsTable>
             }
           />

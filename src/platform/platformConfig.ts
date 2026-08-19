@@ -669,6 +669,49 @@ export function setAppearanceTheme(theme: AppearanceTheme): PlatformConfig {
   return next;
 }
 
+export function applyPlatformBranding(partial: {
+  appearanceTheme?: unknown;
+  appName?: unknown;
+  appLogoUrl?: unknown;
+}): PlatformConfig {
+  const current = loadPlatformConfig();
+  const next: PlatformConfig = {
+    ...current,
+    appearanceTheme:
+      partial.appearanceTheme !== undefined
+        ? sanitizeAppearanceTheme(partial.appearanceTheme)
+        : current.appearanceTheme,
+    appName:
+      typeof partial.appName === 'string' && partial.appName.trim()
+        ? partial.appName.trim()
+        : current.appName,
+    appLogoUrl:
+      partial.appLogoUrl === null
+        ? null
+        : typeof partial.appLogoUrl === 'string'
+          ? partial.appLogoUrl
+          : current.appLogoUrl,
+  };
+  savePlatformConfig(next);
+  return next;
+}
+
+async function pullCloudAppearanceTheme(): Promise<void> {
+  try {
+    const response = await fetch('/api/sync/account?kind=branding');
+    const json = (await response.json()) as {
+      ok?: boolean;
+      appearanceTheme?: unknown;
+      appName?: unknown;
+      appLogoUrl?: unknown;
+    };
+    if (!response.ok || !json.ok) return;
+    applyPlatformBranding(json);
+  } catch {
+    /* offline / no cloud bundle */
+  }
+}
+
 const APPEARANCE_ROLLOUT_KEY = 'academyhub-ocean-slate-rollout-v1';
 
 /** Εφαρμόζει το θέμα στην εκκίνηση και σε κάθε platform update. */
@@ -690,6 +733,7 @@ export function startAppearanceTheme(): void {
   window.addEventListener('academyhub-platform-updated', () => {
     applyAppearanceTheme();
   });
+  void pullCloudAppearanceTheme();
 }
 
 export function updateAppLogo(logoUrl: string | null): PlatformConfig {

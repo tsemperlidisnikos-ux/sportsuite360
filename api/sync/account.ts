@@ -158,6 +158,48 @@ function kindOf(req: VercelRequest): string {
   return String(req.query.kind ?? req.query.view ?? '').trim();
 }
 
+const APPEARANCE_THEME_IDS = [
+  'classic',
+  'navy-amber',
+  'ocean-slate',
+  'midnight-ice',
+  'indigo-steel',
+  'pitch-heritage',
+  'graphite-ember',
+] as const;
+
+function sanitizeAppearanceThemeId(value: unknown): (typeof APPEARANCE_THEME_IDS)[number] {
+  if (
+    typeof value === 'string' &&
+    APPEARANCE_THEME_IDS.includes(value as (typeof APPEARANCE_THEME_IDS)[number])
+  ) {
+    return value as (typeof APPEARANCE_THEME_IDS)[number];
+  }
+  return 'ocean-slate';
+}
+
+function publicBranding(platformConfig: unknown) {
+  const cfg =
+    platformConfig && typeof platformConfig === 'object'
+      ? (platformConfig as Record<string, unknown>)
+      : {};
+  const appName = typeof cfg.appName === 'string' ? cfg.appName.trim() : '';
+  const appLogoUrl = typeof cfg.appLogoUrl === 'string' ? cfg.appLogoUrl.trim() : '';
+  return {
+    appearanceTheme: sanitizeAppearanceThemeId(cfg.appearanceTheme),
+    appName: appName || 'SPORTSUITE 360',
+    appLogoUrl: appLogoUrl || null,
+  };
+}
+
+function bearerClaims(req: VercelRequest) {
+  const auth = String(req.headers['authorization'] ?? '').trim();
+  if (!auth.toLowerCase().startsWith('bearer ')) return null;
+  const token = auth.slice(7).trim();
+  if (!token.includes('.')) return null;
+  return verifySessionToken(token);
+}
+
 async function handleClubProfile(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'PATCH' && req.method !== 'POST') {
     res.setHeader('Allow', 'PATCH, POST');
@@ -502,6 +544,7 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
       ok: true,
       token,
       user: publicUser({ ...user, password: nextPassword }),
+      branding: publicBranding(bundle?.platformConfig),
     });
   }
 
@@ -675,6 +718,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return handleClubWaitlist(req, res);
   }
 
+  if (kind === 'branding') {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET');
+      return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    }
+    const bundle = await loadAccountBundle();
+    return res.status(200).json({
+      ok: true,
+      durable: isDurableStoreEnabled(),
+      ...publicBranding(bundle?.platformConfig),
+    });
+  }
+
   if (!assertSyncAuthorized(req, res)) return;
 
   if (kind === 'login-activity') {
@@ -766,6 +822,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         durable: isDurableStoreEnabled(),
         users,
         clubs,
+        platformBranding: publicBranding(bundle.platformConfig),
       });
     }
     return res.status(200).json({
@@ -789,10 +846,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ ok: false, error: 'users and clubs required' });
     }
     const existing = await loadAccountBundle();
+    const jwt = auth.claims ?? bearerClaims(req);
+    const canWritePlatformConfig = jwt?.role === 'platform_admin' || (auth.viaSecret && !jwt);
     const saved = await saveAccountBundle({
       users: body.users,
       clubs: mergeBundleClubs(existing?.clubs, body.clubs),
-      platformConfig: body.platformConfig,
+      platformConfig: canWritePlatformConfig ? body.platformConfig : existing?.platformConfig,
     });
     return res.status(200).json({
       ok: true,

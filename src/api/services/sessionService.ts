@@ -1,3 +1,4 @@
+import { applyPlatformBranding } from '../../platform/platformConfig';
 import { apiClient } from '../apiClient';
 import { syncAuthHeaders } from '../syncAuth';
 
@@ -41,11 +42,19 @@ export async function serverLogin(email: string, password: string) {
       error?: string;
       token?: string;
       user?: ServerSessionUser;
+      branding?: {
+        appearanceTheme?: string;
+        appName?: string;
+        appLogoUrl?: string | null;
+      };
     };
     if (!response.ok || !json.ok || !json.token || !json.user) {
       throw new Error(json.error || `Session login HTTP ${response.status}`);
     }
     setSessionToken(json.token);
+    if (json.branding) {
+      applyPlatformBranding(json.branding);
+    }
     return { token: json.token, user: json.user };
   });
 }

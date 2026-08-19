@@ -3,6 +3,7 @@ import { syncAuthHeaders } from '../syncAuth';
 import { getUsers, saveUsers, type AppUser } from '../../auth/auth';
 import { getClubs, mergeClubCatalog, saveClubs, type Club } from '../../auth/clubs';
 import {
+  applyPlatformBranding,
   clearStampedRoleDefaultPermissions,
   loadPlatformConfig,
   savePlatformConfig,
@@ -13,6 +14,11 @@ export type AccountBundlePayload = {
   users: AppUser[];
   clubs: Club[];
   platformConfig?: PlatformConfig | null;
+  platformBranding?: {
+    appearanceTheme?: PlatformConfig['appearanceTheme'];
+    appName?: string;
+    appLogoUrl?: string | null;
+  } | null;
   updatedAt?: string | null;
   durable?: boolean;
 };
@@ -47,6 +53,7 @@ export async function pullAccountBundle() {
       users?: AppUser[];
       clubs?: Club[];
       platformConfig?: PlatformConfig | null;
+      platformBranding?: AccountBundlePayload['platformBranding'];
       updatedAt?: string;
       durable?: boolean;
     };
@@ -63,6 +70,7 @@ export async function pullAccountBundle() {
       users: json.users,
       clubs: json.clubs,
       platformConfig: json.platformConfig ?? null,
+      platformBranding: json.platformBranding ?? null,
       updatedAt: json.updatedAt ?? null,
       durable: Boolean(json.durable),
     } satisfies AccountBundlePayload;
@@ -76,6 +84,8 @@ export function applyAccountBundle(
 ) {
   if (bundle.platformConfig) {
     savePlatformConfig(bundle.platformConfig);
+  } else if (bundle.platformBranding) {
+    applyPlatformBranding(bundle.platformBranding);
   }
 
   const cleanedUsers = clearStampedRoleDefaultPermissions(bundle.users);

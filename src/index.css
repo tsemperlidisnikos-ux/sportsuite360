@@ -1544,14 +1544,17 @@ td.row-actions {
   border-bottom: 1px solid rgba(26, 62, 56, 0.08);
 }
 
+.set-page .settings-backup-block,
 .settings-page .settings-backup-block {
   border: none;
   border-radius: 0;
   padding: 0.8rem 0;
   background: transparent;
-  border-bottom: 1px solid rgba(26, 62, 56, 0.08);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
 }
 
+.set-page .settings-backup-panel,
 .settings-page .settings-backup-panel {
   flex-direction: row;
   flex-wrap: wrap;
@@ -2242,15 +2245,25 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
   padding: 1.1rem 1.15rem;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.settings-backup-copy,
+.settings-backup-copy strong,
+.settings-backup-block .settings-form-row-label {
+  color: var(--ink);
 }
 
 .settings-backup-copy h3 {
   margin: 0 0 0.35rem;
   font-size: 1.05rem;
+  color: var(--ink);
 }
 
-.settings-backup-copy p {
+.settings-backup-copy p,
+.settings-backup-file-name,
+.settings-backup .settings-hint {
   margin: 0;
   color: var(--muted);
   font-size: 0.88rem;
@@ -2282,7 +2295,8 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f7faf8;
+  background: var(--field-bg, var(--surface));
+  color: var(--ink);
   padding: 0.35rem 0.7rem;
   font: inherit;
   font-size: 0.85rem;
@@ -2290,7 +2304,8 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
 }
 
 .settings-backup-file-btn:hover {
-  background: #eef5f1;
+  background: var(--brand-soft);
+  color: var(--ink);
 }
 
 .settings-backup-file-btn.is-disabled {
@@ -2314,6 +2329,19 @@ html[data-appearance='navy-amber'] .modal.fee-charge-modal .fee-charge-section i
 .settings-backup-file-name {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+html[data-appearance] .settings-backup-block .admin-check,
+html[data-appearance] .settings-backup-block .admin-check span,
+html[data-appearance] .settings-backup-copy,
+html[data-appearance] .settings-backup-copy strong {
+  color: var(--ink);
+}
+
+html[data-appearance] .settings-backup-copy p,
+html[data-appearance] .settings-backup-file-name,
+html[data-appearance] .settings-backup .settings-hint {
+  color: var(--muted);
 }
 
 @media (max-width: 860px) {

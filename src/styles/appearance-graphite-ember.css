@@ -2943,5 +2943,25 @@ html[data-appearance='graphite-ember'] .modal:not(.fee-charge-modal) #modal-titl
   color: #140c08 !important;
 }
 
+html[data-appearance='graphite-ember'] .settings-backup-block,
+html[data-appearance='graphite-ember'] .settings-backup-copy,
+html[data-appearance='graphite-ember'] .settings-backup-copy strong,
+html[data-appearance='graphite-ember'] .settings-backup-block .admin-check,
+html[data-appearance='graphite-ember'] .settings-backup-block .admin-check span,
+html[data-appearance='graphite-ember'] .settings-backup-file-btn {
+  color: #f4eee8;
+}
+
+html[data-appearance='graphite-ember'] .settings-backup-copy p,
+html[data-appearance='graphite-ember'] .settings-backup-file-name,
+html[data-appearance='graphite-ember'] .settings-backup .settings-hint {
+  color: #c4b8b0;
+}
+
+html[data-appearance='graphite-ember'] .settings-backup-file-btn {
+  background: #16181c;
+  border-color: rgba(244, 238, 232, 0.16);
+}
+
 
 
