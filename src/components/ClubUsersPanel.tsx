@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { UserPlus } from 'lucide-react';
 import * as clubUsersService from '../api/services/clubUsersService';
 import {
-  pushAccountBundle,
+  removeCloudUser,
+  upsertCloudUser,
 } from '../api/services/accountSyncService';
-import { getSession, type AppUser } from '../auth/auth';
+import { getSession, getUsers, type AppUser } from '../auth/auth';
 import { useAppData } from '../hooks/useAppData';
 import { Button } from './ui/Button';
 import { SettingsFormRow } from './ui/SettingsFormRow';
@@ -241,12 +242,12 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     scrollToUserForm();
   }
 
-  async function pushAccountsToCloud(): Promise<string | null> {
-    const pushed = await pushAccountBundle();
+  async function syncUserToCloud(user: AppUser): Promise<string | null> {
+    const pushed = await upsertCloudUser(user);
     if (!pushed.success) {
       return (
         pushed.error ??
-        'Ο λογαριασμός αποθηκεύτηκε τοπικά, αλλά όχι στο cloud. Κάντε Push από Backup.'
+        'Ο λογαριασμός αποθηκεύτηκε τοπικά, αλλά όχι στο cloud.'
       );
     }
     return null;
@@ -289,11 +290,11 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
         athleteId: role === 'athlete' ? athleteId || null : null,
         coachId: role === 'coach' ? coachId || null : null,
       });
-      if (!result.success) {
+      if (!result.success || !result.data) {
         setError(result.error ?? 'Αποτυχία ενημέρωσης');
         return;
       }
-      const pushError = await pushAccountsToCloud();
+      const pushError = await syncUserToCloud(result.data);
       if (pushError) {
         setError(pushError);
         await refresh();
@@ -323,7 +324,7 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       setError(result.error ?? 'Αποτυχία πρόσκλησης');
       return;
     }
-    const pushError = await pushAccountsToCloud();
+    const pushError = result.data ? await syncUserToCloud(result.data) : 'Αποτυχία αποθήκευσης χρήστη';
     if (pushError) {
       setError(pushError);
       await refresh();
@@ -369,6 +370,17 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
       return;
     }
     if (row.userId && editingId === row.userId) resetForm();
+    if (row.userId) {
+      const cloud = await removeCloudUser(row.userId);
+      if (!cloud.success) {
+        setError(
+          cloud.error ??
+            'Διαγράφηκε τοπικά, αλλά όχι στο cloud. Δοκιμάστε ξανά.',
+        );
+        await refresh();
+        return;
+      }
+    }
     setMessage('Η εγγραφή διαγράφηκε.');
     refreshAppData();
     await refresh();
@@ -384,6 +396,20 @@ export function ClubUsersPanel({ clubId, mode = 'users' }: ClubUsersPanelProps) 
     if (!result.success) {
       setError(result.error ?? 'Αποτυχία αλλαγής κατάστασης');
       return;
+    }
+    if (row.userId) {
+      const user = getUsers().find((item) => item.id === row.userId);
+      if (user) {
+        const cloud = await upsertCloudUser(user);
+        if (!cloud.success) {
+          setError(
+            cloud.error ??
+              'Η κατάσταση άλλαξε τοπικά, αλλά όχι στο cloud. Δοκιμάστε ξανά.',
+          );
+          await refresh();
+          return;
+        }
+      }
     }
     setMessage(
       nextActive

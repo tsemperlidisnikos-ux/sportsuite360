@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { changePassword } from '../auth/auth';
+import { upsertCloudUser } from '../api/services/accountSyncService';
+import { changePassword, getSession, getUserById } from '../auth/auth';
 import { Button } from './ui/Button';
 import { SettingsFormRow } from './ui/SettingsFormRow';
 
@@ -21,11 +22,25 @@ export function ChangePasswordPanel() {
       newPassword,
       confirmPassword,
     });
-    setSaving(false);
     if (!result.success) {
+      setSaving(false);
       setError(result.error ?? 'Σφάλμα ενημέρωσης κωδικού');
       return;
     }
+    const session = getSession();
+    const user = session ? getUserById(session.id) : null;
+    if (user) {
+      const cloud = await upsertCloudUser(user);
+      if (!cloud.success) {
+        setSaving(false);
+        setError(
+          cloud.error ??
+            'Ο κωδικός άλλαξε σε αυτή τη συσκευή, αλλά όχι στο cloud. Δοκιμάστε ξανά.',
+        );
+        return;
+      }
+    }
+    setSaving(false);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');

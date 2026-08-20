@@ -9,6 +9,7 @@ import {
   consumePasswordResetToken,
   createPasswordResetToken,
   hashPassword,
+  isPasswordHashed,
   isDurableStoreEnabled,
   listClubWaitlist,
   listLoginActivity,
@@ -35,6 +36,9 @@ type BundleUser = {
   role: string;
   active?: boolean;
   clubId?: string | null;
+  athleteId?: string | null;
+  coachId?: string | null;
+  permissions?: string[] | null;
 };
 
 type BundleClub = {
@@ -64,6 +68,211 @@ function pickKeptMedia(incoming: unknown, existing: unknown): unknown {
   const prev = typeof existing === 'string' ? existing.trim() : '';
   if (prev) return existing;
   return incoming === undefined ? existing : incoming;
+}
+
+function userPassword(user: unknown): string {
+  if (!user || typeof user !== 'object') return '';
+  const value = (user as BundleUser).password;
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/** Keep existing hashes when a client (club GET strips passwords) pushes empty password fields. */
+function mergeBundleUsers(
+  existing: unknown,
+  incoming: unknown,
+  options: { replaceAll: boolean; clubId?: string | null },
+): unknown {
+  if (!Array.isArray(incoming)) return existing ?? incoming;
+  const prevList = Array.isArray(existing) ? (existing as BundleUser[]) : [];
+  const prevById = new Map(
+    prevList
+      .filter((user) => user && typeof user.id === 'string')
+      .map((user) => [user.id, user]),
+  );
+
+  const applyIncoming = (list: unknown[]) =>
+    list.map((raw) => {
+      if (!raw || typeof raw !== 'object') return raw;
+      const user = raw as BundleUser;
+      const prev = user.id ? prevById.get(user.id) : undefined;
+      return {
+        ...(prev ?? {}),
+        ...user,
+        password: userPassword(user) || userPassword(prev),
+      };
+    });
+
+  if (options.replaceAll) {
+    return applyIncoming(incoming);
+  }
+
+  const clubId = options.clubId ?? null;
+  const incomingClub = incoming.filter((raw) => {
+    if (!raw || typeof raw !== 'object') return false;
+    return ((raw as BundleUser).clubId ?? null) === clubId;
+  });
+  const incomingIds = new Set(
+    incomingClub
+      .filter((raw) => raw && typeof raw === 'object' && typeof (raw as BundleUser).id === 'string')
+      .map((raw) => (raw as BundleUser).id),
+  );
+  const others = prevList.filter((user) => (user.clubId ?? null) !== clubId);
+  const keptSameClub = prevList.filter(
+    (user) => (user.clubId ?? null) === clubId && !incomingIds.has(user.id),
+  );
+  return [...others, ...keptSameClub, ...applyIncoming(incomingClub)];
+}
+
+function asBundleUsers(value: unknown): BundleUser[] {
+  return Array.isArray(value) ? (value as BundleUser[]) : [];
+}
+
+function canManageAccountUser(
+  auth: ReturnType<typeof getSyncAuthContext>,
+  jwt: ReturnType<typeof bearerClaims>,
+  targetClubId: string | null,
+  targetRole: string,
+): boolean {
+  if (jwt?.role === 'platform_admin') return true;
+  if (targetRole === 'platform_admin') return false;
+  if (jwt?.role === 'admin' && jwt.clubId && jwt.clubId === targetClubId) return true;
+  if (auth.viaSecret && !jwt) return true;
+  return false;
+}
+
+async function handleAccountUser(req: VercelRequest, res: VercelResponse) {
+  try {
+    const auth = getSyncAuthContext(req);
+    const jwt = auth.claims ?? bearerClaims(req);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const incoming =
+      body.user && typeof body.user === 'object'
+        ? (body.user as Record<string, unknown>)
+        : body;
+
+    if (req.method === 'DELETE') {
+      const userId = String(
+        incoming.id ?? body.id ?? (typeof req.query.id === 'string' ? req.query.id : ''),
+      ).trim();
+      if (!userId) return res.status(400).json({ ok: false, error: 'id required' });
+      const bundle = await loadAccountBundle();
+      if (!bundle) return res.status(404).json({ ok: false, error: 'No account bundle' });
+      const users = asBundleUsers(bundle.users);
+      const existing = users.find((user) => user.id === userId);
+      if (!existing) return res.status(404).json({ ok: false, error: 'Ο χρήστης δεν βρέθηκε' });
+      if (!canManageAccountUser(auth, jwt, existing.clubId ?? null, existing.role)) {
+        return res.status(403).json({ ok: false, error: 'Forbidden' });
+      }
+      if (jwt?.sub && jwt.sub === userId) {
+        return res.status(400).json({ ok: false, error: 'Δεν μπορείτε να διαγράψετε τον ενεργό λογαριασμό' });
+      }
+      const saved = await saveAccountBundle({
+        users: users.filter((user) => user.id !== userId),
+        clubs: bundle.clubs,
+        platformConfig: bundle.platformConfig,
+      });
+      return res.status(200).json({
+        ok: true,
+        durable: isDurableStoreEnabled(),
+        updatedAt: saved.updatedAt,
+      });
+    }
+
+    if (req.method !== 'POST' && req.method !== 'PATCH') {
+      res.setHeader('Allow', 'POST, PATCH, DELETE');
+      return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    }
+
+    const id = String(incoming.id ?? '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id required' });
+
+    const bundle = await loadAccountBundle();
+    if (!bundle) return res.status(404).json({ ok: false, error: 'No account bundle' });
+
+    const users = asBundleUsers(bundle.users);
+    const existing = users.find((user) => user.id === id) ?? null;
+    const clubIdRaw = incoming.clubId ?? existing?.clubId ?? null;
+    const clubId =
+      clubIdRaw == null || clubIdRaw === ''
+        ? null
+        : String(clubIdRaw).trim() || null;
+    const role = String(incoming.role ?? existing?.role ?? 'staff').trim() || 'staff';
+
+    if (!canManageAccountUser(auth, jwt, clubId, role)) {
+      return res.status(403).json({ ok: false, error: 'Forbidden' });
+    }
+
+    const email = String(incoming.email ?? existing?.email ?? '')
+      .trim()
+      .toLowerCase();
+    if (!email.includes('@')) {
+      return res.status(400).json({ ok: false, error: 'Μη έγκυρο email' });
+    }
+    if (users.some((user) => user.id !== id && user.email?.toLowerCase() === email)) {
+      return res.status(400).json({ ok: false, error: 'Το email χρησιμοποιείται ήδη' });
+    }
+
+    let password = existing?.password ?? '';
+    const incomingPassword = typeof incoming.password === 'string' ? incoming.password.trim() : '';
+    if (incomingPassword) {
+      if (incomingPassword.length > 400) {
+        return res.status(400).json({ ok: false, error: 'Μη έγκυρος κωδικός' });
+      }
+      password = isPasswordHashed(incomingPassword)
+        ? incomingPassword
+        : await hashPassword(incomingPassword);
+    }
+    if (!existing && !password) {
+      return res.status(400).json({ ok: false, error: 'Απαιτείται κωδικός για νέο χρήστη' });
+    }
+
+    const nextUser: BundleUser = {
+      ...(existing ?? {}),
+      id,
+      email,
+      password,
+      fullName: String(incoming.fullName ?? existing?.fullName ?? '').trim(),
+      role,
+      active:
+        incoming.active === undefined ? (existing?.active ?? true) : Boolean(incoming.active),
+      clubId,
+      athleteId:
+        incoming.athleteId === undefined
+          ? (existing?.athleteId ?? null)
+          : incoming.athleteId == null || incoming.athleteId === ''
+            ? null
+            : String(incoming.athleteId),
+      coachId:
+        incoming.coachId === undefined
+          ? (existing?.coachId ?? null)
+          : incoming.coachId == null || incoming.coachId === ''
+            ? null
+            : String(incoming.coachId),
+      permissions: Array.isArray(incoming.permissions)
+        ? incoming.permissions.map((item) => String(item))
+        : incoming.permissions === null
+          ? null
+          : (existing?.permissions ?? null),
+    };
+
+    const nextUsers = existing
+      ? users.map((user) => (user.id === id ? nextUser : user))
+      : [...users, nextUser];
+
+    const saved = await saveAccountBundle({
+      users: nextUsers,
+      clubs: bundle.clubs,
+      platformConfig: bundle.platformConfig,
+    });
+    return res.status(200).json({
+      ok: true,
+      durable: isDurableStoreEnabled(),
+      updatedAt: saved.updatedAt,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Account user save failed';
+    return res.status(500).json({ ok: false, error: message });
+  }
 }
 
 /** Keep logos/SMTP when a full account push arrives without those fields filled. */
@@ -733,6 +942,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!assertSyncAuthorized(req, res)) return;
 
+  if (kind === 'user') {
+    return handleAccountUser(req, res);
+  }
+
   if (kind === 'login-activity') {
     if (req.method === 'GET') {
       const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : 100;
@@ -833,31 +1046,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
-    const auth = getSyncAuthContext(req);
-    if (!auth.viaSecret && auth.claims?.role !== 'platform_admin') {
-      return res.status(403).json({ ok: false, error: 'Μόνο Platform Admin μπορεί να αποθηκεύσει account bundle' });
+    try {
+      const auth = getSyncAuthContext(req);
+      if (!auth.viaSecret && auth.claims?.role !== 'platform_admin') {
+        return res.status(403).json({
+          ok: false,
+          error: 'Μόνο Platform Admin μπορεί να αποθηκεύσει account bundle',
+        });
+      }
+      const body = (req.body ?? {}) as {
+        users?: unknown;
+        clubs?: unknown;
+        platformConfig?: unknown;
+      };
+      if (body.users == null) {
+        return res.status(400).json({ ok: false, error: 'users required' });
+      }
+      const existing = await loadAccountBundle();
+      const jwt = auth.claims ?? bearerClaims(req);
+      const canWritePlatform = jwt?.role === 'platform_admin' || (auth.viaSecret && !jwt);
+      if (!canWritePlatform && body.clubs == null && existing?.clubs == null) {
+        return res.status(400).json({ ok: false, error: 'users and clubs required' });
+      }
+      if (canWritePlatform && body.clubs == null) {
+        return res.status(400).json({ ok: false, error: 'users and clubs required' });
+      }
+      const saved = await saveAccountBundle({
+        users: mergeBundleUsers(existing?.users, body.users, {
+          replaceAll: canWritePlatform,
+          clubId: jwt?.clubId ?? null,
+        }),
+        clubs: canWritePlatform
+          ? mergeBundleClubs(existing?.clubs, body.clubs)
+          : (existing?.clubs ?? body.clubs),
+        platformConfig: canWritePlatform ? body.platformConfig : existing?.platformConfig,
+      });
+      return res.status(200).json({
+        ok: true,
+        durable: isDurableStoreEnabled(),
+        updatedAt: saved.updatedAt,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Account push failed';
+      return res.status(500).json({ ok: false, error: message });
     }
-    const body = (req.body ?? {}) as {
-      users?: unknown;
-      clubs?: unknown;
-      platformConfig?: unknown;
-    };
-    if (body.users == null || body.clubs == null) {
-      return res.status(400).json({ ok: false, error: 'users and clubs required' });
-    }
-    const existing = await loadAccountBundle();
-    const jwt = auth.claims ?? bearerClaims(req);
-    const canWritePlatformConfig = jwt?.role === 'platform_admin' || (auth.viaSecret && !jwt);
-    const saved = await saveAccountBundle({
-      users: body.users,
-      clubs: mergeBundleClubs(existing?.clubs, body.clubs),
-      platformConfig: canWritePlatformConfig ? body.platformConfig : existing?.platformConfig,
-    });
-    return res.status(200).json({
-      ok: true,
-      durable: isDurableStoreEnabled(),
-      updatedAt: saved.updatedAt,
-    });
   }
 
   res.setHeader('Allow', 'GET, POST');

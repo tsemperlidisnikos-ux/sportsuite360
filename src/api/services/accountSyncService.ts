@@ -1,6 +1,6 @@
 import { apiClient } from '../apiClient';
 import { syncAuthHeaders } from '../syncAuth';
-import { getUsers, saveUsers, type AppUser } from '../../auth/auth';
+import { getSession, getUsers, saveUsers, type AppUser } from '../../auth/auth';
 import { getClubs, mergeClubCatalog, saveClubs, type Club } from '../../auth/clubs';
 import {
   applyPlatformBranding,
@@ -23,20 +23,82 @@ export type AccountBundlePayload = {
   durable?: boolean;
 };
 
+async function parseSyncJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const clipped = text.replace(/\s+/g, ' ').trim().slice(0, 160);
+    throw new Error(
+      clipped
+        ? `Το cloud δεν απάντησε σωστά (${response.status}): ${clipped}`
+        : `Account sync HTTP ${response.status}`,
+    );
+  }
+}
+
+function payloadForAccountPush() {
+  const session = getSession();
+  if (session?.role === 'platform_admin') {
+    return {
+      users: getUsers(),
+      clubs: getClubs(),
+      platformConfig: loadPlatformConfig(),
+    };
+  }
+  return {
+    users: getUsers(),
+    clubs: [] as Club[],
+    platformConfig: null,
+  };
+}
+
 export async function pushAccountBundle() {
   return apiClient(async () => {
     const response = await fetch('/api/sync/account', {
       method: 'POST',
       headers: syncAuthHeaders(),
-      body: JSON.stringify({
-        users: getUsers(),
-        clubs: getClubs(),
-        platformConfig: loadPlatformConfig(),
-      }),
+      body: JSON.stringify(payloadForAccountPush()),
     });
-    const json = (await response.json()) as { ok?: boolean; error?: string; updatedAt?: string };
+    const json = await parseSyncJson<{ ok?: boolean; error?: string; updatedAt?: string }>(response);
     if (!response.ok || !json.ok) {
       throw new Error(json.error || `Account push HTTP ${response.status}`);
+    }
+    return { updatedAt: json.updatedAt ?? null };
+  });
+}
+
+export async function upsertCloudUser(user: AppUser) {
+  return apiClient(async () => {
+    const response = await fetch('/api/sync/account?kind=user', {
+      method: 'POST',
+      headers: syncAuthHeaders(),
+      body: JSON.stringify({ user }),
+    });
+    const json = await parseSyncJson<{ ok?: boolean; error?: string; updatedAt?: string }>(response);
+    if (!response.ok || !json.ok) {
+      throw new Error(json.error || `Account user HTTP ${response.status}`);
+    }
+    return { updatedAt: json.updatedAt ?? null };
+  });
+}
+
+export async function removeCloudUser(userId: string) {
+  return apiClient(async () => {
+    const response = await fetch(
+      `/api/sync/account?kind=user&id=${encodeURIComponent(userId)}`,
+      {
+        method: 'DELETE',
+        headers: syncAuthHeaders(),
+        body: JSON.stringify({ id: userId }),
+      },
+    );
+    const json = await parseSyncJson<{ ok?: boolean; error?: string; updatedAt?: string }>(response);
+    if (response.status === 404) {
+      return { updatedAt: json.updatedAt ?? null };
+    }
+    if (!response.ok || !json.ok) {
+      throw new Error(json.error || `Account user delete HTTP ${response.status}`);
     }
     return { updatedAt: json.updatedAt ?? null };
   });
@@ -47,7 +109,7 @@ export async function pullAccountBundle() {
     const response = await fetch('/api/sync/account', {
       headers: syncAuthHeaders(false),
     });
-    const json = (await response.json()) as {
+    const json = await parseSyncJson<{
       ok?: boolean;
       error?: string;
       users?: AppUser[];
@@ -56,7 +118,7 @@ export async function pullAccountBundle() {
       platformBranding?: AccountBundlePayload['platformBranding'];
       updatedAt?: string;
       durable?: boolean;
-    };
+    }>(response);
     if (response.status === 404) {
       throw new Error('Δεν υπάρχει cloud account bundle. Κάντε πρώτα Push.');
     }
