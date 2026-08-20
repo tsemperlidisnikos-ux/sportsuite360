@@ -194,7 +194,11 @@ export async function login(
       recordLoginActivity(local, 'login');
       return { success: true, data: local };
     }
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('cloud storage') || message.includes('cloud account')) {
+      return { success: false, error: message };
+    }
     /* fall through to local auth (offline / no cloud bundle) */
   }
 

@@ -6,6 +6,8 @@ import {
   getDurableStoreBackend,
   getSyncAuthContext,
   isDurableStoreEnabled,
+  accountBundleExists,
+  loadAccountBundleRaw,
   listMirrorKeys,
   loadMirror,
   saveMirror,
@@ -471,11 +473,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const op = resolveOp(req);
 
   if (op === 'health') {
-    return res.status(200).json({
-      ok: true,
+    const configured = isDurableStoreEnabled();
+    const accountExists = configured ? await accountBundleExists() : false;
+    const accountReadable = configured ? Boolean(await loadAccountBundleRaw()) : false;
+    const storageReadable = !configured || !accountExists || accountReadable;
+    return res.status(storageReadable ? 200 : 503).json({
+      ok: storageReadable,
       service: 'sportsuite360-api',
-      durable: isDurableStoreEnabled(),
+      durable: configured,
       durableBackend: getDurableStoreBackend(),
+      storageReadable,
+      accountExists,
+      error: storageReadable ? undefined : 'Durable storage is configured but not readable',
       time: new Date().toISOString(),
     });
   }

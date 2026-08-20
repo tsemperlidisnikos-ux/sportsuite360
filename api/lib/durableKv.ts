@@ -1,4 +1,4 @@
-import { del, get, list, put } from '@vercel/blob';
+import { del, get, head, list, put } from '@vercel/blob';
 import { Redis } from '@upstash/redis';
 
 function redisClient(): Redis | null {
@@ -49,6 +49,13 @@ async function streamToText(stream: ReadableStream<Uint8Array>): Promise<string>
   return new TextDecoder().decode(merged);
 }
 
+async function parseBlobJson<T>(stream: ReadableStream<Uint8Array> | null): Promise<T | null> {
+  if (!stream) return null;
+  const text = await streamToText(stream);
+  if (!text) return null;
+  return JSON.parse(text) as T;
+}
+
 async function blobGetByPath<T>(pathname: string, token: string): Promise<T | null> {
   const result = await get(pathname, {
     access: 'private',
@@ -56,9 +63,7 @@ async function blobGetByPath<T>(pathname: string, token: string): Promise<T | nu
     useCache: false,
   });
   if (!result || result.statusCode !== 200 || !result.stream) return null;
-  const text = await streamToText(result.stream);
-  if (!text) return null;
-  return JSON.parse(text) as T;
+  return parseBlobJson<T>(result.stream);
 }
 
 async function blobGetByUrl<T>(url: string, token: string): Promise<T | null> {
@@ -68,37 +73,89 @@ async function blobGetByUrl<T>(url: string, token: string): Promise<T | null> {
     useCache: false,
   });
   if (!result || result.statusCode !== 200 || !result.stream) return null;
-  const text = await streamToText(result.stream);
-  if (!text) return null;
-  return JSON.parse(text) as T;
+  return parseBlobJson<T>(result.stream);
+}
+
+export async function kvExists(key: string): Promise<boolean> {
+  const redis = redisClient();
+  if (redis) {
+    try {
+      return Number(await redis.exists(key)) > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  const token = blobToken();
+  if (!token) return false;
+  const pathname = blobPath(key);
+  try {
+    const meta = await head(pathname, { token });
+    return Boolean(meta?.url);
+  } catch {
+    try {
+      const listed = await list({ prefix: pathname, token, limit: 5 });
+      return listed.blobs.some((b) => b.pathname === pathname) || listed.blobs.length > 0;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export async function kvGet<T>(key: string): Promise<T | null> {
   const redis = redisClient();
   if (redis) {
-    const raw = await redis.get<T>(key);
-    return (raw as T) ?? null;
+    try {
+      const raw = await redis.get<T>(key);
+      if (raw != null) return raw as T;
+    } catch {
+      /* fall through to blob if configured */
+    }
+    if (!blobToken()) return null;
   }
 
   const token = blobToken();
   if (!token) return null;
 
   const pathname = blobPath(key);
-  try {
-    const direct = await blobGetByPath<T>(pathname, token);
-    if (direct != null) return direct;
-  } catch {
-    /* try list fallback */
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const direct = await blobGetByPath<T>(pathname, token);
+      if (direct != null) return direct;
+    } catch {
+      /* try url / list */
+    }
+
+    try {
+      const meta = await head(pathname, { token });
+      if (meta?.url) {
+        const fromHead = await blobGetByUrl<T>(meta.url, token);
+        if (fromHead != null) return fromHead;
+      }
+    } catch {
+      /* try list */
+    }
+
+    try {
+      const listed = await list({ prefix: pathname, token, limit: 8 });
+      const hit =
+        listed.blobs.find((b) => b.pathname === pathname) ??
+        listed.blobs.find((b) => b.pathname.startsWith(pathname.replace(/\.json$/, ''))) ??
+        listed.blobs[0];
+      if (hit?.url) {
+        const fromList = await blobGetByUrl<T>(hit.url, token);
+        if (fromList != null) return fromList;
+      }
+    } catch {
+      /* retry */
+    }
+
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    }
   }
 
-  try {
-    const listed = await list({ prefix: pathname, token, limit: 5 });
-    const hit = listed.blobs.find((b) => b.pathname === pathname) ?? listed.blobs[0];
-    if (!hit) return null;
-    return await blobGetByUrl<T>(hit.url, token);
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export async function kvSet(key: string, value: unknown): Promise<void> {

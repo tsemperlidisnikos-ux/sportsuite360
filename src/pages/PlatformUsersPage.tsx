@@ -28,6 +28,7 @@ import { loadStore, removeClubStore } from '../data/store';
 type PlatformRole =
   | 'platform_admin'
   | 'admin'
+  | 'doctor'
   | 'secretariat'
   | 'coach'
   | 'staff'
@@ -42,6 +43,7 @@ interface PlatformUserRow {
   clubId: string | null;
   clubName: string;
   roleLabel: string;
+  active: boolean;
   licenseText: string | null;
   canDelete: boolean;
   canImpersonate: boolean;
@@ -55,6 +57,7 @@ const ROLE_CARDS: Array<{
 }> = [
   { role: 'platform_admin', title: 'Διαχειριστές πλατφόρμας' },
   { role: 'admin', title: 'Διαχειριστές συλλόγων' },
+  { role: 'doctor', title: 'Ιατροί' },
   { role: 'secretariat', title: 'Γραμματεία' },
   { role: 'coach', title: 'Προπονητές' },
   { role: 'staff', title: 'Προσωπικό' },
@@ -96,6 +99,7 @@ function buildRows(): PlatformUserRow[] {
       const clubName = club?.name ?? '';
       let roleLabel = '';
       if (u.role === 'admin') roleLabel = clubName ? `${clubName} Διαχειριστής` : 'Διαχειριστής συλλόγου';
+      else if (u.role === 'doctor') roleLabel = clubName ? `${clubName} Ιατρός` : 'Ιατρός';
       else if (u.role === 'athlete') roleLabel = clubName ? `${clubName} Αθλητής` : 'Αθλητής';
       else if (u.role === 'coach') roleLabel = clubName ? `${clubName} Προπονητής` : 'Προπονητής';
       else if (u.role === 'secretariat') roleLabel = clubName ? `${clubName} Γραμματεία` : 'Γραμματεία';
@@ -110,6 +114,7 @@ function buildRows(): PlatformUserRow[] {
         clubId: u.clubId ?? null,
         clubName,
         roleLabel,
+        active: u.active,
         licenseText:
           u.role === 'admin' || u.role === 'athlete' ? licenseText(club) : null,
         canDelete: u.role !== 'platform_admin' && u.id !== session?.id,
@@ -139,6 +144,7 @@ function buildRows(): PlatformUserRow[] {
         clubId: club?.id ?? null,
         clubName,
         roleLabel: clubName ? `${clubName} Αθλητής` : 'Αθλητής',
+        active: s.status !== 'inactive',
         licenseText: licenseText(club),
         canDelete: false,
         canImpersonate: true,
@@ -156,6 +162,7 @@ export function PlatformUsersPage() {
   const [queries, setQueries] = useState<Record<PlatformRole, string>>({
     platform_admin: '',
     admin: '',
+    doctor: '',
     secretariat: '',
     coach: '',
     staff: '',
@@ -385,6 +392,9 @@ export function PlatformUsersPage() {
                               {row.roleLabel ? (
                                 <span className="platform-user-role">{row.roleLabel}</span>
                               ) : null}
+                              <span className={row.active ? 'platform-user-status is-active' : 'platform-user-status is-inactive'}>
+                                {row.active ? 'Ενεργός λογαριασμός' : 'Ανενεργός λογαριασμός'}
+                              </span>
                               {row.licenseText ? (
                                 <span className="platform-user-licenses">{row.licenseText}</span>
                               ) : null}

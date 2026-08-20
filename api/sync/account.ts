@@ -16,7 +16,11 @@ import {
   deleteLoginActivity,
   clearLoginActivity,
   loadAccountBundle,
+  loadAccountBundleRaw,
+  loadAccountUsers,
   saveAccountBundle,
+  saveAccountUsers,
+  accountBundleExists,
   signSession,
   deleteClubWaitlist,
   updateClubWaitlist,
@@ -156,7 +160,18 @@ async function handleAccountUser(req: VercelRequest, res: VercelResponse) {
       ).trim();
       if (!userId) return res.status(400).json({ ok: false, error: 'id required' });
       const bundle = await loadAccountBundle();
-      if (!bundle) return res.status(404).json({ ok: false, error: 'No account bundle' });
+      if (!bundle) {
+        if (await accountBundleExists()) {
+          return res.status(503).json({
+            ok: false,
+            error: 'Το cloud account δεν διαβάστηκε. Δοκιμάστε ξανά σε λίγο.',
+          });
+        }
+        return res.status(404).json({
+          ok: false,
+          error: 'Δεν βρέθηκε cloud account. Ο Platform Admin πρέπει να κάνει Push από Backup.',
+        });
+      }
       const users = asBundleUsers(bundle.users);
       const existing = users.find((user) => user.id === userId);
       if (!existing) return res.status(404).json({ ok: false, error: 'Ο χρήστης δεν βρέθηκε' });
@@ -186,10 +201,18 @@ async function handleAccountUser(req: VercelRequest, res: VercelResponse) {
     const id = String(incoming.id ?? '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id required' });
 
-    const bundle = await loadAccountBundle();
-    if (!bundle) return res.status(404).json({ ok: false, error: 'No account bundle' });
+    const rawBundle = await loadAccountBundleRaw();
+    const storedUsers = await loadAccountUsers();
+    if (!rawBundle && !storedUsers) {
+      if (await accountBundleExists()) {
+        return res.status(503).json({
+          ok: false,
+          error: 'Το cloud account δεν διαβάστηκε. Δοκιμάστε ξανά σε λίγο.',
+        });
+      }
+    }
 
-    const users = asBundleUsers(bundle.users);
+    const users = asBundleUsers(storedUsers ?? rawBundle?.users);
     const existing = users.find((user) => user.id === id) ?? null;
     const clubIdRaw = incoming.clubId ?? existing?.clubId ?? null;
     const clubId =
@@ -259,15 +282,24 @@ async function handleAccountUser(req: VercelRequest, res: VercelResponse) {
       ? users.map((user) => (user.id === id ? nextUser : user))
       : [...users, nextUser];
 
-    const saved = await saveAccountBundle({
-      users: nextUsers,
-      clubs: bundle.clubs,
-      platformConfig: bundle.platformConfig,
-    });
+    if (rawBundle) {
+      const saved = await saveAccountBundle({
+        users: nextUsers,
+        clubs: rawBundle.clubs,
+        platformConfig: rawBundle.platformConfig,
+      });
+      return res.status(200).json({
+        ok: true,
+        durable: isDurableStoreEnabled(),
+        updatedAt: saved.updatedAt,
+      });
+    }
+
+    await saveAccountUsers(nextUsers);
     return res.status(200).json({
       ok: true,
       durable: isDurableStoreEnabled(),
-      updatedAt: saved.updatedAt,
+      updatedAt: new Date().toISOString(),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Account user save failed';
@@ -277,7 +309,7 @@ async function handleAccountUser(req: VercelRequest, res: VercelResponse) {
 
 /** Keep logos/SMTP when a full account push arrives without those fields filled. */
 function mergeBundleClubs(existing: unknown, incoming: unknown): unknown {
-  if (!Array.isArray(incoming)) return existing ?? incoming;
+  if (!Array.isArray(incoming) || incoming.length === 0) return existing ?? incoming;
   const prevList = Array.isArray(existing) ? (existing as BundleClub[]) : [];
   const prevById = new Map(
     prevList
@@ -430,7 +462,7 @@ async function handleClubProfile(req: VercelRequest, res: VercelResponse) {
   }
   const bundle = await loadAccountBundle();
   if (!bundle || !Array.isArray(bundle.clubs)) {
-    return res.status(404).json({ ok: false, error: 'No account bundle' });
+    return res.status(404).json({ ok: false, error: 'Δεν βρέθηκε cloud account' });
   }
   const clubs = (bundle.clubs as BundleClub[]).map((club) =>
     club.id === clubId ? { ...club, logoUrl: logoUrl || null } : club,
@@ -716,6 +748,12 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ ok: false, error: 'email and password required' });
     }
     const bundle = await loadAccountBundle();
+    if (!bundle && (await accountBundleExists())) {
+      return res.status(503).json({
+        ok: false,
+        error: 'Το cloud storage δεν είναι διαθέσιμο. Ενεργοποιήστε ξανά το Vercel Blob store και δοκιμάστε πάλι.',
+      });
+    }
     const users = Array.isArray(bundle?.users) ? (bundle!.users as BundleUser[]) : [];
     const user = users.find((u) => u.email?.toLowerCase() === email && u.active !== false);
     if (!user || !(await verifyPassword(password, user.password ?? ''))) {
@@ -850,7 +888,7 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
     if (!record) return res.status(400).json({ ok: false, error: 'Μη έγκυρο ή ληγμένο token' });
     const bundle = await loadAccountBundle();
     if (!bundle || !Array.isArray(bundle.users)) {
-      return res.status(404).json({ ok: false, error: 'No account bundle' });
+      return res.status(404).json({ ok: false, error: 'Δεν βρέθηκε cloud account' });
     }
     const users = bundle.users as BundleUser[];
     const idx = users.findIndex((u) => u.id === record.userId);
@@ -1016,7 +1054,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({
         ok: false,
         durable: isDurableStoreEnabled(),
-        error: 'No account bundle',
+        error: 'Δεν βρέθηκε cloud account. Ο Platform Admin πρέπει να κάνει Push από Backup.',
       });
     }
     const auth = getSyncAuthContext(req);

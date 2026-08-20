@@ -5215,6 +5215,18 @@ html[data-appearance='navy-amber'] .login-footer-link a,
   color: #475569 !important;
 }
 
+.platform-user-status {
+  font-weight: 700;
+}
+
+.platform-user-status.is-active {
+  color: #15803d !important;
+}
+
+.platform-user-status.is-inactive {
+  color: #b91c1c !important;
+}
+
 .platform-user-licenses {
   color: #0f766e !important;
   font-weight: 700;

@@ -3,6 +3,7 @@ import {
   durableKvBackend,
   isDurableKvEnabled,
   kvDel,
+  kvExists,
   kvGet,
   kvIncrementWithExpiry,
   kvSet,
@@ -129,6 +130,7 @@ const NOTIFY_PREFIX = 'ss360:notify:';
 const PENDING_APPS_PREFIX = 'ss360:pending-apps:';
 const SNAPSHOT_PREFIX = 'ss360:backup-snap:';
 const ACCOUNT_BUNDLE_KEY = 'ss360:account-bundle';
+const ACCOUNT_USERS_KEY = 'ss360:account-users';
 const LOGIN_ACTIVITY_KEY = 'ss360:login-activity';
 const LOGIN_ACTIVITY_MAX = 500;
 const CLUB_WAITLIST_KEY = 'ss360:club-waitlist';
@@ -305,26 +307,104 @@ export type AccountBundle = {
   updatedAt: string;
 };
 
+function isDataUrl(value: unknown): boolean {
+  return typeof value === 'string' && value.startsWith('data:');
+}
+
+/** Drop bulky media/logs so Blob GET remains readable for password/user updates. */
+function slimBundleClubs(clubs: unknown): unknown {
+  if (!Array.isArray(clubs)) return clubs ?? [];
+  return clubs.map((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const club = raw as Record<string, unknown>;
+    const { smtpSendLog: _smtpSendLog, ...rest } = club;
+    const registration =
+      rest.publicRegistration && typeof rest.publicRegistration === 'object'
+        ? (rest.publicRegistration as Record<string, unknown>)
+        : null;
+    return {
+      ...rest,
+      logoUrl: isDataUrl(rest.logoUrl) ? null : rest.logoUrl,
+      publicRegistration: registration
+        ? {
+            ...registration,
+            heroImageUrl: isDataUrl(registration.heroImageUrl) ? null : registration.heroImageUrl,
+          }
+        : rest.publicRegistration,
+    };
+  });
+}
+
 export async function saveAccountBundle(
   bundle: Omit<AccountBundle, 'updatedAt'>,
 ): Promise<AccountBundle> {
   const record: AccountBundle = {
     ...bundle,
+    clubs: slimBundleClubs(bundle.clubs),
     updatedAt: new Date().toISOString(),
   };
   if (!isDurableKvEnabled()) {
     memory().accountBundle = record;
     return record;
   }
+  await kvSet(ACCOUNT_USERS_KEY, record.users);
   await kvSet(ACCOUNT_BUNDLE_KEY, record);
   return record;
+}
+
+export async function saveAccountUsers(users: unknown): Promise<void> {
+  if (!isDurableKvEnabled()) {
+    if (memory().accountBundle) {
+      memory().accountBundle = { ...memory().accountBundle, users };
+    }
+    return;
+  }
+  await kvSet(ACCOUNT_USERS_KEY, users);
+}
+
+export async function loadAccountBundleRaw(): Promise<AccountBundle | null> {
+  if (!isDurableKvEnabled()) {
+    return memory().accountBundle ?? null;
+  }
+  return (await kvGet<AccountBundle>(ACCOUNT_BUNDLE_KEY)) ?? null;
+}
+
+export async function loadAccountUsers(): Promise<unknown[] | null> {
+  if (!isDurableKvEnabled()) {
+    const users = memory().accountBundle?.users;
+    return Array.isArray(users) ? users : null;
+  }
+  const usersOnly = await kvGet<unknown>(ACCOUNT_USERS_KEY);
+  if (Array.isArray(usersOnly)) return usersOnly;
+  const bundle = await kvGet<AccountBundle>(ACCOUNT_BUNDLE_KEY);
+  return Array.isArray(bundle?.users) ? bundle.users : null;
 }
 
 export async function loadAccountBundle(): Promise<AccountBundle | null> {
   if (!isDurableKvEnabled()) {
     return memory().accountBundle ?? null;
   }
-  return (await kvGet<AccountBundle>(ACCOUNT_BUNDLE_KEY)) ?? null;
+  const bundle = await kvGet<AccountBundle>(ACCOUNT_BUNDLE_KEY);
+  const usersOnly = await kvGet<unknown>(ACCOUNT_USERS_KEY);
+  if (bundle) {
+    if (Array.isArray(usersOnly)) return { ...bundle, users: usersOnly };
+    return bundle;
+  }
+  if (Array.isArray(usersOnly)) {
+    return {
+      users: usersOnly,
+      clubs: [],
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  return null;
+}
+
+export async function accountBundleExists(): Promise<boolean> {
+  if (!isDurableKvEnabled()) return Boolean(memory().accountBundle);
+  if (await kvExists(ACCOUNT_BUNDLE_KEY)) return true;
+  if (await kvExists(ACCOUNT_USERS_KEY)) return true;
+  return false;
 }
 
 /** Αντίγραφο όλων των club mirrors με ημερομηνία (για scheduled cloud backup). */

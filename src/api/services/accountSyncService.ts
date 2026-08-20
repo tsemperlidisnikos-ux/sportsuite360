@@ -23,6 +23,14 @@ export type AccountBundlePayload = {
   durable?: boolean;
 };
 
+function syncErrorMessage(json: { error?: string }, fallback: string) {
+  const error = (json.error ?? '').trim();
+  if (error === 'No account bundle') {
+    return 'Δεν βρέθηκε cloud account. Ο Platform Admin πρέπει να κάνει Push από Backup.';
+  }
+  return error || fallback;
+}
+
 async function parseSyncJson<T>(response: Response): Promise<T> {
   const text = await response.text();
   try {
@@ -62,7 +70,7 @@ export async function pushAccountBundle() {
     });
     const json = await parseSyncJson<{ ok?: boolean; error?: string; updatedAt?: string }>(response);
     if (!response.ok || !json.ok) {
-      throw new Error(json.error || `Account push HTTP ${response.status}`);
+      throw new Error(syncErrorMessage(json, `Account push HTTP ${response.status}`));
     }
     return { updatedAt: json.updatedAt ?? null };
   });
@@ -77,7 +85,7 @@ export async function upsertCloudUser(user: AppUser) {
     });
     const json = await parseSyncJson<{ ok?: boolean; error?: string; updatedAt?: string }>(response);
     if (!response.ok || !json.ok) {
-      throw new Error(json.error || `Account user HTTP ${response.status}`);
+      throw new Error(syncErrorMessage(json, `Account user HTTP ${response.status}`));
     }
     return { updatedAt: json.updatedAt ?? null };
   });
@@ -98,7 +106,7 @@ export async function removeCloudUser(userId: string) {
       return { updatedAt: json.updatedAt ?? null };
     }
     if (!response.ok || !json.ok) {
-      throw new Error(json.error || `Account user delete HTTP ${response.status}`);
+      throw new Error(syncErrorMessage(json, `Account user delete HTTP ${response.status}`));
     }
     return { updatedAt: json.updatedAt ?? null };
   });

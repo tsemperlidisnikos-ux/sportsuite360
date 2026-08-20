@@ -1,5 +1,6 @@
 @echo off
 cd /d "%~dp0"
+set "APP_URL=http://localhost:5173"
 
 where node >nul 2>&1
 if errorlevel 1 (
@@ -18,7 +19,11 @@ if not exist "node_modules\" (
   )
 )
 
-echo Ekkinisi AcademyHub...
-call npm run dev
+echo Ekkinisi SportSuite360...
+start "SportSuite360 Dev Server" cmd /k "cd /d "%~dp0" && npm run dev -- --host localhost"
 
-pause
+echo Anoigma efarmogis sto %APP_URL%...
+timeout /t 3 /nobreak >nul
+start "" "%APP_URL%"
+
+exit /b 0
