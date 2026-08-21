@@ -151,6 +151,7 @@ export async function enterDemoPresentation(): Promise<ApiResult<AppUser>> {
     return fail(sessionResult.error ?? 'Αποτυχία σύνδεσης DEMO');
   }
 
+  // Session is set — reseed against the active DEMO club bucket.
   clearDataCache();
   const seeded = reseedDemoShowcase(clubId);
   if (!seeded) {
@@ -158,6 +159,7 @@ export async function enterDemoPresentation(): Promise<ApiResult<AppUser>> {
   }
 
   window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
+  window.dispatchEvent(new CustomEvent('academyhub-users-updated'));
   return ok(sessionResult.data);
 }
 

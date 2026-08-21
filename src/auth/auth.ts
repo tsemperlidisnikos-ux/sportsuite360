@@ -32,6 +32,38 @@ export interface AppUser {
 
 const SESSION_KEY = 'academyhub-session-v1';
 const USERS_KEY = 'academyhub-users-v2';
+const DEMO_SESSION_KEY = 'academyhub-demo-session-v1';
+
+/** Presentation DEMO accounts (local-only; not in cloud account bundle). */
+const DEMO_ACCOUNT_EMAILS = new Set([
+  'demo@sportsuite360.app',
+  'coach@sportsuite360.app',
+  'parent@sportsuite360.app',
+  'parent2@sportsuite360.app',
+]);
+
+export function isPresentationDemoEmail(email: string | null | undefined): boolean {
+  return DEMO_ACCOUNT_EMAILS.has(String(email ?? '').trim().toLowerCase());
+}
+
+export function isDemoSessionActive(): boolean {
+  try {
+    if (localStorage.getItem(DEMO_SESSION_KEY) !== '1') return false;
+    const session = getSession();
+    return Boolean(session && isPresentationDemoEmail(session.email));
+  } catch {
+    return false;
+  }
+}
+
+function setDemoSessionActive(active: boolean): void {
+  try {
+    if (active) localStorage.setItem(DEMO_SESSION_KEY, '1');
+    else localStorage.removeItem(DEMO_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Stable id for the primary platform admin account (no credentials in source). */
 export const PLATFORM_ADMIN_ID = 'user_platform_admin';
@@ -123,9 +155,9 @@ export function setSessionFromVerifiedUser(user: {
 
 /**
  * Normalize users store without embedding secrets in the client bundle.
- * - Keeps existing platform_admin as-is (password never reset from source).
- * - Does not seed club admins (e.g. Apollon) with hardcoded passwords.
- * - In DEV only, can create the first platform_admin from bootstrap env vars.
+ * - Keeps existing platform_admin hashed passwords (never overwrite with bootstrap plaintext).
+ * - Does not seed club admins with hardcoded passwords.
+ * - In DEV (or ALLOW_PROD bootstrap), can create the first platform_admin from env vars.
  */
 export function ensurePlatformAdmin(): AppUser | null {
   const users = readUsersRaw();
@@ -143,11 +175,15 @@ export function ensurePlatformAdmin(): AppUser | null {
     }
     const bootstrap = readDevBootstrapAdmin();
     if (bootstrap) {
+      // Never replace a hashed password with bootstrap plaintext — that undoes migratePlaintextPasswords.
+      const password = isPasswordHashed(admin.password)
+        ? admin.password
+        : bootstrap.password;
       const nextAdmin = {
         ...admin,
         email: bootstrap.email,
-        password: bootstrap.password,
         fullName: bootstrap.fullName,
+        password,
       };
       if (
         nextAdmin.email !== admin.email ||
@@ -239,6 +275,11 @@ export async function login(
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPassword = password.trim();
 
+  // Presentation DEMO is local-only (not in cloud users). Always authenticate locally.
+  if (isPresentationDemoEmail(normalizedEmail)) {
+    return loginLocalUser(normalizedEmail, normalizedPassword, { demoSession: true });
+  }
+
   // Prefer server session when cloud account bundle is available.
   const remote = await serverLogin(normalizedEmail, normalizedPassword);
   if (remote.success && remote.data?.user) {
@@ -277,6 +318,7 @@ export async function login(
       local = next[idx];
     }
 
+    setDemoSessionActive(false);
     setSessionFromUser(local);
     recordLoginActivity(local, 'login');
     return { success: true, data: local };
@@ -309,6 +351,14 @@ export async function login(
     };
   }
 
+  return loginLocalUser(normalizedEmail, normalizedPassword, { demoSession: false });
+}
+
+async function loginLocalUser(
+  normalizedEmail: string,
+  normalizedPassword: string,
+  options: { demoSession: boolean },
+): Promise<{ success: boolean; data?: AppUser; error?: string }> {
   const users = getUsers();
   const index = users.findIndex(
     (u) => u.email.toLowerCase() === normalizedEmail && u.active,
@@ -328,6 +378,12 @@ export async function login(
     saveUsers(users);
   }
 
+  if (options.demoSession) {
+    setSessionToken(null);
+    setDemoSessionActive(true);
+  } else {
+    setDemoSessionActive(false);
+  }
   setSessionFromUser(users[index]);
   recordLoginActivity(users[index], 'login');
   return { success: true, data: users[index] };
@@ -335,6 +391,7 @@ export async function login(
 
 export function logout(): void {
   localStorage.removeItem(SESSION_KEY);
+  setDemoSessionActive(false);
   setSessionToken(null);
 }
 
@@ -358,8 +415,8 @@ export function getSession(): {
 
 export function isAuthenticated(): boolean {
   if (!getSession()) return false;
-  // Production UI requires a server-issued JWT (localStorage role alone is not enough).
   if (getSessionToken()) return true;
+  if (isDemoSessionActive()) return true;
   return import.meta.env.DEV;
 }
 

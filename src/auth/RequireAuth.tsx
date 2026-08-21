@@ -8,6 +8,7 @@ import {
 import {
   getSession,
   isAuthenticated,
+  isDemoSessionActive,
   isPlatformAdmin,
   logout,
   setSessionFromVerifiedUser,
@@ -26,6 +27,12 @@ export function RequireAuth() {
     async function verify() {
       if (!getSession()) {
         if (active) setGate('deny');
+        return;
+      }
+
+      // Presentation DEMO is local-only (no cloud JWT).
+      if (isDemoSessionActive()) {
+        if (active) setGate('ok');
         return;
       }
 

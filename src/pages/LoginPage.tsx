@@ -10,7 +10,7 @@ import {
   requestPasswordReset,
   resetPasswordWithToken,
 } from '../api/services/sessionService';
-import { getSession, isAuthenticated, login } from '../auth/auth';
+import { getSession, isAuthenticated, isPresentationDemoEmail, login } from '../auth/auth';
 import { enterDemoPresentation, getDemoLoginHint, getDemoRoleHints } from '../auth/demoAccess';
 import { clearDataCache } from '../data/repository';
 import {
@@ -152,7 +152,10 @@ export function LoginPage() {
     clearDataCache();
     window.dispatchEvent(new CustomEvent('academyhub-clubs-updated'));
 
-    if (result.data?.clubId || result.data?.role === 'platform_admin') {
+    if (
+      (result.data?.clubId || result.data?.role === 'platform_admin') &&
+      !isPresentationDemoEmail(result.data?.email)
+    ) {
       const { syncClubOnLogin } = await import('../data/clubSync');
       await syncClubOnLogin(result.data?.clubId ?? null);
       clearDataCache();

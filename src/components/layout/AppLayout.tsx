@@ -32,7 +32,7 @@ import {
   type ComponentType,
   type SVGProps,
 } from 'react';
-import { getSession, getUserById, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
+import { getSession, getUserById, isDemoSessionActive, isPlatformAdmin, logout, roleLabels } from '../../auth/auth';
 import { getSessionToken, serverVerifySession } from '../../api/services/sessionService';
 import { getClubById, ensureSessionClub } from '../../auth/clubs';
 import { AthletesIcon } from '../icons/AthletesIcon';
@@ -127,6 +127,7 @@ export function AppLayout() {
   useEffect(() => {
     // RequireAuth already verifies JWT; this is a belt-and-suspenders check in the shell.
     if (!getSession()) return;
+    if (isDemoSessionActive()) return;
     if (!getSessionToken()) {
       if (!import.meta.env.DEV) {
         logout();

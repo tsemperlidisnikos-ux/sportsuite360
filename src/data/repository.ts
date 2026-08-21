@@ -409,8 +409,13 @@ export function reseedDemoShowcase(clubId: string): AppData | null {
   } catch {
     /* ignore */
   }
+  const showcase = buildDemoShowcaseData();
+  ensureCollections(showcase);
+  replaceClubData(clubId, showcase);
+  markDemoShowcaseApplied(clubId);
+  syncDemoLicenseUsage(clubId, showcase);
   clearDataCache();
-  return getData();
+  return showcase;
 }
 
 export { createId, resolveActiveClubId };

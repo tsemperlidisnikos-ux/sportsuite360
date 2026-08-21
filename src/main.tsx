@@ -36,10 +36,11 @@ import { startDocumentBranding } from './utils/documentBranding'
 startAppearanceTheme()
 startDocumentBranding()
 startBackupScheduleRunner()
-void migratePlaintextPasswords()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+void migratePlaintextPasswords().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+})
