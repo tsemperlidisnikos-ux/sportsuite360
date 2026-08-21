@@ -4,7 +4,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://sportsuite360-ntseberprojects-9337s-projects.vercel.app/api/:splat"
+  to = "https://sportsuite360.vercel.app/api/:splat"
   status = 200
   force = true
 
