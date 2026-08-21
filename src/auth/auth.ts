@@ -1,5 +1,9 @@
 import { recordLoginActivity } from '../api/services/loginActivityService';
-import { serverLogin, setSessionToken } from '../api/services/sessionService';
+import {
+  getSessionToken,
+  serverLogin,
+  setSessionToken,
+} from '../api/services/sessionService';
 import { hashPassword, isPasswordHashed, verifyPassword } from './password';
 
 export type UserRole =
@@ -63,7 +67,10 @@ function readDevBootstrapAdmin(): {
   password: string;
   fullName: string;
 } | null {
-  if (!import.meta.env.DEV) return null;
+  const allowProdBootstrap = String(
+    import.meta.env.VITE_BOOTSTRAP_PLATFORM_ADMIN_ALLOW_PROD ?? '',
+  ).trim() === '1';
+  if (!import.meta.env.DEV && !allowProdBootstrap) return null;
   const email = String(import.meta.env.VITE_BOOTSTRAP_PLATFORM_ADMIN_EMAIL ?? '')
     .trim()
     .toLowerCase();
@@ -89,6 +96,31 @@ function setSessionFromUser(user: AppUser): void {
   );
 }
 
+/** Refresh local session fields from a verified server user (JWT path). */
+export function setSessionFromVerifiedUser(user: {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  clubId?: string | null;
+  athleteId?: string | null;
+  coachId?: string | null;
+}): void {
+  const current = getSession();
+  localStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role as UserRole,
+      clubId: user.clubId ?? null,
+      athleteId: user.athleteId ?? current?.athleteId ?? null,
+      coachId: user.coachId ?? current?.coachId ?? null,
+    }),
+  );
+}
+
 /**
  * Normalize users store without embedding secrets in the client bundle.
  * - Keeps existing platform_admin as-is (password never reset from source).
@@ -108,6 +140,23 @@ export function ensurePlatformAdmin(): AppUser | null {
     if (!admin.active) {
       admin = { ...admin, active: true };
       changed = true;
+    }
+    const bootstrap = readDevBootstrapAdmin();
+    if (bootstrap) {
+      const nextAdmin = {
+        ...admin,
+        email: bootstrap.email,
+        password: bootstrap.password,
+        fullName: bootstrap.fullName,
+      };
+      if (
+        nextAdmin.email !== admin.email ||
+        nextAdmin.password !== admin.password ||
+        nextAdmin.fullName !== admin.fullName
+      ) {
+        admin = nextAdmin;
+        changed = true;
+      }
     }
   } else {
     const bootstrap = readDevBootstrapAdmin();
@@ -154,6 +203,34 @@ export function saveUsers(users: AppUser[]): void {
   window.dispatchEvent(new CustomEvent('academyhub-users-updated'));
 }
 
+function isCloudAuthRejection(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    message.includes('Λάθος email') ||
+    message.includes('περίοδος χρήσης') ||
+    m.includes('http 401') ||
+    m.includes('http 403') ||
+    m.includes('unauthorized') ||
+    m.includes('forbidden')
+  );
+}
+
+function isNoAccountBundle(message: string): boolean {
+  return (
+    message.includes('NO_ACCOUNT_BUNDLE') ||
+    message.toLowerCase().includes('no_account_bundle')
+  );
+}
+
+function isCloudInfrastructureError(message: string): boolean {
+  return (
+    message.includes('cloud storage') ||
+    message.includes('cloud account') ||
+    message.includes('Session signing unavailable') ||
+    message.includes('HTTP 503')
+  );
+}
+
 export async function login(
   email: string,
   password: string,
@@ -163,43 +240,73 @@ export async function login(
   const normalizedPassword = password.trim();
 
   // Prefer server session when cloud account bundle is available.
-  try {
-    const remote = await serverLogin(normalizedEmail, normalizedPassword);
-    if (remote.success && remote.data?.user) {
-      const users = getUsers();
-      let local =
-        users.find((u) => u.id === remote.data!.user.id) ??
-        users.find((u) => u.email.toLowerCase() === normalizedEmail);
+  const remote = await serverLogin(normalizedEmail, normalizedPassword);
+  if (remote.success && remote.data?.user) {
+    const users = getUsers();
+    let local =
+      users.find((u) => u.id === remote.data!.user.id) ??
+      users.find((u) => u.email.toLowerCase() === normalizedEmail);
 
-      if (!local) {
-        local = {
-          id: remote.data.user.id,
-          email: remote.data.user.email,
-          fullName: remote.data.user.fullName,
-          role: remote.data.user.role as UserRole,
-          active: true,
-          clubId: remote.data.user.clubId ?? null,
-          password: await hashPassword(normalizedPassword),
-        };
-        saveUsers([local, ...users.filter((u) => u.id !== local!.id)]);
-      } else if (!isPasswordHashed(local.password)) {
-        const idx = users.findIndex((u) => u.id === local!.id);
-        const next = [...users];
-        next[idx] = { ...local, password: await hashPassword(normalizedPassword) };
-        saveUsers(next);
-        local = next[idx];
-      }
+    if (!local) {
+      local = {
+        id: remote.data.user.id,
+        email: remote.data.user.email,
+        fullName: remote.data.user.fullName,
+        role: remote.data.user.role as UserRole,
+        active: true,
+        clubId: remote.data.user.clubId ?? null,
+        password: await hashPassword(normalizedPassword),
+      };
+      saveUsers([local, ...users.filter((u) => u.id !== local!.id)]);
+    } else {
+      const idx = users.findIndex((u) => u.id === local!.id);
+      const nextPassword = isPasswordHashed(local.password)
+        ? local.password
+        : await hashPassword(normalizedPassword);
+      const next = [...users];
+      next[idx] = {
+        ...local,
+        email: remote.data.user.email,
+        fullName: remote.data.user.fullName,
+        role: remote.data.user.role as UserRole,
+        active: true,
+        clubId: remote.data.user.clubId ?? null,
+        password: nextPassword,
+      };
+      saveUsers(next);
+      local = next[idx];
+    }
 
-      setSessionFromUser(local);
-      recordLoginActivity(local, 'login');
-      return { success: true, data: local };
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    if (message.includes('cloud storage') || message.includes('cloud account')) {
-      return { success: false, error: message };
-    }
-    /* fall through to local auth (offline / no cloud bundle) */
+    setSessionFromUser(local);
+    recordLoginActivity(local, 'login');
+    return { success: true, data: local };
+  }
+
+  const err = (remote.error ?? '').trim();
+
+  // Wrong password / expired club: never fall through to stale local passwords.
+  if (isCloudAuthRejection(err)) {
+    return {
+      success: false,
+      error: err.includes('περίοδος χρήσης')
+        ? err
+        : 'Λάθος email ή κωδικός',
+    };
+  }
+
+  if (isCloudInfrastructureError(err)) {
+    return { success: false, error: err };
+  }
+
+  // Local auth only for first-time bootstrap (no cloud bundle yet) or DEV offline.
+  const allowLocal = import.meta.env.DEV || isNoAccountBundle(err);
+  if (!allowLocal) {
+    return {
+      success: false,
+      error:
+        err ||
+        'Δεν είναι δυνατή η σύνδεση με τον διακομιστή. Δοκιμάστε ξανά.',
+    };
   }
 
   const users = getUsers();
@@ -250,10 +357,14 @@ export function getSession(): {
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(getSession());
+  if (!getSession()) return false;
+  // Production UI requires a server-issued JWT (localStorage role alone is not enough).
+  if (getSessionToken()) return true;
+  return import.meta.env.DEV;
 }
 
 export function isPlatformAdmin(): boolean {
+  if (!isAuthenticated()) return false;
   return getSession()?.role === 'platform_admin';
 }
 

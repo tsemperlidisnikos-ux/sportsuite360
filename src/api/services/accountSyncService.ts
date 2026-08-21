@@ -158,7 +158,12 @@ export function applyAccountBundle(
     applyPlatformBranding(bundle.platformBranding);
   }
 
-  const cleanedUsers = clearStampedRoleDefaultPermissions(bundle.users);
+  const cleanedUsers = clearStampedRoleDefaultPermissions(bundle.users).map((user) => {
+    // Tenant pulls omit password hashes — keep any existing local hash.
+    if (user.password) return user;
+    const local = getUsers().find((row) => row.id === user.id);
+    return local?.password ? { ...user, password: local.password } : user;
+  });
 
   if (options?.mergeLocalUsers) {
     const cloudUsers = cleanedUsers;

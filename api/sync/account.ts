@@ -647,6 +647,45 @@ function publicUser(user: BundleUser) {
   };
 }
 
+/** Strip SMTP/Viva secrets from club records returned to non–platform-admin clients. */
+function sanitizeClubForTenant(club: BundleClub): BundleClub {
+  const next: BundleClub = { ...club };
+  if (next.smtp && typeof next.smtp === 'object') {
+    next.smtp = {
+      ...next.smtp,
+      password: next.smtp.password ? '********' : '',
+    };
+  }
+  if (next.viva && typeof next.viva === 'object') {
+    const viva = next.viva as Record<string, unknown>;
+    next.viva = {
+      ...viva,
+      clientSecret: viva.clientSecret ? '********' : '',
+    };
+  }
+  return next;
+}
+
+function isValidFirstAccountBootstrap(body: {
+  users?: unknown;
+  clubs?: unknown;
+}): boolean {
+  if (!Array.isArray(body.users) || body.users.length === 0 || body.users.length > 50) {
+    return false;
+  }
+  if (!Array.isArray(body.clubs) || body.clubs.length > 20) return false;
+  const users = body.users as BundleUser[];
+  return users.some(
+    (user) =>
+      user &&
+      user.role === 'platform_admin' &&
+      typeof user.email === 'string' &&
+      user.email.includes('@') &&
+      typeof user.password === 'string' &&
+      user.password.length >= 6,
+  );
+}
+
 function isClubUsageActive(club: BundleClub | undefined): boolean {
   if (!club) return true;
   const today = new Date().toISOString().slice(0, 10);
@@ -748,10 +787,18 @@ async function handleSession(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ ok: false, error: 'email and password required' });
     }
     const bundle = await loadAccountBundle();
-    if (!bundle && (await accountBundleExists())) {
-      return res.status(503).json({
+    if (!bundle) {
+      if (await accountBundleExists()) {
+        return res.status(503).json({
+          ok: false,
+          error:
+            'Το cloud storage δεν είναι διαθέσιμο. Ενεργοποιήστε ξανά το Vercel Blob store και δοκιμάστε πάλι.',
+        });
+      }
+      return res.status(404).json({
         ok: false,
-        error: 'Το cloud storage δεν είναι διαθέσιμο. Ενεργοποιήστε ξανά το Vercel Blob store και δοκιμάστε πάλι.',
+        code: 'no_account_bundle',
+        error: 'NO_ACCOUNT_BUNDLE',
       });
     }
     const users = Array.isArray(bundle?.users) ? (bundle!.users as BundleUser[]) : [];
@@ -1058,6 +1105,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     const auth = getSyncAuthContext(req);
+    // Tenant JWT: scoped users/clubs without password hashes or payment secrets.
+    // platform_admin JWT or server-side sync secret: full bundle for admin restore.
     if (auth.claims && auth.claims.role !== 'platform_admin') {
       const clubId = auth.claims.clubId;
       const users = Array.isArray(bundle.users)
@@ -1066,7 +1115,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .map(({ password: _password, ...user }) => user)
         : [];
       const clubs = Array.isArray(bundle.clubs)
-        ? (bundle.clubs as BundleClub[]).filter((club) => club.id === clubId)
+        ? (bundle.clubs as BundleClub[])
+            .filter((club) => club.id === clubId)
+            .map((club) => sanitizeClubForTenant(club))
         : [];
       return res.status(200).json({
         ok: true,
@@ -1086,12 +1137,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     try {
       const auth = getSyncAuthContext(req);
-      if (!auth.viaSecret && auth.claims?.role !== 'platform_admin') {
-        return res.status(403).json({
-          ok: false,
-          error: 'Μόνο Platform Admin μπορεί να αποθηκεύσει account bundle',
-        });
-      }
       const body = (req.body ?? {}) as {
         users?: unknown;
         clubs?: unknown;
@@ -1100,9 +1145,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (body.users == null) {
         return res.status(400).json({ ok: false, error: 'users required' });
       }
+
       const existing = await loadAccountBundle();
+      const bundleMissing = !existing && !(await accountBundleExists());
+      const isBootstrap =
+        bundleMissing &&
+        !auth.viaSecret &&
+        !auth.claims &&
+        isValidFirstAccountBootstrap(body);
+
+      if (!auth.viaSecret && auth.claims?.role !== 'platform_admin' && !isBootstrap) {
+        return res.status(403).json({
+          ok: false,
+          error: 'Μόνο Platform Admin μπορεί να αποθηκεύσει account bundle',
+        });
+      }
+
+      if (isBootstrap) {
+        if (!(await allowRateLimit(`account-bootstrap:${requestAddress(req)}`, 3, 3600))) {
+          return res.status(429).json({
+            ok: false,
+            error: 'Πολλά αιτήματα αρχικής εγκατάστασης. Δοκιμάστε αργότερα.',
+          });
+        }
+      }
+
       const jwt = auth.claims ?? bearerClaims(req);
-      const canWritePlatform = jwt?.role === 'platform_admin' || (auth.viaSecret && !jwt);
+      const canWritePlatform =
+        isBootstrap || jwt?.role === 'platform_admin' || (auth.viaSecret && !jwt);
       if (!canWritePlatform && body.clubs == null && existing?.clubs == null) {
         return res.status(400).json({ ok: false, error: 'users and clubs required' });
       }
@@ -1123,6 +1193,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ok: true,
         durable: isDurableStoreEnabled(),
         updatedAt: saved.updatedAt,
+        bootstrapped: isBootstrap || undefined,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Account push failed';

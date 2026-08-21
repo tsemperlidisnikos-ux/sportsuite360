@@ -626,13 +626,29 @@ export function getSyncAuthContext(req: {
   query?: Record<string, unknown>;
 }): SyncAuthContext {
   const expected = (process.env.SS360_SYNC_SECRET ?? '').trim();
-  const rawHeader = String(
-    req.headers['x-ss360-sync-key'] ?? req.headers['authorization'] ?? '',
-  ).trim();
+  const authHeader = String(req.headers['authorization'] ?? '').trim();
+  const syncKeyHeader = String(req.headers['x-ss360-sync-key'] ?? '').trim();
+
+  // Prefer Bearer JWT over sync key so browser sessions cannot be escalated
+  // by a leaked/legacy client key in the same request.
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    const token = authHeader.slice(7).trim();
+    if (token.includes('.')) {
+      const claims = verifySessionToken(token);
+      if (claims) return { viaSecret: false, claims };
+    }
+  }
+
   let provided = '';
-  if (rawHeader.toLowerCase().startsWith('bearer ')) provided = rawHeader.slice(7).trim();
-  else if (rawHeader) provided = rawHeader;
-  else {
+  if (syncKeyHeader) {
+    provided = syncKeyHeader.toLowerCase().startsWith('bearer ')
+      ? syncKeyHeader.slice(7).trim()
+      : syncKeyHeader;
+  } else if (authHeader) {
+    provided = authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : authHeader;
+  } else {
     const q = req.query?.key ?? req.query?.secret;
     provided = typeof q === 'string' ? q.trim() : '';
   }

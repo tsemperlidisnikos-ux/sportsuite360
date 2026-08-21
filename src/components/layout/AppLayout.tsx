@@ -125,7 +125,15 @@ export function AppLayout() {
   );
 
   useEffect(() => {
-    if (!getSessionToken()) return;
+    // RequireAuth already verifies JWT; this is a belt-and-suspenders check in the shell.
+    if (!getSession()) return;
+    if (!getSessionToken()) {
+      if (!import.meta.env.DEV) {
+        logout();
+        navigate('/login', { replace: true });
+      }
+      return;
+    }
     let active = true;
     void serverVerifySession().then((result) => {
       if (active && !result.success) {

@@ -117,15 +117,16 @@ async function checkApiHealth(): Promise<DiagnosticFinding[]> {
 
 async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
   const out: DiagnosticFinding[] = [];
-  const { syncAuthHeaders, isSyncClientKeyConfigured } = await import('../syncAuth');
-  if (!isSyncClientKeyConfigured()) {
+  const { syncAuthHeaders, isSyncSessionConfigured } = await import('../syncAuth');
+  if (!isSyncSessionConfigured()) {
     out.push(
       finding({
         category: 'Sync',
         severity: 'warning',
-        title: 'Λείπει VITE_SS360_SYNC_SECRET',
-        detail: 'Τα sync APIs στο production απαιτούν κλειδί. Χωρίς client key οι κλήσεις θα πάρουν 401/503.',
-        fix: 'Ορίστε SS360_SYNC_SECRET και VITE_SS360_SYNC_SECRET (ίδια τιμή) στο Vercel και κάντε redeploy.',
+        title: 'Δεν υπάρχει ενεργό server session token',
+        detail:
+          'Τα sync APIs απαιτούν Bearer JWT μετά το login. Χωρίς token οι κλήσεις θα πάρουν 401.',
+        fix: 'Συνδεθείτε ξανά ως Platform Admin. Το VITE_SS360_SYNC_SECRET δεν χρησιμοποιείται πλέον στο client.',
       }),
     );
   }
@@ -139,7 +140,7 @@ async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
           severity: 'critical',
           title: 'Mirror sync κλειδωμένο / μη εξουσιοδοτημένο',
           detail: mirrorJson.error || `HTTP ${mirror.status}`,
-          fix: 'Ρυθμίστε SS360_SYNC_SECRET (server) + VITE_SS360_SYNC_SECRET (build) με την ίδια τιμή.',
+          fix: 'Συνδεθείτε ξανά (JWT). Στο Vercel ορίστε SS360_SYNC_SECRET / SS360_SESSION_SECRET (server-only) και redeploy.',
         }),
       );
     } else if (mirror.ok && mirrorJson.ok) {
@@ -185,7 +186,7 @@ async function checkSyncEndpoints(): Promise<DiagnosticFinding[]> {
           severity: 'critical',
           title: 'Account sync κλειδωμένο / μη εξουσιοδοτημένο',
           detail: accountJson.error || `HTTP ${account.status}`,
-          fix: 'Ρυθμίστε SS360_SYNC_SECRET + VITE_SS360_SYNC_SECRET και redeploy.',
+          fix: 'Συνδεθείτε ξανά ως Platform Admin. SS360_SYNC_SECRET μένει μόνο στο server (όχι VITE_*).',
         }),
       );
     } else if (account.status === 404) {
