@@ -211,6 +211,7 @@ export type AppearanceTheme =
   | 'classic'
   | 'navy-amber'
   | 'ocean-slate'
+  | 'daylight-teal'
   | 'midnight-ice'
   | 'indigo-steel'
   | 'pitch-heritage'
@@ -221,6 +222,11 @@ export const APPEARANCE_THEMES: Array<{
   label: string;
   description: string;
 }> = [
+  {
+    id: 'daylight-teal',
+    label: 'Daylight Teal',
+    description: 'Ανοιχτό φόντο, navy κείμενο, teal κουμπιά — υψηλό contrast.',
+  },
   {
     id: 'ocean-slate',
     label: 'Ocean Slate',
@@ -262,6 +268,7 @@ export function sanitizeAppearanceTheme(value: unknown): AppearanceTheme {
   if (value === 'classic') return 'classic';
   if (value === 'navy-amber') return 'navy-amber';
   if (value === 'ocean-slate') return 'ocean-slate';
+  if (value === 'daylight-teal') return 'daylight-teal';
   if (value === 'midnight-ice') return 'midnight-ice';
   if (value === 'indigo-steel') return 'indigo-steel';
   if (value === 'pitch-heritage') return 'pitch-heritage';
@@ -282,7 +289,7 @@ export type PlatformConfig = {
   seasons: string[];
   appLogoUrl?: string | null;
   appName?: string;
-  /** classic | navy-amber | ocean-slate | midnight-ice | indigo-steel | pitch-heritage | graphite-ember */
+  /** classic | navy-amber | ocean-slate | daylight-teal | midnight-ice | indigo-steel | pitch-heritage | graphite-ember */
   appearanceTheme?: AppearanceTheme;
   backupSchedules?: PlatformBackupSchedules;
 };

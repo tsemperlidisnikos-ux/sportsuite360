@@ -66,6 +66,7 @@ export function LoginPage() {
     appearance === 'navy-amber' ||
     appearance === 'midnight-ice' ||
     appearance === 'ocean-slate' ||
+    appearance === 'daylight-teal' ||
     appearance === 'indigo-steel' ||
     appearance === 'pitch-heritage' ||
     appearance === 'graphite-ember';
@@ -75,13 +76,15 @@ export function LoginPage() {
       ? 'Οργάνωση. Απόδοση. Εξέλιξη.'
       : appearance === 'midnight-ice'
         ? 'One Suite. Every Sport. Total Control.'
-        : appearance === 'indigo-steel'
-          ? 'One Platform. Every Sport. Total Control.'
-          : appearance === 'pitch-heritage'
-            ? 'Παράδοση. Γήπεδο. Ομάδα.'
-            : appearance === 'graphite-ember'
-              ? 'Match day. Total control.'
-              : 'Η ολοκληρωμένη πλατφόρμα διαχείρισης για αθλητικούς οργανισμούς και ομάδες.';
+        : appearance === 'daylight-teal'
+          ? 'Καθαρή εικόνα. Πλήρης έλεγχος.'
+          : appearance === 'indigo-steel'
+            ? 'One Platform. Every Sport. Total Control.'
+            : appearance === 'pitch-heritage'
+              ? 'Παράδοση. Γήπεδο. Ομάδα.'
+              : appearance === 'graphite-ember'
+                ? 'Match day. Total control.'
+                : 'Η ολοκληρωμένη πλατφόρμα διαχείρισης για αθλητικούς οργανισμούς και ομάδες.';
 
   const cardSubtitle = showReset
     ? 'Ορίστε νέο κωδικό για τον λογαριασμό σας.'
@@ -89,11 +92,13 @@ export function LoginPage() {
       ? 'Καλώς ήρθατε πίσω! Παρακαλώ συνδεθείτε στον λογαριασμό σας.'
       : appearance === 'midnight-ice'
         ? 'Καλωσορίσατε ξανά! Παρακαλώ συνδεθείτε στον λογαριασμό σας.'
-        : appearance === 'pitch-heritage'
-          ? 'Καλώς ήρθατε. Συνδεθείτε στον σύλλογο.'
-          : appearance === 'graphite-ember'
-            ? 'Συνδεθείτε για να συνεχίσετε.'
-            : 'Εισαγάγετε τα διαπιστευτήριά σας για να συνεχίσετε.';
+        : appearance === 'daylight-teal'
+          ? 'Συνδεθείτε για να συνεχίσετε στην πλατφόρμα.'
+          : appearance === 'pitch-heritage'
+            ? 'Καλώς ήρθατε. Συνδεθείτε στον σύλλογο.'
+            : appearance === 'graphite-ember'
+              ? 'Συνδεθείτε για να συνεχίσετε.'
+              : 'Εισαγάγετε τα διαπιστευτήριά σας για να συνεχίσετε.';
 
   useEffect(() => {
     try {

@@ -23,6 +23,7 @@ import './styles/coach-portal.css'
 /* Theme overrides last so appearance contrast wins over feature CSS */
 import './styles/appearance-navy-amber.css'
 import './styles/appearance-ocean-slate.css'
+import './styles/appearance-daylight-teal.css'
 import './styles/appearance-midnight-ice.css'
 import './styles/appearance-indigo-steel.css'
 import './styles/appearance-pitch-heritage.css'

@@ -529,6 +529,7 @@ export function PlatformAdminPage() {
                   const selected =
                     (config.appearanceTheme ?? 'ocean-slate') === theme.id;
                   const swatches: Record<AppearanceTheme, [string, string, string]> = {
+                    'daylight-teal': ['#ffffff', '#eef3f7', '#0f6b6b'],
                     'ocean-slate': ['#1c2b3a', '#f0f4f8', '#2a9bb5'],
                     'midnight-ice': ['#060b14', '#0f1826', '#5ec8e8'],
                     'indigo-steel': ['#2a3344', '#eef1f6', '#4f5fd4'],

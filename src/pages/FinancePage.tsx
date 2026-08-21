@@ -50,6 +50,14 @@ function chartColors(theme: AppearanceTheme) {
       grid: 'rgba(28, 43, 58, 0.1)',
     };
   }
+  if (theme === 'daylight-teal') {
+    return {
+      pie: ['#0b1f33', '#0f6b6b', '#c45c26', '#3d5368', '#148484', '#067647'],
+      revenue: '#0f6b6b',
+      expense: '#c45c26',
+      grid: 'rgba(11, 31, 51, 0.1)',
+    };
+  }
   if (theme === 'midnight-ice') {
     return {
       pie: ['#5ec8e8', '#3aafd0', '#c45c26', '#8ba8bc', '#38bdf8', '#3dcf8e'],
